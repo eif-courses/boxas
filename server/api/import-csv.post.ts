@@ -40,8 +40,9 @@ const studentSchema = z.object({
   studentGroup: z.string().min(1, { message: 'Student group is required' }),
   finalProjectTitle: z.union([
     z.string().min(1, { message: 'Final Project Title' }),
-    z.string().length(0) // Allow empty string
-  ]),
+    z.string().length(0),
+    z.undefined()
+  ]).optional(),
   studentEmail: z.string().email({ message: 'Invalid student email' }),
   studentName: z.string().min(1, { message: 'Student name is required' }),
   studentLastname: z.string().min(1, { message: 'Student last name is required' }),
@@ -59,12 +60,12 @@ const studentSchema = z.object({
     z.string().email({ message: 'Invalid reviewer email' }),
     z.string().length(0), // Allow empty string
     z.undefined()
-  ]),
+  ]).optional(),
   reviewerName: z.union([
     z.string().min(1, { message: 'Reviewer name is required (if provided)' }),
     z.string().length(0), // Allow empty string
     z.undefined()
-  ])
+  ]).optional()
 })
 
 // Type for validated student
@@ -203,7 +204,8 @@ function mapCsvRowToStudent(row: Record<string, string>, logger: any) {
     logger.debug('Unmapped headers in CSV row', { unmappedHeaders })
   }
 
-  // Ensure all fields exist
+  // Only require studentNumber and currentYear as mandatory fields
+  // All other fields can be empty and updated later
   return {
     studentGroup: mappedRow.studentGroup || '',
     finalProjectTitle: mappedRow.finalProjectTitle || '',
@@ -305,10 +307,10 @@ export default defineEventHandler(async (event) => {
               return
             }
 
-            // Map and validate data
+            // Map the data
             const mappedStudent = mapCsvRowToStudent(row, logger)
 
-            // Ensure both year and student number are present (minimum keys for identifying a record)
+            // Only require studentNumber and currentYear for identification
             if (!mappedStudent.studentNumber || !mappedStudent.currentYear) {
               logger.warn('Missing required fields in CSV row', {
                 studentNumber: mappedStudent.studentNumber || 'missing',
@@ -322,20 +324,61 @@ export default defineEventHandler(async (event) => {
               return
             }
 
-            const validationResult = studentSchema.safeParse(mappedStudent)
+            // Use more relaxed validation for importing
+            // Focus on just having the key identifiers present
+            try {
+              // We'll be more lenient with validation for import
+              // Only strictly validate the key identifier fields
+              const minimalSchema = z.object({
+                studentNumber: z.string().min(1),
+                currentYear: z.preprocess(
+                  val => Number(val),
+                  z.number().int().positive()
+                )
+              })
 
-            if (validationResult.success) {
-              students.push(validationResult.data)
-              logger.debug('Validated student record', {
-                studentNumber: validationResult.data.studentNumber,
-                studentEmail: validationResult.data.studentEmail
+              // First validate just the minimum required fields
+              const minimalValidation = minimalSchema.safeParse({
+                studentNumber: mappedStudent.studentNumber,
+                currentYear: mappedStudent.currentYear
+              })
+
+              if (!minimalValidation.success) {
+                throw minimalValidation.error
+              }
+
+              // Now try to validate the full schema, but don't reject records if optional fields fail
+              const fullValidation = studentSchema.safeParse(mappedStudent)
+
+              if (fullValidation.success) {
+                // Perfect! All fields validated
+                students.push(fullValidation.data)
+              }
+              else {
+                // If it failed but we have minimum fields, still import
+                // This is the key change - still accepting records with minimal data
+                logger.debug('Record has validation warnings but importing with minimal data', {
+                  studentNumber: mappedStudent.studentNumber,
+                  issues: fullValidation.error.errors.map(e => ({
+                    path: e.path.join('.'),
+                    message: e.message
+                  }))
+                })
+
+                // Still add the record but with a warning
+                students.push(mappedStudent)
+              }
+
+              logger.debug('Added student record for import', {
+                studentNumber: mappedStudent.studentNumber,
+                studentEmail: mappedStudent.studentEmail
               })
             }
-            else {
-              // Log detailed validation errors
+            catch (validationError) {
+              // Failed even minimal validation
               logger.warn('Validation failed for student record', {
                 studentNumber: mappedStudent.studentNumber,
-                errors: validationResult.error.errors.map(e => ({
+                errors: validationError.errors?.map(e => ({
                   path: e.path.join('.'),
                   message: e.message
                 }))
@@ -343,7 +386,7 @@ export default defineEventHandler(async (event) => {
 
               validationErrors.push({
                 row,
-                errors: validationResult.error.errors
+                errors: validationError.errors || [{ message: 'Validation failed' }]
               })
             }
           }
