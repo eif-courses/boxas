@@ -5,15 +5,22 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@nuxt/eslint',
     '@pinia/nuxt',
-    '@pinia/colada-nuxt'
+    '@pinia/colada-nuxt',
+    '@nuxtjs/i18n'
   ],
   devtools: {
     enabled: true
   },
   future: { compatibilityVersion: 4 },
   compatibilityDate: '2024-07-30',
+  nitro: {
+    experimental: {
+      openAPI: true
+    }
+  },
   hub: {
-    database: true
+    database: true,
+    blob: true
   },
   // Development config
   eslint: {
@@ -23,5 +30,25 @@ export default defineNuxtConfig({
         commaDangle: 'never'
       }
     }
+  },
+  i18n: {
+    locales: [
+      {
+        code: 'en-GB',
+        name: 'English',
+        file: 'en-GB.ts',
+        iso: 'en' // Add this
+      },
+      {
+        code: 'lt-LT',
+        name: 'Lietuvių',
+        file: 'lt-LT.ts',
+        iso: 'lt' // Add this
+      }
+    ],
+    legacy: false,
+    langDir: 'lang',
+    strategy: 'prefix_and_default',
+    defaultLocale: 'en-GB'
   }
 })
