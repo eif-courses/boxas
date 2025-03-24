@@ -1,5 +1,5 @@
 import { defineEventHandler, readMultipartFormData, createError } from 'h3'
-import AdmZip from 'adm-zip'
+import { unzip, strFromU8 } from 'fflate'
 import { eq, and, desc } from 'drizzle-orm'
 import { AwsClient } from 'aws4fetch'
 import { documents, studentRecords } from '~~/server/database/schema'
@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Group parameter is required' })
   }
 
+  // Get latest year and student records as in your original code
   logger.debug('Finding latest academic year')
   const latestYearRecord = await useDB()
     .select({ year: studentRecords.currentYear })
@@ -51,17 +52,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No ZIP files uploaded' })
   }
 
-  logger.info('Processing uploaded files', {
-    count: files.length,
-    fileNames: files.map(f => f.filename)
-  })
-
-  // Load all students for the target group once
-  logger.debug('Loading student records', {
-    year: latestYear,
-    group
-  })
-
+  // Load students
   const students = await useDB()
     .select({
       id: studentRecords.id,
@@ -86,15 +77,6 @@ export default defineEventHandler(async (event) => {
     year: latestYear
   })
 
-  // Debug logging for student records
-  students.forEach((student) => {
-    logger.debug('Student record', {
-      id: student.id,
-      name: `${student.studentName} ${student.studentLastname}`,
-      group: student.studentGroup
-    })
-  })
-
   const results = {
     matched: 0,
     unmatched: 0,
@@ -108,100 +90,82 @@ export default defineEventHandler(async (event) => {
     })
 
     try {
-      // Read ZIP file
-      const zip = new AdmZip(file.data)
-      const zipEntries = zip.getEntries()
-      logger.debug('ZIP file contents', {
-        entriesCount: zipEntries.length
-      })
-
-      for (const entry of zipEntries) {
-        if (!entry.isDirectory && entry.entryName.endsWith('.pdf')) {
-          results.processed++
-          logger.debug('Processing PDF entry', {
-            path: entry.entryName,
-            size: entry.header.size
-          })
-
-          // Extract folder name (contains student name in Moodle format)
-          const pathParts = entry.entryName.split('/')
-          if (pathParts.length < 2) {
-            logger.warn('Unexpected path structure', {
-              path: entry.entryName
-            })
-            results.unmatched++
-            continue
-          }
-
-          const folderWithStudent = pathParts[1] || ''
-          // Extract name before first underscore (Moodle format)
-          const extractedFullName = folderWithStudent.split('_')[0].trim()
-
-          logger.debug('Extracted student name', {
-            entryPath: entry.entryName,
-            extractedName: extractedFullName
-          })
-
-          if (!extractedFullName) {
-            logger.warn('Invalid extracted student name', {
-              path: entry.entryName
-            })
-            results.unmatched++
-            continue
-          }
-
-          // Try different matching strategies
-          const matchedStudent = findStudentByName(students, extractedFullName, logger)
-
-          if (matchedStudent) {
-            logger.info('Student match found', {
-              extractedName: extractedFullName,
-              studentId: matchedStudent.id,
-              studentName: `${matchedStudent.studentName} ${matchedStudent.studentLastname}`
-            })
-            results.matched++
-
-            const documentPath = `${matchedStudent.currentYear}/${matchedStudent.department}/${matchedStudent.studyProgram}/${matchedStudent.studentGroup}/${matchedStudent.studentName} ${matchedStudent.studentLastname}/`
-            const pdfFileName = entry.entryName.split('/').pop()
-
-            logger.debug('Generating presigned URL', {
-              path: documentPath + pdfFileName
-            })
-
-            const presignedUrl = await generatePresignedUrl(documentPath + pdfFileName, logger)
-
-            logger.debug('Uploading file to R2')
-            await uploadToR2(presignedUrl, entry.getData(), logger)
-
-            logger.debug('Saving document record to database')
-            await useDB().insert(documents).values({
-              documentType: 'PDF',
-              filePath: documentPath + pdfFileName,
-              uploadedDate: Date.now(),
-              studentRecordId: matchedStudent.id
-            })
-
-            logger.info('Document processed successfully', {
-              studentId: matchedStudent.id,
-              filePath: documentPath + pdfFileName
-            })
+      // Use fflate to unzip the file (browser-compatible)
+      const zipEntries = await new Promise((resolve, reject) => {
+        unzip(new Uint8Array(file.data), (err, data) => {
+          if (err) {
+            reject(new Error(`Failed to unzip file: ${err.message}`))
           }
           else {
-            logger.warn('No matching student found', {
-              extractedName: extractedFullName
-            })
-            // Debug: Record comparison details for troubleshooting
-            if (logger.debug) {
-              students.forEach((student) => {
-                const dbFullName = `${student.studentName} ${student.studentLastname}`
-                logger.debug('Name comparison failed', {
-                  extractedName: extractedFullName,
-                  dbName: dbFullName
-                })
-              })
-            }
-            results.unmatched++
+            resolve(data)
           }
+        })
+      })
+
+      logger.debug('ZIP file contents', {
+        entriesCount: Object.keys(zipEntries).length
+      })
+
+      for (const [path, fileData] of Object.entries(zipEntries)) {
+        // Only process PDFs
+        if (!path.endsWith('.pdf')) continue
+
+        results.processed++
+        logger.debug('Processing PDF entry', {
+          path: path,
+          size: fileData.length
+        })
+
+        // Extract folder name (contains student name in Moodle format)
+        const pathParts = path.split('/')
+        if (pathParts.length < 2) {
+          logger.warn('Unexpected path structure', { path })
+          results.unmatched++
+          continue
+        }
+
+        const folderWithStudent = pathParts[1] || ''
+        // Extract name before first underscore (Moodle format)
+        const extractedFullName = folderWithStudent.split('_')[0].trim()
+
+        if (!extractedFullName) {
+          logger.warn('Invalid extracted student name', { path })
+          results.unmatched++
+          continue
+        }
+
+        // Try different matching strategies (same as your original code)
+        const matchedStudent = findStudentByName(students, extractedFullName, logger)
+
+        if (matchedStudent) {
+          logger.info('Student match found', {
+            extractedName: extractedFullName,
+            studentName: `${matchedStudent.studentName} ${matchedStudent.studentLastname}`
+          })
+
+          results.matched++
+
+          const documentPath = `${matchedStudent.currentYear}/${matchedStudent.department}/${matchedStudent.studyProgram}/${matchedStudent.studentGroup}/${matchedStudent.studentName} ${matchedStudent.studentLastname}/`
+          const pdfFileName = path.split('/').pop()
+
+          const presignedUrl = await generatePresignedUrl(documentPath + pdfFileName, logger)
+          await uploadToR2(presignedUrl, fileData, logger)
+
+          await useDB().insert(documents).values({
+            documentType: 'PDF',
+            filePath: documentPath + pdfFileName,
+            uploadedDate: Date.now(),
+            studentRecordId: matchedStudent.id
+          })
+
+          logger.info('Document processed successfully', {
+            studentId: matchedStudent.id,
+            filePath: documentPath + pdfFileName
+          })
+        }
+        else {
+          logger.warn('No matching student found', { extractedName: extractedFullName })
+          results.unmatched++
         }
       }
     }
@@ -351,6 +315,7 @@ async function generatePresignedUrl(filePath, logger) {
 }
 
 // Function to upload the PDF data to R2 using the presigned URL
+// Update the upload function for Uint8Array
 async function uploadToR2(presignedUrl, fileData, logger) {
   try {
     logger.debug('Uploading file to R2', {

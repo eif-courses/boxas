@@ -26,9 +26,6 @@ importers:
       '@pinia/nuxt':
         specifier: ^0.7.0
         version: 0.7.0(magicast@0.3.5)(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))
-      adm-zip:
-        specifier: ^0.5.16
-        version: 0.5.16
       aws4fetch:
         specifier: ^1.0.20
         version: 1.0.20
@@ -53,12 +50,18 @@ importers:
       fast-csv:
         specifier: ^5.0.2
         version: 5.0.2
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
       h3-zod:
         specifier: ^0.5.3
         version: 0.5.3(h3@1.15.1)(zod@3.24.2)
+      mime:
+        specifier: ^3.0.0
+        version: 3.0.0
       nuxt:
         specifier: ^3.16.1
         version: 3.16.1(@parcel/watcher@2.5.1)(@types/node@22.13.13)(aws4fetch@1.0.20)(db0@0.3.1(drizzle-orm@0.36.4(@cloudflare/workers-types@4.20250321.0)))(drizzle-orm@0.36.4(@cloudflare/workers-types@4.20250321.0))(eslint@9.23.0(jiti@2.4.2))(ioredis@5.6.0)(magicast@0.3.5)(optionator@0.9.4)(rollup@4.37.0)(terser@5.39.0)(typescript@5.7.2)(vite@6.2.3(@types/node@22.13.13)(jiti@2.4.2)(terser@5.39.0)(yaml@2.7.0))(yaml@2.7.0)
@@ -2175,10 +2178,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  adm-zip@0.5.16:
-    resolution: {integrity: sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ==}
-    engines: {node: '>=12.0'}
-
   agent-base@7.1.3:
     resolution: {integrity: sha512-jRR5wdylq8CkOe6hei19GGZnxM6rBGwFl3Bg0YItGDimvjGtAvdZk4Pu6Cl4u4Igsws4a1fd1Vq3ezrhn4KmFw==}
     engines: {node: '>= 14'}
@@ -3160,6 +3159,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   file-entry-cache@8.0.0:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
@@ -7649,8 +7651,6 @@ snapshots:
 
   acorn@8.14.1: {}
 
-  adm-zip@0.5.16: {}
-
   agent-base@7.1.3: {}
 
   agentkeepalive@4.6.0:
@@ -8665,6 +8665,8 @@ snapshots:
   fdir@6.4.3(picomatch@4.0.2):
     optionalDependencies:
       picomatch: 4.0.2
+
+  fflate@0.8.2: {}
 
   file-entry-cache@8.0.0:
     dependencies:
