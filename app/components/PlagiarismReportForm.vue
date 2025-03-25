@@ -123,52 +123,52 @@
       </fieldset>
 
       <!-- Advisor Information Section -->
-      <fieldset class="border p-4 rounded">
-        <legend class="font-medium">
-          Advisor Information
-        </legend>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Advisor Name</label>
-            <input
-              v-model="formData.advisorName"
-              type="text"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-          </div>
+      <!--      <fieldset class="border p-4 rounded"> -->
+      <!--        <legend class="font-medium"> -->
+      <!--          Advisor Information -->
+      <!--        </legend> -->
+      <!--        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> -->
+      <!--          <div> -->
+      <!--            <label class="block text-sm font-medium text-gray-700">Advisor Name</label> -->
+      <!--            <input -->
+      <!--              v-model="formData.advisorName" -->
+      <!--              type="text" -->
+      <!--              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" -->
+      <!--              required -->
+      <!--            > -->
+      <!--          </div> -->
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Position</label>
-            <input
-              v-model="formData.advisorPosition"
-              type="text"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-          </div>
+      <!--          <div> -->
+      <!--            <label class="block text-sm font-medium text-gray-700">Position</label> -->
+      <!--            <input -->
+      <!--              v-model="formData.advisorPosition" -->
+      <!--              type="text" -->
+      <!--              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" -->
+      <!--              required -->
+      <!--            > -->
+      <!--          </div> -->
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Institution</label>
-            <input
-              v-model="formData.advisorInstitution"
-              type="text"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-          </div>
+      <!--          <div> -->
+      <!--            <label class="block text-sm font-medium text-gray-700">Institution</label> -->
+      <!--            <input -->
+      <!--              v-model="formData.advisorInstitution" -->
+      <!--              type="text" -->
+      <!--              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" -->
+      <!--              required -->
+      <!--            > -->
+      <!--          </div> -->
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Date</label>
-            <input
-              v-model="formData.date"
-              type="date"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-          </div>
-        </div>
-      </fieldset>
+      <!--          <div> -->
+      <!--            <label class="block text-sm font-medium text-gray-700">Date</label> -->
+      <!--            <input -->
+      <!--              v-model="formData.date" -->
+      <!--              type="date" -->
+      <!--              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" -->
+      <!--              required -->
+      <!--            > -->
+      <!--          </div> -->
+      <!--        </div> -->
+      <!--      </fieldset> -->
 
       <!-- Additional Comments Section -->
       <fieldset class="border p-4 rounded">
@@ -222,7 +222,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useSupervisorReports } from '~/composables/useSupervisorReports'
-import type { StudentRecord } from '~~/types/mytype'
 
 // interface StudentRecord {
 //   id: number

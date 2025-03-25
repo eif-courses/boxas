@@ -16,7 +16,7 @@
           <UInput
             v-model="search"
             icon="i-heroicons-magnifying-glass-20-solid"
-            placeholder="Search..."
+            :placeholder="$t('search')"
             class="w-full"
           />
         </div>
@@ -40,7 +40,7 @@
               class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer"
               @click="showFavoritesOnly = !showFavoritesOnly"
             >
-              Favorites
+              {{ $t('favorites') }}
               <UBadge
                 v-if="allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length > 0"
                 color="amber"
@@ -58,7 +58,7 @@
       <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
         <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
           <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">Kiek įrašų:</span>
+            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
             <USelect
               v-model="pageCount"
               :options="[3, 5, 10, 20, 30, 40]"
@@ -69,38 +69,38 @@
           </div>
 
           <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">Metai</span>
+            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
             <USelect
               v-model="yearFilter"
               :options="availableYears"
               class="w-20"
               size="xs"
-              placeholder="All"
+              :placeholder="$t('all_years')"
               clearable
               :loading="yearsLoading"
             />
           </div>
 
           <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">Grupė</span>
+            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
             <USelect
               v-model="groupFilter"
               :options="uniqueGroups"
               class="w-24 flex-grow"
               size="xs"
-              placeholder="All"
+              :placeholder="$t('all')"
               clearable
             />
           </div>
 
           <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">Programa</span>
+            <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
             <USelect
               v-model="programFilter"
               :options="uniquePrograms"
               class="w-24 flex-grow"
               size="xs"
-              placeholder="All"
+              :placeholder="$t('all')"
               clearable
             />
           </div>
@@ -117,7 +117,7 @@
               color="gray"
               size="xs"
             >
-              Columns
+              {{ $t('choose_columns') }}
             </UButton>
           </USelectMenu>
 
@@ -128,7 +128,7 @@
             :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter && !showFavoritesOnly"
             @click="resetFilters"
           >
-            Reset
+            {{ $t('reset') }}
           </UButton>
         </div>
       </div>
@@ -192,9 +192,9 @@
           </div>
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
             <UButton
-              icon="i-heroicons-plus-circle"
+              icon="i-heroicons-eye"
               size="xs"
-              color="primary"
+              color="white"
               variant="solid"
               :label="$t('supervisor_report')"
               :trailing="false"
@@ -207,7 +207,7 @@
                 name="i-heroicons-clock"
                 class="w-5 h-5 text-yellow-500"
               />
-              <span>Laukiama...</span>
+              <span>{{ $t('supervisor_report') }} ({{ $t('report_not_filled') }})</span>
             </div>
           </template>
         </template>
@@ -218,11 +218,11 @@
           </div>
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
             <UButton
-              icon="i-heroicons-plus-circle"
+              icon="i-heroicons-eye"
               size="xs"
-              color="primary"
+              color="white"
               variant="solid"
-              label="Recenzija"
+              :label="$t('reviewer_report')"
               :trailing="false"
               class="p-1 text-xs"
             />
@@ -233,7 +233,8 @@
                 name="i-heroicons-clock"
                 class="w-5 h-5 text-yellow-500"
               />
-              <span>Laukiama...</span>
+              <span>{{ $t('reviewer_report') }} ({{ $t('report_not_filled') }})</span>
+
             </div>
           </template>
         </template>
@@ -337,13 +338,12 @@
         <div class="flex flex-wrap justify-between items-center">
           <div>
             <span class="text-sm leading-5">
-              Showing
+              {{ $t('showing') }}
               <span class="font-medium">{{ pageFrom }}</span>
-              to
+              {{ $t('to') }}
               <span class="font-medium">{{ pageTo }}</span>
-              of
+              {{ $t('off') }}
               <span class="font-medium">{{ pageTotal }}</span>
-              results
             </span>
           </div>
 
@@ -424,6 +424,8 @@ definePageMeta({
   middleware: ['department-access']
 })
 
+const { t } = useI18n()
+
 const columns = [{
   key: 'favorite',
   sortable: false,
@@ -431,27 +433,27 @@ const columns = [{
 },
 {
   key: 'group',
-  label: 'Group',
+  label: t('group'),
   sortable: false
 },
 {
   key: 'name',
-  label: 'Full Name',
+  label: t('fullname'),
   sortable: true
 },
 {
   key: 'reviewer',
-  label: 'Reviewer',
+  label: t('reviewer'),
   sortable: true
 },
 {
   key: 'supervisor',
-  label: 'Supervisor',
+  label: t('supervisor'),
   sortable: true
 },
 {
   key: 'actions',
-  label: 'Actions',
+  label: t('actions'),
   sortable: false
 }
 // {

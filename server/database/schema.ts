@@ -78,8 +78,8 @@ export const reviewerReports = sqliteTable('reviewer_reports', {
 export const videos = sqliteTable('videos', {
   id: integer('id').primaryKey(),
   studentRecordId: integer('student_record_id')
-      .references(() => studentRecords.id, { onDelete: 'cascade' })
-      .notNull(),
+    .references(() => studentRecords.id, { onDelete: 'cascade' })
+    .notNull(),
   key: text('key').notNull(),
   filename: text('filename').notNull(),
   contentType: text('content_type').notNull(),

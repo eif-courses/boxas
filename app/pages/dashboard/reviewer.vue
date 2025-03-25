@@ -279,27 +279,27 @@ const generateReport = async (formData) => {
     isLoading.value = false
   }
 }
-
+const { t } = useI18n()
 // Columns
 const columns = [
   {
     key: 'studentGroup',
-    label: 'Group',
+    label: t('group'),
     sortable: false
   },
   {
     key: 'name',
-    label: 'Full Name',
+    label: t('fullname'),
     sortable: true
   },
   {
     key: 'actions',
-    label: 'Actions',
+    label: t('actions'),
     sortable: false
   },
   {
     key: 'status',
-    label: 'Status',
+    label: t('reviewer_report'),
     sortable: true
   }
 ]
@@ -548,14 +548,14 @@ watch([search, groupFilter, programFilter, pageCount], () => {
         v-model="search"
         icon="i-heroicons-magnifying-glass-20-solid"
         class="w-full"
-        placeholder="Search..."
+        :placeholder="$t('search')"
       />
     </div>
 
     <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
       <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">Kiek įrašų:</span>
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
           <USelect
             v-model="pageCount"
             :options="[3, 5, 10, 20, 30, 40]"
@@ -566,38 +566,38 @@ watch([search, groupFilter, programFilter, pageCount], () => {
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">Metai</span>
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
           <USelect
             v-model="yearFilter"
             :options="availableYears"
-            class="w-20"
+            class="w-22"
             size="xs"
-            placeholder="Latest"
+            :placeholder="$t('latest')"
             clearable
             :loading="yearsLoading"
           />
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">Grupė</span>
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
           <USelect
             v-model="groupFilter"
             :options="uniqueGroups"
             class="w-24 flex-grow"
             size="xs"
-            placeholder="All"
+            :placeholder="$t('all')"
             clearable
           />
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">Programa</span>
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('study_program') }}</span>
           <USelect
             v-model="programFilter"
             :options="uniquePrograms"
-            class="w-24 flex-grow"
+            class="w-28 flex-grow"
             size="xs"
-            placeholder="All"
+            :placeholder="$t('all')"
             clearable
           />
         </div>
@@ -614,7 +614,7 @@ watch([search, groupFilter, programFilter, pageCount], () => {
             color="gray"
             size="xs"
           >
-            Columns
+            {{ $t('choose_columns') }}
           </UButton>
         </USelectMenu>
 
@@ -625,7 +625,7 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter"
           @click="resetFilters"
         >
-          Reset
+          {{ $t('reset') }}
         </UButton>
       </div>
     </div>
@@ -812,20 +812,26 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           </template>
 
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
-            <div class="text-sm text-gray-500 truncate">
-              Report added
-            </div>
+            <UButton
+              :loading="isFetchingDocument"
+              icon="i-heroicons-document-text"
+              size="xs"
+              color="white"
+              variant="solid"
+              :label="$t('reviewer_report')"
+              :trailing="false"
+              class="p-1 text-xs"
+            />
           </template>
           <template v-else>
             <UButton
               icon="i-heroicons-plus-circle"
               size="xs"
-              color="primary"
+              color="yellow"
               variant="solid"
-              :label="$t('reviewer_report')"
+              :label="$t('reviewer_report_not_ready')"
               :trailing="false"
               class="p-1 text-xs"
-              @click="sendStudentReportData(row.student)"
             />
           </template>
         </div>
@@ -838,14 +844,14 @@ watch([search, groupFilter, programFilter, pageCount], () => {
               name="i-heroicons-check-circle"
               class="w-5 h-5 text-green-500"
             />
-            <span>Recenzija pateikta</span>
+            <span>{{ $t('report_filled') }}</span>
           </template>
           <template v-else>
             <UIcon
               name="i-heroicons-clock"
               class="w-5 h-5 text-yellow-500"
             />
-            <span>Laukiama...</span>
+            <span>{{ $t('report_not_filled') }}</span>
           </template>
         </div>
       </template>
@@ -855,16 +861,15 @@ watch([search, groupFilter, programFilter, pageCount], () => {
       <div class="flex flex-wrap justify-between items-center">
         <div>
           <span class="text-sm leading-5">
-            Showing
+            {{ $t('showing') }}
             <span class="font-medium">{{ pageFrom }}</span>
-            to
+            {{ $t('to') }}
             <span class="font-medium">{{ pageTo }}</span>
-            of
+            {{ $t('off') }}
             <span class="font-medium">{{ pageTotal }}</span>
-            results
           </span>
           <span class="ml-2 text-sm text-gray-600">
-            Year: {{ activeYear || 'Latest' }}
+            {{ $t('year') }} : {{ activeYear || $t('latest') }}
           </span>
         </div>
 

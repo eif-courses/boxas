@@ -6,14 +6,12 @@ const router = useRouter()
 const colorMode = useColorMode()
 const { t, locale } = useI18n()
 
-// Initialize auth store from session on component mount
 onMounted(() => {
   if (loggedIn.value && user.value) {
     authStore.setUser(user.value)
   }
 })
 
-// Watch for session changes
 watch(loggedIn, (newValue) => {
   if (!newValue) {
     navigateTo('/')
@@ -30,7 +28,6 @@ watch(user, (newValue) => {
   }
 })
 
-// Helper function to display user role(s)
 const getRoleDisplay = (user) => {
   if (!user) return ''
 
@@ -83,8 +80,8 @@ const logout = async () => {
   }
 
   authStore.clearUser()
-  clear() // Clear user session
-  router.push('/login')
+  await clear()
+  await router.push('/login')
 }
 </script>
 
@@ -102,7 +99,7 @@ const logout = async () => {
 
     <UCard>
       <template #header>
-        <h3 class="text-lg font-semibold leading-6">
+        <h3 class="text-lg font-semibold">
           <NuxtLink to="/">
             {{ $t('app_name') }}
           </NuxtLink>
@@ -112,69 +109,65 @@ const logout = async () => {
           to="/api/auth/microsoft"
           icon="i-simple-icons-microsoft"
           label="Login with Microsoft"
-          color="black"
-          size="xs"
+          color="primary"
           external
         />
         <div
           v-else
-          class="flex flex-wrap -mx-2 sm:mx-0"
+          class="flex flex-wrap sm:mx-0 gap-1"
         >
-          <!-- Standard buttons from your original layout -->
           <UButton
             v-if="authStore.hasStudentAccess()"
             :to="`/${locale}/dashboard/student`"
             icon="i-heroicons-user-group"
-            label="Student"
+            :label="$t('nav_student')"
             :color="isActiveRoute('/student') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
-          <!-- Teacher Dashboard - for all teachers -->
           <UButton
             v-if="authStore.hasTeacherAccess()"
             :to="`/${locale}/dashboard/supervisor`"
             icon="i-heroicons-user-circle"
-            label="Supervisor"
+            :label="$t('nav_supervisor')"
             :color="isActiveRoute('/supervisor') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
           <UButton
             v-if="authStore.hasReviewerAccess()"
             :to="`/${locale}/dashboard/reviewer`"
             icon="i-heroicons-pencil"
-            label="Reviewer"
+            :label="$t('nav_reviewer')"
             :color="isActiveRoute('/reviewer') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
-          <!-- Department Dashboard - only for department heads -->
           <UButton
             v-if="authStore.hasDepartmentHeadAccess()"
             :to="`/${locale}/dashboard/department`"
             icon="i-heroicons-user-group"
-            label="Department"
+            :label="$t('nav_department')"
             :color="isActiveRoute('/department') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
           <UButton
             v-if="authStore.hasDepartmentHeadAccess() || authStore.hasCommisionAccess()"
             :to="`/${locale}/dashboard/commission`"
             icon="i-heroicons-check-circle"
-            label="Commission"
+            :label="$t('nav_commission')"
             :color="isActiveRoute('/commission') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
           <UButton
             v-if="authStore.hasAdminAccess()"
             :to="`/${locale}/dashboard/admin`"
             icon="i-heroicons-cog"
-            label="Admin"
+            :label="$t('nav_admin')"
             :color="isActiveRoute('/admin') ? 'primary' : 'gray'"
-            variant="ghost"
+            variant="solid"
           />
 
           <LanguageSwitcher />
@@ -196,7 +189,7 @@ const logout = async () => {
             </div>
             <UButton
               color="gray"
-              variant="ghost"
+              variant="solid"
               :label="$t('logout')"
               icon="i-heroicons-arrow-left-on-rectangle"
               @click="logout"
@@ -208,9 +201,7 @@ const logout = async () => {
       <NuxtPage />
     </UCard>
 
-    <footer class="text-center mt-2">
-      <!-- Footer content -->
-    </footer>
+    <footer class="text-center mt-2" />
   </UContainer>
   <UNotifications />
 </template>
