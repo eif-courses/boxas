@@ -949,10 +949,10 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           </template>
           <template v-else>
             <UButton
-              icon="i-heroicons-plus-circle"
+              icon="i-heroicons-pencil-square"
               size="xs"
-              color="yellow"
-              variant="solid"
+              color="amber"
+              variant="outline"
               :label="$t('supervisor_report_not_ready')"
               :trailing="false"
               class="p-1 text-xs"
@@ -974,7 +974,7 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           <template v-else>
             <UIcon
               name="i-heroicons-clock"
-              class="w-5 h-5 text-yellow-500"
+              class="w-5 h-5 text-amber-400"
             />
             <span>{{ $t('report_not_filled') }}</span>
           </template>

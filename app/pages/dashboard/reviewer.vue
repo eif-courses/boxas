@@ -825,13 +825,14 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           </template>
           <template v-else>
             <UButton
-              icon="i-heroicons-plus-circle"
+              icon="i-heroicons-pencil-square"
               size="xs"
-              color="yellow"
-              variant="solid"
+              color="amber"
+              variant="outline"
               :label="$t('reviewer_report_not_ready')"
               :trailing="false"
               class="p-1 text-xs"
+              @click="sendStudentReportData(row.student)"
             />
           </template>
         </div>

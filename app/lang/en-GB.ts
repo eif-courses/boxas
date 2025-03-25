@@ -32,5 +32,11 @@ export default {
   nav_reviewer: 'Reviewer View',
   nav_department: 'Department View',
   nav_commission: 'Commission View',
-  nav_admin: 'Admin View'
+  nav_admin: 'Admin View',
+  enter_title: 'Enter Title...',
+  success: 'Successfully Updated Title',
+  error: 'Title Update failed',
+  favorites: 'Mark with a star',
+  source_code: 'Source Code',
+  final_project: 'Final Thesis PDF'
 }

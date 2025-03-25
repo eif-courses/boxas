@@ -114,7 +114,7 @@ const logout = async () => {
         />
         <div
           v-else
-          class="flex flex-wrap sm:mx-0 gap-1"
+          class="flex flex-wrap sm:mx-0 gap-2"
         >
           <UButton
             v-if="authStore.hasStudentAccess()"

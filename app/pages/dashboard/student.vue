@@ -15,7 +15,7 @@
     >
       <template #header>
         <h2 class="text-lg font-bold">
-          {{ records.studentRecord.studentName }}
+          {{ records.studentRecord.studentName }} {{ records.studentRecord.studentLastname }}
         </h2>
         <p class="text-sm text-gray-500">
           {{ records.studentRecord.studentGroup }} - {{ records.studentRecord.studyProgram }} ({{ records.studentRecord.currentYear }})
@@ -26,10 +26,6 @@
         <div>
           <p><strong>Vadovas:</strong> {{ records.studentRecord.supervisorEmail }}</p>
           <p><strong>Recenzentas:</strong> {{ records.studentRecord.reviewerEmail }}</p>
-        </div>
-        <div>
-          <p><strong>Grupė:</strong> {{ records.studentRecord.studentGroup }}</p>
-          <p><strong>Metai:</strong> {{ records.studentRecord.currentYear }}</p>
         </div>
       </div>
 

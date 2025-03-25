@@ -35,12 +35,12 @@
               </template>
             </UToggle>
 
-            <!-- Label next to toggle -->
+            {{ $t('favorites') }}
             <span
               class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer"
               @click="showFavoritesOnly = !showFavoritesOnly"
             >
-              {{ $t('favorites') }}
+
               <UBadge
                 v-if="allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length > 0"
                 color="amber"
@@ -184,15 +184,21 @@
           <div class="truncate">
             {{ row.student.studentName }} {{ row.student.studentLastname }}
           </div>
+          <InlineEdit
+            :value="row.student.finalProjectTitle"
+            :row="row.student"
+            :placeholder="$t('enter_title')"
+            @save="updateProjectTitle"
+          />
         </template>
 
         <template #supervisor-data="{ row }">
-          <div class="truncate">
+          <div class="truncate mb-1">
             {{ row.student.supervisorEmail }}
           </div>
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
             <UButton
-              icon="i-heroicons-eye"
+              icon="i-heroicons-document-text"
               size="xs"
               color="white"
               variant="solid"
@@ -213,12 +219,12 @@
         </template>
 
         <template #reviewer-data="{ row }">
-          <div class="truncate">
+          <div class="truncate mb-1">
             {{ row.student.reviewerName }}
           </div>
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
             <UButton
-              icon="i-heroicons-eye"
+              icon="i-heroicons-document-text"
               size="xs"
               color="white"
               variant="solid"
@@ -234,7 +240,6 @@
                 class="w-5 h-5 text-yellow-500"
               />
               <span>{{ $t('reviewer_report') }} ({{ $t('report_not_filled') }})</span>
-
             </div>
           </template>
         </template>
@@ -383,38 +388,38 @@
       v-model="isOpen"
       prevent-close
     >
-      <UCard
-        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
-        class="w-full max-w-6xl"
-      >
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} {{ studentObject?.studentLastname }} ({{ studentObject?.currentYear }})
-              pristatomasis vaizdo įrašas
-            </h3>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              class="ml-4"
-              @click="isOpen = false"
-            />
-          </div>
-        </template>
+      <!--      <UCard -->
+      <!--        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }" -->
+      <!--        class="w-full max-w-6xl" -->
+      <!--      > -->
+      <!--        <template #header> -->
+      <!--          <div class="flex items-center justify-between"> -->
+      <!--            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white"> -->
+      <!--              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} {{ studentObject?.studentLastname }} ({{ studentObject?.currentYear }}) -->
+      <!--              pristatomasis vaizdo įrašas -->
+      <!--            </h3> -->
+      <!--            <UButton -->
+      <!--              color="gray" -->
+      <!--              variant="ghost" -->
+      <!--              icon="i-heroicons-x-mark-20-solid" -->
+      <!--              class="ml-4" -->
+      <!--              @click="isOpen = false" -->
+      <!--            /> -->
+      <!--          </div> -->
+      <!--        </template> -->
 
-        <div class="p-4">
-          <div class="flex justify-center">
-            <iframe
-              v-if="videoObject?.uid"
-              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject.uid}/iframe`"
-              style="border: none; width: 800px; height: 450px;"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-              allowfullscreen
-            />
-          </div>
-        </div>
-      </UCard>
+      <!--        <div class="p-4"> -->
+      <!--          <div class="flex justify-center"> -->
+      <!--            <iframe -->
+      <!--              v-if="videoObject?.uid" -->
+      <!--              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject.uid}/iframe`" -->
+      <!--              style="border: none; width: 800px; height: 450px;" -->
+      <!--              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" -->
+      <!--              allowfullscreen -->
+      <!--            /> -->
+      <!--          </div> -->
+      <!--        </div> -->
+      <!--      </UCard> -->
     </UModal>
   </div>
 </template>
@@ -757,4 +762,64 @@ watch(pageCount, (newValue) => {
 watch([search, groupFilter, programFilter, pageCount, showFavoritesOnly], () => {
   page.value = 1
 })
+
+async function updateProjectTitle({ studentId, finalProjectTitle }) {
+  try {
+    // Optimistic update: Update the local state immediately
+    const studentIndex = filteredStudents.value.students.findIndex(
+      row => row.student.id === studentId
+    )
+
+    if (studentIndex !== -1) {
+      // Update the title in the local state
+      filteredStudents.value.students[studentIndex].student.finalProjectTitle = finalProjectTitle
+
+      // Force table to update by incrementing the counter
+      updateCounter.value++
+    }
+
+    // Then make the API call
+    const { data, error } = await useFetch('/api/students/project-title', {
+      method: 'PATCH',
+      body: {
+        id: studentId,
+        finalProjectTitle
+      }
+    })
+
+    if (error.value) {
+      // If there's an error, revert the optimistic update
+      if (studentIndex !== -1) {
+        // Get the original data from the server again
+        const { data: refreshData } = await useFetch(`/api/students/${studentId}`)
+        if (refreshData.value) {
+          filteredStudents.value.students[studentIndex].student.finalProjectTitle
+              = refreshData.value.finalProjectTitle
+        }
+      }
+
+      throw new Error(error.value.message || 'Failed to update project title')
+    }
+
+    // Show success notification
+    toast.add({
+      title: t('success'),
+      description: finalProjectTitle,
+      color: 'green'
+    })
+
+    return true
+  }
+  catch (err) {
+    // Show error notification
+    toast.add({
+      title: t('error'),
+      description: err.message || finalProjectTitle,
+      color: 'red'
+    })
+
+    console.error('Update error:', err)
+    return false
+  }
+}
 </script>

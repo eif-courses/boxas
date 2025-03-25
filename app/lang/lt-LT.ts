@@ -32,5 +32,11 @@ export default {
   nav_reviewer: 'Recenzentui',
   nav_department: 'Vedėjui',
   nav_commission: 'Komisijai',
-  nav_admin: 'Administratoriui'
+  nav_admin: 'Administratoriui',
+  enter_title: 'Įveskite pavadinimą...',
+  success: 'Pavadinimas sėkmingai atnaujintas',
+  error: 'Nepavyko atnaujinti pavadinimo',
+  favorites: 'Pažymėti žvaigždute',
+  source_code: 'Išeities kodas',
+  final_project: 'Baigiamojo darbo PDF'
 }
