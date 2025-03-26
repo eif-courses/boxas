@@ -15,10 +15,26 @@ export const departmentHeads = sqliteTable('department_heads', {
   isActiveIndex: index('department_heads_is_active_idx').on(table.isActive)
 }))
 
+export const commissionMembers = sqliteTable('commission_members', {
+  id: integer('id').primaryKey(),
+  email: text('email').notNull(),
+  department: text('department').notNull(),
+  jobTitle: text('job_title').notNull().default('Komisijos narys'),
+  isActive: integer('is_active').default(1),
+  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
+}, (table) => {
+  return {
+    emailIdx: index('commission_email_idx').on(table.email),
+    deptIdx: index('commission_dept_idx').on(table.department),
+    activeEmailIdx: index('commission_active_email_idx').on(table.isActive, table.email)
+  }
+})
+
 export const studentRecords = sqliteTable('student_records', {
   id: integer('id').primaryKey(),
   studentGroup: text('student_group').notNull(),
   finalProjectTitle: text('final_project_title').notNull().default(''),
+  finalProjectTitleEn: text('final_project_title_en').notNull().default(''),
   studentEmail: text('student_email').notNull(),
   studentName: text('student_name').notNull(),
   studentLastname: text('student_lastname').notNull(),

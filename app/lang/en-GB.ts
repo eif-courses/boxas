@@ -38,5 +38,8 @@ export default {
   error: 'Title Update failed',
   favorites: 'Mark with a star',
   source_code: 'Source Code',
-  final_project: 'Final Thesis PDF'
+  final_project: 'Final Thesis PDF',
+  import_data: 'Import External Data',
+  manage_users: 'Manage Users',
+  logs: 'Logs'
 }

@@ -10,7 +10,7 @@ export const useAuthStore = defineStore('auth', {
       jobTitle: string | null
       isTeacher: boolean
       isDepartmentHead: boolean
-      isCommision: boolean
+      isCommission: boolean
       isStudent: boolean
       isReviewer: boolean
       isAdmin: boolean
@@ -63,6 +63,23 @@ export const useAuthStore = defineStore('auth', {
         isDepartmentHead = false
       }
 
+      let isCommission = false
+
+      try {
+        // Call the department commission check API
+        const response = await $fetch('/api/users/is-commission-member', {
+          method: 'GET'
+        })
+
+        // Update the department commission status from the response
+        isCommission = response.isCommissionMember === true
+      }
+      catch (error) {
+        console.error('Error checking department commission status:', error)
+        // Default to false if there's an error
+        isCommission = false
+      }
+
       // Create the user object with all needed properties
       this.user = {
         displayName: userData.displayName,
@@ -72,7 +89,7 @@ export const useAuthStore = defineStore('auth', {
         jobTitle: userData.jobTitle || null,
         isTeacher: role === 'teacher' || userData.jobTitle === 'Dėstytojas' || isDepartmentHead,
         isDepartmentHead: isDepartmentHead,
-        isCommision: role === 'commision' || isDepartmentHead,
+        isCommission: role === 'commission' || isCommission,
         isStudent: role === 'student',
         isReviewer: true, // role === 'reviewer'
         isAdmin: role === 'admin'
@@ -86,7 +103,7 @@ export const useAuthStore = defineStore('auth', {
       return this.user?.isDepartmentHead === true
     },
     hasCommisionAccess() {
-      return this.user?.isCommision === true
+      return this.user?.isCommission === true
     },
     hasStudentAccess() {
       return this.user?.isStudent === true

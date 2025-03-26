@@ -11,6 +11,8 @@ const CSV_HEADER_MAPPING = {
   'Student Group': 'studentGroup',
   'FinalProjectTitle': 'finalProjectTitle',
   'Final Project Title': 'finalProjectTitle',
+  'FinalProjectTitleEn': 'finalProjectTitleEn',
+  'Final Project TitleEn': 'finalProjectTitleEn',
   'StudentEmail': 'studentEmail',
   'Student Email': 'studentEmail',
   'StudentName': 'studentName',
@@ -40,6 +42,11 @@ const studentSchema = z.object({
   studentGroup: z.string().min(1, { message: 'Student group is required' }),
   finalProjectTitle: z.union([
     z.string().min(1, { message: 'Final Project Title' }),
+    z.string().length(0),
+    z.undefined()
+  ]).optional(),
+  finalProjectTitleEn: z.union([
+    z.string().min(1, { message: 'Final Project TitleEn' }),
     z.string().length(0),
     z.undefined()
   ]).optional(),
@@ -209,6 +216,7 @@ function mapCsvRowToStudent(row: Record<string, string>, logger: any) {
   return {
     studentGroup: mappedRow.studentGroup || '',
     finalProjectTitle: mappedRow.finalProjectTitle || '',
+    finalProjectTitleEn: mappedRow.finalProjectTitleEn || '',
     studentEmail: mappedRow.studentEmail || '',
     studentName: mappedRow.studentName || '',
     studentLastname: mappedRow.studentLastname || '',
@@ -524,6 +532,7 @@ export default defineEventHandler(async (event) => {
               // Always update these fields if they exist in the CSV
               if (student.studentGroup) updateData.studentGroup = student.studentGroup
               if (student.finalProjectTitle) updateData.finalProjectTitle = student.finalProjectTitle
+              if (student.finalProjectTitleEn) updateData.finalProjectTitleEn = student.finalProjectTitleEn
               if (student.studentEmail) updateData.studentEmail = student.studentEmail
               if (student.studentName) updateData.studentName = student.studentName
               if (student.studentLastname) updateData.studentLastname = student.studentLastname

@@ -4,9 +4,46 @@ import { hubKV } from '@nuxthub/core/dist/runtime/kv/server/utils/kv'
 // Define a symbol for storing timestamp to avoid TypeScript issues
 const REQUEST_TIMESTAMP = Symbol('requestTimestamp')
 
+// Define paths to be logged
+const LOGGED_PATHS = [
+  '/api/students/',
+  '/api/auth',
+  '/api/blob',
+  '/api/users',
+  '/api/import-csv'
+]
+
+// Helper function to check if path should be logged
+function shouldLogPath(path) {
+  // Skip internal KV operations
+  if (path.startsWith('/api/_hub/kv/')) {
+    return false
+  }
+
+  // Check if path matches any of the logged paths
+  return LOGGED_PATHS.some(loggedPath => path.startsWith(loggedPath))
+}
+
 export default defineNitroPlugin((nitroApp) => {
   // Add logger to each request
   nitroApp.hooks.hook('request', async (event) => {
+    // Only log specific paths
+    if (!shouldLogPath(event.path)) {
+      // Still add logger to context so endpoints can use it, but don't log the request
+      const noopLogger = {
+        info: () => Promise.resolve(),
+        warn: () => Promise.resolve(),
+        error: async (message, data) => {
+          // Always log errors regardless of path
+          console.error(`[ERROR] [${event.path}] ${message}`, data || '')
+        },
+        debug: () => Promise.resolve()
+      }
+
+      event.context.logger = noopLogger
+      return
+    }
+
     const requestId = crypto.randomUUID()
     event.context.requestId = requestId
 
@@ -116,6 +153,11 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Log response
   nitroApp.hooks.hook('beforeResponse', async (event, response) => {
+    // Only log specific paths
+    if (!shouldLogPath(event.path)) {
+      return
+    }
+
     if (event.context.logger) {
       // Get the stored timestamp using the symbol
       // @ts-ignore - Using symbol property
@@ -133,6 +175,7 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Log errors
   nitroApp.hooks.hook('error', async (error, event) => {
+    // Always log errors regardless of path
     if (event.context.logger) {
       await event.context.logger.error('Request error', {
         error: error.message,

@@ -38,5 +38,8 @@ export default {
   error: 'Nepavyko atnaujinti pavadinimo',
   favorites: 'Pažymėti žvaigždute',
   source_code: 'Išeities kodas',
-  final_project: 'Baigiamojo darbo PDF'
+  final_project: 'Baigiamojo darbo PDF',
+  import_data: 'Importuoti duomenis',
+  manage_users: 'Valdyti vartotojus',
+  logs: 'Registracijos žurnalas'
 }

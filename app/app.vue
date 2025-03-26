@@ -162,7 +162,7 @@ const logout = async () => {
           />
 
           <UButton
-            v-if="authStore.hasAdminAccess()"
+            v-if="authStore.hasAdminAccess() || authStore.hasDepartmentHeadAccess()"
             :to="`/${locale}/dashboard/admin`"
             icon="i-heroicons-cog"
             :label="$t('nav_admin')"

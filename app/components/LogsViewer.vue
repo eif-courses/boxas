@@ -1,3 +1,4 @@
+<!-- components/LogsViewer.vue -->
 <template>
   <div class="p-6">
     <UCard>
@@ -14,6 +15,37 @@
           >
             Refresh
           </UButton>
+
+          <UPopover>
+            <UButton
+              color="red"
+              variant="soft"
+            >
+              Clear Logs
+            </UButton>
+
+            <template #panel>
+              <div class="p-4 max-w-xs">
+                <p class="mb-3">
+                  Are you sure you want to delete all logs? This action cannot be undone.
+                </p>
+                <div class="flex justify-end gap-2">
+                  <UButton
+                    variant="ghost"
+                    @click="closePopover"
+                  >
+                    Cancel
+                  </UButton>
+                  <UButton
+                    color="red"
+                    @click="clearAllLogs"
+                  >
+                    Delete All
+                  </UButton>
+                </div>
+              </div>
+            </template>
+          </UPopover>
         </div>
       </template>
 
@@ -109,6 +141,37 @@ const logs = ref([])
 const totalLogs = ref(0)
 const totalPages = ref(1)
 const loading = ref(false)
+const toast = useToast()
+
+async function clearAllLogs() {
+  try {
+    await $fetch('/api/admin/clear-logs?confirm=true')
+
+    // Refresh logs after clearing
+    logs.value = []
+    totalLogs.value = 0
+    totalPages.value = 1
+
+    toast.add({
+      title: 'All logs have been cleared',
+      description: 'All logs have been cleared'
+    })
+    // Close the popover
+    closePopover()
+  }
+  catch (error) {
+    console.error('Failed to clear logs:', error)
+    toast.add({
+      title: 'Failed to clear logs',
+      description: 'There was a problem with your request.'
+    })
+  }
+}
+
+const popoverRef = ref(null)
+function closePopover() {
+  popoverRef.value?.close()
+}
 
 const columns = [
   {
@@ -170,7 +233,7 @@ async function fetchLogs() {
   }
   catch (error) {
     console.error('Failed to fetch logs:', error)
-    UToast.error({
+    toast.add({
       title: 'Error',
       description: 'Failed to fetch logs'
     })
