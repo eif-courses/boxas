@@ -4,8 +4,8 @@ export default {
   select_language: 'Pasirinkite kalbą',
   logout: 'Atsijungti',
   login: 'Prisijungti su Microsoft',
-  supervisor_report: 'Sutapties ataskaita',
-  supervisor_report_not_ready: 'Pildyti sutapties ataskaitą',
+  supervisor_report: 'Vadovo atsiliepimas',
+  supervisor_report_not_ready: 'Pildyti vadovo atsiliepimą',
   supervisor: 'Vadovas',
   reviewer_report_not_ready: 'Pildyti recenziją',
   reviewer_report: 'Recenzija',
@@ -41,5 +41,7 @@ export default {
   final_project: 'Baigiamojo darbo PDF',
   import_data: 'Importuoti duomenis',
   manage_users: 'Valdyti vartotojus',
-  logs: 'Registracijos žurnalas'
+  logs: 'Registracijos žurnalas',
+  download: 'Atsisiųsti DOCX',
+  preview: 'Peržiūrėti'
 }

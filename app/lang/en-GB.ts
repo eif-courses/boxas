@@ -4,8 +4,8 @@ export default {
   select_language: 'Select Language',
   logout: 'Sign Out',
   login: 'Login with Microsoft',
-  supervisor_report: 'Plagiarism Report',
-  supervisor_report_not_ready: 'Fill Plagiarism Report',
+  supervisor_report: 'Supervisor Feedback',
+  supervisor_report_not_ready: 'Fill Supervisor Feedback',
   supervisor: 'Supervisor',
   report_not_filled: 'Not Submitted',
   report_filled: 'Submitted',
@@ -41,5 +41,7 @@ export default {
   final_project: 'Final Thesis PDF',
   import_data: 'Import External Data',
   manage_users: 'Manage Users',
-  logs: 'Logs'
+  logs: 'Logs',
+  download: 'Download DOCX',
+  preview: 'Preview'
 }

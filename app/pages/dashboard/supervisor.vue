@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import PlagiarismReportForm from '~/components/PlagiarismReportForm.vue'
 import type { StudentRecord } from '~~/server/utils/db'
 
@@ -654,6 +655,75 @@ watch(pageCount, (newValue) => {
 watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
+
+function getRowActions(row) {
+  return [
+    {
+      label: t('download'),
+      icon: 'i-heroicons-arrow-down-tray',
+      click: () => handleDownloadDOCX(row)
+    },
+    {
+      label: t('preview'),
+      icon: 'i-heroicons-magnifying-glass',
+      click: () => handlePreview(row)
+    }
+  ]
+}
+
+// const rowActions = [
+//   {
+//     label: t('download'),
+//     icon: 'i-heroicons-arrow-down-tray',
+//     click: () => handleDownloadDOCX()
+//   },
+//   {
+//     label: t('preview'),
+//     icon: 'i-heroicons-magnifying-glass',
+//     click: () => handlePreview()
+//   }
+//   // {
+//   //   label: 'Delete',
+//   //   icon: 'i-heroicons-trash',
+//   //   click: () => handleDelete()
+//   // }
+// ]
+const previewStudentRecordObject = ref(null)
+function handlePreview(row) {
+  console.log(row)
+  previewStudentRecordObject.value = row
+  isPreviewOpen.value = true
+}
+
+function handleDownloadDOCX(row) {
+  const formData = ref({
+    studentName: '',
+    programCode: '',
+    thesisTitle: '',
+    totalMatchPercentage: 0,
+    singleSourceMaxMatch: 0,
+    sameStudentWorkMatch: 0,
+    jointWorkMatch: 0,
+    supervisorComments: '',
+    advisorName: 'Marius Gžegoževskis',
+    advisorPosition: 'Lektorius',
+    advisorInstitution: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+    date: new Date().toISOString().substring(0, 10)
+  })
+  generateReport(formData)
+
+  console.log('handle docx: ' + row)
+}
+
+// function handleDuplicate() {
+//   console.log('Duplicate action')
+// }
+//
+// function handleDelete() {
+//   console.log('Delete action')
+// }
+
+const isPreviewOpen = ref(false)
 </script>
 
 <template>
@@ -936,15 +1006,12 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           </template>
 
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <UButton
-              :loading="isFetchingDocument"
-              icon="i-heroicons-document-text"
-              size="xs"
-              color="white"
-              variant="solid"
-              :label="$t('supervisor_report')"
-              :trailing="false"
-              class="p-1 text-xs"
+            <ActionDropdown
+              :main-action-label="$t('supervisor_report')"
+              main-action-icon="i-heroicons-magnifying-glass"
+              :main-action="() => handlePreview(row)"
+              :actions="getRowActions(row)"
+              :button-width="100"
             />
           </template>
           <template v-else>
@@ -1014,5 +1081,13 @@ watch([search, groupFilter, programFilter, pageCount], () => {
         />
       </div>
     </template>
+    <UModal
+      v-model="isPreviewOpen"
+      :overlay="false"
+    >
+      <div class="p-4">
+        <code>{{ previewStudentRecordObject }}</code>
+      </div>
+    </UModal>
   </UCard>
 </template>
