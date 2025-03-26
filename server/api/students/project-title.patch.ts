@@ -1,4 +1,3 @@
-// server/api/students/project-title.patch.ts
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { studentRecords } from '~~/server/database/schema'
@@ -10,14 +9,25 @@ const updateProjectTitleSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  // Get logger from event context or fallback to console
+  const logger = event.context.logger || console
+
   try {
+    logger.info('Processing project title update request')
+
     const db = useDB()
     const body = await readBody(event)
+
+    logger.debug('Request body', { body })
 
     // Validate request body with Zod
     const validatedData = updateProjectTitleSchema.safeParse(body)
 
     if (!validatedData.success) {
+      logger.error('Validation error', {
+        errors: validatedData.error.format()
+      })
+
       throw createError({
         statusCode: 400,
         statusMessage: 'Invalid data',
@@ -27,6 +37,11 @@ export default defineEventHandler(async (event) => {
 
     const { id, finalProjectTitle } = validatedData.data
 
+    logger.info('Updating project title', {
+      studentId: id,
+      title: finalProjectTitle
+    })
+
     // Update the record in the database
     const result = await db
       .update(studentRecords)
@@ -35,11 +50,17 @@ export default defineEventHandler(async (event) => {
       .returning({ id: studentRecords.id })
 
     if (!result.length) {
+      logger.error('Student record not found', { id })
+
       throw createError({
         statusCode: 404,
         statusMessage: 'Student record not found'
       })
     }
+
+    logger.info('Project title updated successfully', {
+      studentId: id
+    })
 
     return {
       success: true,
@@ -48,7 +69,11 @@ export default defineEventHandler(async (event) => {
     }
   }
   catch (error) {
-    console.error('Error updating final project title:', error)
+    logger.error('Error updating final project title', {
+      error: error.message,
+      stack: error.stack,
+      statusCode: error.statusCode
+    })
 
     throw createError({
       statusCode: error.statusCode || 500,

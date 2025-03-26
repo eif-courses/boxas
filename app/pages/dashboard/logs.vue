@@ -1,377 +1,192 @@
-//pages/admin/logs.vue
 <template>
-  <div class="logs-container p-4">
-    <h1 class="text-2xl font-bold mb-6">
-      System Logs
-    </h1>
+  <div class="p-6">
+    <UCard>
+      <template #header>
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-semibold">
+            API Logs
+          </h2>
+          <UButton
+            color="primary"
+            icon="i-heroicons-arrow-path"
+            :loading="loading"
+            @click="fetchLogs"
+          >
+            Refresh
+          </UButton>
+        </div>
+      </template>
 
-    <div class="filters bg-gray-50 p-4 rounded mb-6 flex flex-wrap gap-4">
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">Log Type</label>
-        <select
-          v-model="logType"
-          class="border rounded px-3 py-2 w-full min-w-[150px]"
-        >
-          <option value="all">
-            All Logs
-          </option>
-          <option value="db">
-            Database Operations
-          </option>
-          <option value="file">
-            Storage Operations
-          </option>
-          <option value="stream">
-            Stream Operations
-          </option>
-          <option value="client">
-            Client Errors
-          </option>
-        </select>
+      <!-- Filters -->
+      <div class="mb-6 flex flex-wrap gap-4">
+        <UFormGroup label="Log Level">
+          <USelect
+            v-model="level"
+            :options="[
+              { label: 'All Levels', value: 'all' },
+              { label: 'Info', value: 'info' },
+              { label: 'Warning', value: 'warn' },
+              { label: 'Error', value: 'error' },
+              { label: 'Debug', value: 'debug' }
+            ]"
+          />
+        </UFormGroup>
+
+        <UFormGroup label="Entries per page">
+          <UInput
+            v-model="limit"
+            type="number"
+            :min="10"
+            :max="100"
+            class="w-24"
+          />
+        </UFormGroup>
       </div>
 
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">Status</label>
-        <select
-          v-model="status"
-          class="border rounded px-3 py-2 w-full min-w-[150px]"
-        >
-          <option value="all">
-            All Status
-          </option>
-          <option value="success">
-            Success
-          </option>
-          <option value="error">
-            Error
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">From Date</label>
-        <input
-          v-model="startDate"
-          type="date"
-          class="border rounded px-3 py-2 w-full"
-        >
-      </div>
-
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">To Date</label>
-        <input
-          v-model="endDate"
-          type="date"
-          class="border rounded px-3 py-2 w-full"
-        >
-      </div>
-
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">Operation</label>
-        <input
-          v-model="operation"
-          type="text"
-          placeholder="Filter by operation"
-          class="border rounded px-3 py-2 w-full min-w-[200px]"
-        >
-      </div>
-
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">Student ID</label>
-        <input
-          v-model="studentId"
-          type="number"
-          placeholder="Filter by student"
-          class="border rounded px-3 py-2 w-full"
-        >
-      </div>
-
-      <div class="flex items-end">
-        <button
-          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          @click="fetchLogs(1)"
-        >
-          Apply Filters
-        </button>
-      </div>
-    </div>
-
-    <div
-      v-if="loading"
-      class="flex justify-center my-8"
-    >
-      <div class="spinner" />
-    </div>
-
-    <div v-else>
-      <table
-        v-if="logs.length"
-        class="min-w-full bg-white"
+      <!-- Logs Table -->
+      <UTable
+        :rows="logs"
+        :columns="columns"
+        :loading="loading"
       >
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="px-4 py-2">
-              Timestamp
-            </th>
-            <th class="px-4 py-2">
-              Type
-            </th>
-            <th class="px-4 py-2">
-              Operation
-            </th>
-            <th class="px-4 py-2">
-              Details
-            </th>
-            <th class="px-4 py-2">
-              Status
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="log in logs"
-            :key="log.id"
-            :class="{ 'bg-red-50': !log.success }"
-            class="border-b hover:bg-gray-50"
-          >
-            <td class="px-4 py-2">
-              {{ formatDate(log.timestamp) }}
-            </td>
-            <td class="px-4 py-2">
-              {{ getLogTypeLabel(log) }}
-            </td>
-            <td class="px-4 py-2">
-              {{ log.operation }}
-            </td>
-            <td class="px-4 py-2">
-              {{ getLogDetails(log) }}
-            </td>
-            <td class="px-4 py-2">
-              <span
-                :class="log.success
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'"
-                class="px-2 py-1 rounded text-xs font-medium"
-              >
-                {{ log.success ? 'Success' : 'Error' }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Pagination -->
-      <div
-        v-if="pagination.totalPages > 1"
-        class="mt-6 flex justify-center"
-      >
-        <nav class="flex items-center gap-1">
-          <button
-            :disabled="currentPage === 1"
-            class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
-            @click="changePage(currentPage - 1)"
-          >
-            Previous
-          </button>
-
-          <div
-            v-for="page in paginationRange"
-            :key="page"
-          >
-            <button
-              v-if="page !== '...'"
-              :class="currentPage === page ? 'bg-blue-600 text-white' : 'bg-white'"
-              class="px-3 py-1 border rounded hover:bg-gray-100"
-              @click="changePage(page)"
-            >
-              {{ page }}
-            </button>
-            <span
-              v-else
-              class="px-3 py-1"
-            >...</span>
+        <template #empty-state>
+          <div class="flex flex-col items-center justify-center py-6">
+            <UIcon
+              name="i-heroicons-document-text"
+              class="text-gray-400 mb-2"
+              size="xl"
+            />
+            <p>No logs found</p>
           </div>
+        </template>
 
-          <button
-            :disabled="currentPage === pagination.totalPages"
-            class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
-            @click="changePage(currentPage + 1)"
+        <!-- Time column -->
+        <template #timestamp-data="{ row }">
+          {{ formatDate(row.timestamp) }}
+        </template>
+
+        <!-- Level column -->
+        <template #level-data="{ row }">
+          <UBadge
+            :color="getLevelColor(row.level)"
+            variant="subtle"
+            size="sm"
           >
-            Next
-          </button>
-        </nav>
-      </div>
+            {{ row.level }}
+          </UBadge>
+        </template>
 
-      <div
-        v-else-if="!logs.length"
-        class="text-center py-8 text-gray-500"
-      >
-        No logs found matching your criteria.
-      </div>
-    </div>
+        <!-- Data column -->
+        <template #data-data="{ row }">
+          <pre class="text-xs font-mono whitespace-pre-wrap bg-gray-50 p-2 rounded-md">{{ JSON.stringify(row.data, null, 2) }}</pre>
+        </template>
+      </UTable>
 
-    <!-- Error message -->
-    <div
-      v-if="error"
-      class="mt-4 p-4 bg-red-100 text-red-800 rounded"
-    >
-      {{ error }}
-    </div>
+      <template #footer>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">
+            Page {{ page }} of {{ totalPages || 1 }}
+          </span>
+          <UPagination
+            v-model="page"
+            :total="totalLogs"
+            :page-count="totalPages"
+            :per-page="limit"
+            :ui="{ wrapper: 'flex gap-1' }"
+            @change="fetchLogs"
+          />
+        </div>
+      </template>
+    </UCard>
   </div>
 </template>
 
 <script setup>
-const logType = ref('all')
-const status = ref('all')
-const startDate = ref('')
-const endDate = ref('')
-const operation = ref('')
-const studentId = ref('')
+const level = ref('all')
+const limit = ref(25)
+const page = ref(1)
 const logs = ref([])
+const totalLogs = ref(0)
+const totalPages = ref(1)
 const loading = ref(false)
-const error = ref(null)
-const currentPage = ref(1)
-const pagination = ref({
-  page: 1,
-  limit: 20,
-  total: 0,
-  totalPages: 0
-})
 
-onMounted(() => {
-  fetchLogs(1)
-})
+const columns = [
+  {
+    key: 'timestamp',
+    label: 'Time',
+    sortable: true
+  },
+  {
+    key: 'level',
+    label: 'Level',
+    sortable: true
+  },
+  {
+    key: 'requestId',
+    label: 'Request ID'
+  },
+  {
+    key: 'path',
+    label: 'Path'
+  },
+  {
+    key: 'message',
+    label: 'Message'
+  },
+  {
+    key: 'data',
+    label: 'Data'
+  }
+]
 
-async function fetchLogs(page = 1) {
+function getLevelColor(logLevel) {
+  switch (logLevel) {
+    case 'error': return 'red'
+    case 'warn': return 'yellow'
+    case 'debug': return 'gray'
+    case 'info': return 'blue'
+    default: return 'gray'
+  }
+}
+
+function formatDate(timestamp) {
+  return new Date(timestamp).toLocaleString()
+}
+
+async function fetchLogs() {
   loading.value = true
-  error.value = null
-  currentPage.value = page
-
   try {
     const response = await $fetch('/api/admin/logs', {
-      method: 'GET',
       params: {
-        type: logType.value,
-        status: status.value,
-        startDate: startDate.value,
-        endDate: endDate.value,
-        operation: operation.value,
-        studentId: studentId.value,
-        page: page,
-        limit: 20
+        level: level.value,
+        limit: limit.value,
+        page: page.value
       }
     })
 
     logs.value = response.logs
-    pagination.value = response.pagination
+    totalLogs.value = response.total
+    totalPages.value = response.pages
   }
-  catch (fetchError) {
-    console.error('Failed to fetch logs', fetchError)
-    error.value = 'Failed to load logs. Please try again.'
+  catch (error) {
+    console.error('Failed to fetch logs:', error)
+    UToast.error({
+      title: 'Error',
+      description: 'Failed to fetch logs'
+    })
   }
   finally {
     loading.value = false
   }
 }
 
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleString()
-}
+// Refetch logs when filters change
+watch([level, limit], () => {
+  page.value = 1
+  fetchLogs()
+})
 
-function getLogTypeLabel(log) {
-  switch (log.log_type) {
-    case 'db':
-      return 'Database'
-    case 'file':
-      return 'Storage'
-    case 'stream':
-      return 'Stream'
-    case 'client':
-      return 'Client'
-    default:
-      return log.log_type || 'Unknown'
-  }
-}
-
-function getLogDetails(log) {
-  if (log.related_entity) return log.related_entity
-  if (log.key) return log.key
-  if (log.stream_id) return log.stream_id
-  if (log.location) return log.location
-  return '-'
-}
-
-function changePage(page) {
-  if (page < 1 || page > pagination.value.totalPages) return
-  fetchLogs(page)
-}
-
-// Calculate pagination range with ellipsis for large page counts
-const paginationRange = computed(() => {
-  const totalPages = pagination.value.totalPages
-  const currentPageVal = currentPage.value
-
-  if (totalPages <= 7) {
-    // Show all pages
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-  }
-
-  // Always show first and last page
-  let pages = [1, totalPages]
-
-  // Add current page and pages around it
-  let middleStart = Math.max(2, currentPageVal - 1)
-  let middleEnd = Math.min(totalPages - 1, currentPageVal + 1)
-
-  // Adjust if we're near the start or end
-  if (currentPageVal <= 3) {
-    middleEnd = 4
-  }
-  else if (currentPageVal >= totalPages - 2) {
-    middleStart = totalPages - 3
-  }
-
-  // Add middle pages
-  for (let i = middleStart; i <= middleEnd; i++) {
-    pages.push(i)
-  }
-
-  // Sort and deduplicate
-  pages = [...new Set(pages)].sort((a, b) => a - b)
-
-  // Add ellipsis
-  const result = []
-  let prev = 0
-
-  for (const page of pages) {
-    if (page - prev > 1) {
-      result.push('...')
-    }
-    result.push(page)
-    prev = page
-  }
-
-  return result
+onMounted(() => {
+  fetchLogs()
 })
 </script>
-
-<style scoped>
-.logs-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top: 4px solid #3498db;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style>
