@@ -29,28 +29,6 @@
         </div>
       </div>
 
-      <template v-if="records.documents.length > 0">
-        <template
-          v-for="doc in records.documents"
-          :key="doc.id"
-        >
-
-<!--          TODO need finish PDF previewer component-->
-          <template v-if="doc.documentType === 'PDF'">
-            <div>
-              <ClientOnly>
-                <ScrollablePdfEmbed
-                  v-if="getFile(doc.filePath)?.url"
-                  :source="getFile(doc.filePath).url"
-                />
-              </ClientOnly>
-
-              sea{{ getFile(doc.filePath) }}
-            </div>
-          </template>
-        </template>
-      </template>
-
       <UDivider class="my-4" />
 
       <h3 class="text-lg font-semibold">

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
 import PlagiarismReportForm from '~/components/PlagiarismReportForm.vue'
-import type { StudentRecord } from '~~/server/utils/db'
+import type { DocumentRecord, StudentRecord, VideoRecord } from '~~/server/utils/db'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -407,27 +406,27 @@ const generateReport = async (formData) => {
     isLoading.value = false
   }
 }
-const { t } = useI18n()
+
 // Columns
 const columns = [
   {
     key: 'studentGroup',
-    label: t('group'),
+    label: 'Group',
     sortable: false
   },
   {
     key: 'name',
-    label: t('fullname'),
+    label: 'Full Name',
     sortable: true
   },
   {
     key: 'actions',
-    label: t('actions'),
+    label: 'Actions',
     sortable: false
   },
   {
     key: 'status',
-    label: t('supervisor_report'),
+    label: 'Būsena',
     sortable: true
   }
 ]
@@ -456,6 +455,7 @@ const selectedStatus = ref([])
 const sort = ref({ column: 'id', direction: 'asc' as const })
 const page = ref(1)
 const pageCount = ref(10) // Initialize as number
+const year = ref(2025)
 
 // Modal state
 const isOpen = ref(false)
@@ -518,6 +518,7 @@ const nameFilter = ref('')
 const groupFilter = ref('')
 const programFilter = ref('')
 const yearFilter = ref(null)
+const latestYear = ref(null)
 
 // Reset all filters
 const resetFilters = () => {
@@ -527,9 +528,6 @@ const resetFilters = () => {
   groupFilter.value = ''
   programFilter.value = ''
 }
-
-// Dynamic years from API
-const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
 
 // Load all data once by year
 const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allStudents', async () => {
@@ -541,7 +539,13 @@ const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allSt
   }
 
   try {
-    const response = await $fetch(`/api/students/supervisor?${params.toString()}`)
+    const response = await $fetch(`/api/students/commission?${params.toString()}`)
+
+    // Store the year from the response
+    if (response.year) {
+      latestYear.value = response.year
+    }
+
     return response
   }
   catch (err) {
@@ -555,11 +559,6 @@ const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allSt
     year: null
   }),
   watch: [yearFilter] // Only reload when year filter changes
-})
-
-// Get the active year (either selected or from API)
-const activeYear = computed(() => {
-  return yearFilter.value || allStudents.value?.year || null
 })
 
 // Client-side filtering
@@ -644,6 +643,8 @@ const pageTotal = computed(() => filteredStudents.value?.total || 0)
 const pageFrom = computed(() => (page.value - 1) * Number(pageCount.value) + 1)
 const pageTo = computed(() => Math.min(page.value * Number(pageCount.value), pageTotal.value))
 
+const yearOptions = [2023, 2024, 2025]
+
 // Make sure pageCount is always a number
 watch(pageCount, (newValue) => {
   if (typeof newValue === 'string') {
@@ -655,75 +656,6 @@ watch(pageCount, (newValue) => {
 watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
-
-function getRowActions(row) {
-  return [
-    {
-      label: t('download'),
-      icon: 'i-heroicons-arrow-down-tray',
-      click: () => handleDownloadDOCX(row)
-    },
-    {
-      label: t('preview'),
-      icon: 'i-heroicons-magnifying-glass',
-      click: () => handlePreview(row)
-    }
-  ]
-}
-
-// const rowActions = [
-//   {
-//     label: t('download'),
-//     icon: 'i-heroicons-arrow-down-tray',
-//     click: () => handleDownloadDOCX()
-//   },
-//   {
-//     label: t('preview'),
-//     icon: 'i-heroicons-magnifying-glass',
-//     click: () => handlePreview()
-//   }
-//   // {
-//   //   label: 'Delete',
-//   //   icon: 'i-heroicons-trash',
-//   //   click: () => handleDelete()
-//   // }
-// ]
-const previewStudentRecordObject = ref(null)
-function handlePreview(row) {
-  console.log(row)
-  previewStudentRecordObject.value = row
-  isPreviewOpen.value = true
-}
-
-function handleDownloadDOCX(row) {
-  const formData = ref({
-    studentName: '',
-    programCode: '',
-    thesisTitle: '',
-    totalMatchPercentage: 0,
-    singleSourceMaxMatch: 0,
-    sameStudentWorkMatch: 0,
-    jointWorkMatch: 0,
-    supervisorComments: '',
-    advisorName: 'Marius Gžegoževskis',
-    advisorPosition: 'Lektorius',
-    advisorInstitution: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-    date: new Date().toISOString().substring(0, 10)
-  })
-  generateReport(formData)
-
-  console.log('handle docx: ' + row)
-}
-
-// function handleDuplicate() {
-//   console.log('Duplicate action')
-// }
-//
-// function handleDelete() {
-//   console.log('Delete action')
-// }
-
-const isPreviewOpen = ref(false)
 </script>
 
 <template>
@@ -738,19 +670,27 @@ const isPreviewOpen = ref(false)
       footer: { padding: 'p-4' }
     }"
   >
+    <template #header>
+      <h2
+        class="font-semibold text-xl text-gray-900 dark:text-white leading-tight"
+      >
+        katedra
+      </h2>
+    </template>
+
     <div class="flex items-center justify-between gap-3 px-4 py-3">
       <UInput
         v-model="search"
         icon="i-heroicons-magnifying-glass-20-solid"
-        class="w-full"
-        :placeholder="$t('search')"
+        placeholder="Search..."
       />
     </div>
 
     <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
+      <!-- First row in mobile / left section in desktop -->
       <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
+          <span class="text-sm leading-5 whitespace-nowrap">Kiek įrašų:</span>
           <USelect
             v-model="pageCount"
             :options="[3, 5, 10, 20, 30, 40]"
@@ -761,44 +701,59 @@ const isPreviewOpen = ref(false)
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
+          <span class="text-sm leading-5 whitespace-nowrap">Metai</span>
           <USelect
-            v-model="yearFilter"
-            :options="availableYears"
-            class="w-22"
+            v-model="latestYear"
+            disabled
+            :options="yearOptions"
+            class="w-20"
             size="xs"
-            :placeholder="$t('latest')"
+            placeholder="All"
             clearable
-            :loading="yearsLoading"
           />
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
+          <span class="text-sm leading-5 whitespace-nowrap">Grupė</span>
           <USelect
             v-model="groupFilter"
             :options="uniqueGroups"
-            class="w-20 flex-grow"
+            class="w-24 flex-grow"
             size="xs"
-            :placeholder="$t('all')"
+            placeholder="All"
             clearable
           />
         </div>
 
         <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
+          <span class="text-sm leading-5 whitespace-nowrap">Programa</span>
           <USelect
             v-model="programFilter"
             :options="uniquePrograms"
-            class="w-28 flex-grow"
+            class="w-24 flex-grow"
             size="xs"
-            :placeholder="$t('all')"
+            placeholder="All"
             clearable
           />
         </div>
       </div>
 
+      <!-- Second row in mobile / right section in desktop -->
       <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
+        <USelectMenu
+          v-model="selectedColumns"
+          :options="excludeSelectColumn"
+          multiple
+        >
+          <UButton
+            icon="i-heroicons-view-columns"
+            color="gray"
+            size="xs"
+          >
+            Columns
+          </UButton>
+        </USelectMenu>
+
         <UButton
           icon="i-heroicons-funnel"
           color="gray"
@@ -806,7 +761,7 @@ const isPreviewOpen = ref(false)
           :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter"
           @click="resetFilters"
         >
-          {{ $t('reset') }}
+          Reset
         </UButton>
       </div>
     </div>
@@ -858,8 +813,8 @@ const isPreviewOpen = ref(false)
         <template #header>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }}),
-              {{ studentObject?.studyProgram }}
+              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }})
+              pristatomasis vaizdo įrašas
             </h3>
             <UButton
               color="gray"
@@ -870,11 +825,12 @@ const isPreviewOpen = ref(false)
             />
           </div>
 
-          <div class="container mx-auto py-4 px-4">
-            <PlagiarismReportForm
-              :student="studentObject"
-              @submit="generateReport"
-            />
+          <div class="container mx-auto py-8 px-4">
+            <h1 class="text-2xl font-bold mb-6">
+              Graduate Report Generator
+            </h1>
+
+            <PlagiarismReportForm @submit="generateReport" />
 
             <div
               v-if="isLoading"
@@ -895,6 +851,7 @@ const isPreviewOpen = ref(false)
       </UCard>
     </UModal>
 
+    <!-- Loading state -->
     <div
       v-if="status === 'pending'"
       class="p-6 text-center"
@@ -908,6 +865,7 @@ const isPreviewOpen = ref(false)
       </p>
     </div>
 
+    <!-- Error state -->
     <div
       v-else-if="fetchError"
       class="p-4 text-red-500"
@@ -915,6 +873,7 @@ const isPreviewOpen = ref(false)
       {{ fetchError.message }}
     </div>
 
+    <!-- Empty state -->
     <div
       v-else-if="filteredStudents.students.length === 0"
       class="p-6 text-center"
@@ -928,6 +887,7 @@ const isPreviewOpen = ref(false)
       </p>
     </div>
 
+    <!-- Data table with filtered data -->
     <UTable
       v-else
       v-model:sort="sort"
@@ -954,9 +914,6 @@ const isPreviewOpen = ref(false)
       <template #name-data="{ row }">
         <div class="w-60 truncate">
           {{ row.student.studentName }} {{ row.student.studentLastname }}
-        </div>
-        <div class="text-xs font-300">
-          ({{ row.student.finalProjectTitle }})
         </div>
       </template>
 
@@ -991,22 +948,18 @@ const isPreviewOpen = ref(false)
             />
           </template>
 
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <ActionDropdown
-              :main-action-label="$t('supervisor_report')"
-              main-action-icon="i-heroicons-magnifying-glass"
-              :main-action="() => handlePreview(row)"
-              :actions="getRowActions(row)"
-              :button-width="100"
-            />
+          <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
+            <div class="text-sm text-gray-500 truncate">
+              Report added
+            </div>
           </template>
           <template v-else>
             <UButton
-              icon="i-heroicons-pencil-square"
+              icon="i-heroicons-plus-circle"
               size="xs"
-              color="amber"
-              variant="outline"
-              :label="$t('supervisor_report_not_ready')"
+              color="primary"
+              variant="solid"
+              :label="$t('reviewer_report')"
               :trailing="false"
               class="p-1 text-xs"
               @click="sendStudentReportData(row.student)"
@@ -1017,37 +970,36 @@ const isPreviewOpen = ref(false)
 
       <template #status-data="{ row }">
         <div class="flex items-center gap-2 justify-center">
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
+          <template v-if="row.reviewerReports && row.reviewerReports.length > 0 && row.supervisorReports && row.supervisorReports.length > 0">
             <UIcon
               name="i-heroicons-check-circle"
               class="w-5 h-5 text-green-500"
             />
-            <span>{{ $t('report_filled') }}</span>
+            <span>Pateikta</span>
           </template>
           <template v-else>
             <UIcon
               name="i-heroicons-clock"
-              class="w-5 h-5 text-amber-400"
+              class="w-5 h-5 text-yellow-500"
             />
-            <span>{{ $t('report_not_filled') }}</span>
+            <span>Laukiama...</span>
           </template>
         </div>
       </template>
     </UTable>
 
+    <!-- Number of rows & Pagination -->
     <template #footer>
       <div class="flex flex-wrap justify-between items-center">
         <div>
           <span class="text-sm leading-5">
-            {{ $t('showing') }}
+            Showing
             <span class="font-medium">{{ pageFrom }}</span>
-            {{ $t('to') }}
+            to
             <span class="font-medium">{{ pageTo }}</span>
-            {{ $t('off') }}
+            of
             <span class="font-medium">{{ pageTotal }}</span>
-          </span>
-          <span class="ml-2 text-sm text-gray-600">
-            {{ $t('year') }} : {{ activeYear || $t('latest') }}
+            results
           </span>
         </div>
 
@@ -1067,13 +1019,5 @@ const isPreviewOpen = ref(false)
         />
       </div>
     </template>
-    <UModal
-      v-model="isPreviewOpen"
-      :overlay="false"
-    >
-      <div class="p-4">
-        <code>{{ previewStudentRecordObject }}</code>
-      </div>
-    </UModal>
   </UCard>
 </template>

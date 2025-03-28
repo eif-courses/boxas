@@ -107,19 +107,6 @@
         </div>
 
         <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
-          <USelectMenu
-            v-model="selectedColumns"
-            :options="excludeSelectColumn"
-            multiple
-          >
-            <UButton
-              icon="i-heroicons-view-columns"
-              color="gray"
-              size="xs"
-            >
-              {{ $t('choose_columns') }}
-            </UButton>
-          </USelectMenu>
 
           <UButton
             icon="i-heroicons-funnel"
@@ -181,15 +168,11 @@
         </template>
 
         <template #name-data="{ row }">
-          <div class="truncate">
+          <div class="truncate font-bold">
             {{ row.student.studentName }} {{ row.student.studentLastname }}
           </div>
-          <InlineEdit
-            :value="row.student.finalProjectTitle"
-            :row="row.student"
-            :placeholder="$t('enter_title')"
-            @save="updateProjectTitle"
-          />
+          <div>{{ row.student.finalProjectTitle }}</div>
+          <div>{{ row.student.finalProjectTitleEn }}</div>
         </template>
 
         <template #supervisor-data="{ row }">

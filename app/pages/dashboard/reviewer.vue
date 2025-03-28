@@ -604,20 +604,6 @@ watch([search, groupFilter, programFilter, pageCount], () => {
       </div>
 
       <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
-        <USelectMenu
-          v-model="selectedColumns"
-          :options="excludeSelectColumn"
-          multiple
-        >
-          <UButton
-            icon="i-heroicons-view-columns"
-            color="gray"
-            size="xs"
-          >
-            {{ $t('choose_columns') }}
-          </UButton>
-        </USelectMenu>
-
         <UButton
           icon="i-heroicons-funnel"
           color="gray"
