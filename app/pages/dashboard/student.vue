@@ -29,6 +29,28 @@
         </div>
       </div>
 
+      <template v-if="records.documents.length > 0">
+        <template
+          v-for="doc in records.documents"
+          :key="doc.id"
+        >
+
+<!--          TODO need finish PDF previewer component-->
+          <template v-if="doc.documentType === 'PDF'">
+            <div>
+              <ClientOnly>
+                <ScrollablePdfEmbed
+                  v-if="getFile(doc.filePath)?.url"
+                  :source="getFile(doc.filePath).url"
+                />
+              </ClientOnly>
+
+              sea{{ getFile(doc.filePath) }}
+            </div>
+          </template>
+        </template>
+      </template>
+
       <UDivider class="my-4" />
 
       <h3 class="text-lg font-semibold">
@@ -50,6 +72,7 @@
               :label="$t('final_project')"
               @click="openDocument(doc)"
             />
+
             <UButton
               v-else-if="doc.documentType === 'ZIP'"
               :loading="isFetchingDocument"
@@ -233,13 +256,40 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
+import 'vue-pdf-embed/dist/styles/annotationLayer.css'
+import 'vue-pdf-embed/dist/styles/textLayer.css'
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 
 definePageMeta({
   middleware: ['student-access']
 })
+
+const isLoading = ref(true)
+const page = ref(null)
+const pageCount = ref(null)
+const pdfSource = ref('https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf')
+const showAllPages = ref(true)
+
+// Watch for changes to showAllPages
+watch(showAllPages, () => {
+  page.value = showAllPages.value ? null : 1
+})
+
+// Event handlers
+const handleDocumentLoad = ({ numPages }) => {
+  pageCount.value = numPages
+}
+
+const handleDocumentRender = () => {
+  isLoading.value = false
+}
+
+const handlePasswordRequest = ({ callback, isWrongPassword }) => {
+  callback(prompt(
+    isWrongPassword ? 'Enter password again' : 'Enter password'
+  ))
+}
 
 // const isOpen = ref(false)
 // const videoObject = ref<VideoRecord | null>(null)
@@ -424,5 +474,31 @@ const handleZipUpload = async () => {
 </script>
 
 <style scoped>
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  box-shadow: 0 2px 8px 4px rgba(0, 0, 0, 0.1);
+  background-color: #555;
+  color: #ddd;
+}
 
+.app-header > * {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-content {
+  padding: 24px 16px;
+}
+
+.vue-pdf-embed {
+  margin: 0 auto;
+}
+
+.vue-pdf-embed__page {
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px 4px rgba(0, 0, 0, 0.1);
+}
 </style>

@@ -9,6 +9,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@i2d/nuxt-pdf-frame": "^0.5.0",
     "@iconify-json/simple-icons": "^1.2.24",
     "@nuxt/ui": "^2.21.1",
     "@nuxthub/core": "^0.8.18",
@@ -33,6 +34,7 @@
     "pizzip": "^3.1.8",
     "unhead": "1.0.0",
     "vue-i18n": "^9.13.1",
+    "vue-pdf-embed": "^2.1.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -51,6 +53,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "canvas",
       "esbuild",
       "sharp",
       "vue-demi",
