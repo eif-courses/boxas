@@ -43,5 +43,7 @@ export default {
   manage_users: 'Manage Users',
   logs: 'Logs',
   download: 'Download DOCX',
-  preview: 'Preview'
+  preview: 'Preview',
+  preview_supervisor_report: 'Preview Supervisor Feedback',
+  signed_electronically: 'Signed Electronically'
 }

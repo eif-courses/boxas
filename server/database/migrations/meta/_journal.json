@@ -15,6 +15,13 @@
       "when": 1743019582664,
       "tag": "0001_square_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1743283480374,
+      "tag": "0002_absurd_the_santerians",
+      "breakpoints": true
     }
   ]
 }

@@ -5,9 +5,9 @@ export default defineAppConfig({
       constrained: 'max-w-6xl'
     },
     card: {
-      header: {
-        base: 'flex flex-wrap items-center justify-between'
-      },
+      // header: {
+      //   base: 'flex flex-wrap items-center justify-between'
+      // },
       body: {
         base: 'space-y-4'
       }

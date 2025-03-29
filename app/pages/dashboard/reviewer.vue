@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import ReviewerReportForm from '~/components/ReviewerReportForm.vue'
-import type { DocumentRecord, StudentRecord, VideoRecord } from '~~/server/utils/db'
+import type {DocumentRecord, ReviewerReport, StudentRecord, VideoRecord} from '~~/server/utils/db'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -431,6 +431,49 @@ const { data: allStudents, status, error: fetchError } = useLazyAsyncData('revie
   watch: [yearFilter] // Only reload when year filter changes
 })
 
+
+interface StudentRecordsResponse {
+  studentRecord: StudentRecord
+  documents: DocumentRecord[]
+  videos: VideoRecord[]
+  supervisorReports: SupervisorReport[]
+  reviewerReports: ReviewerReport[]
+}
+
+// TODO continue reviewer component
+const getReviewerModalData = (response: StudentRecordsResponse) => {
+  if (!response.studentRecord) return null; // Need student record
+
+  // Construct the object expected by ReviewerReportModal
+  return {
+    STUDENT_NAME: response.studentRecord.studentName ?? 'N/A',
+    THESIS_TITLE: response.studentRecord.finalProjectTitle ?? 'N/A',
+    FACULTY: 'Elektronikos ir informatikos fakultetas', // Or from studentRecord if available
+    DEPARTMENT: response.studentRecord.department ?? 'N/A',
+
+    // Combine reviewer details (you might get this differently from API)
+    REVIEWER_FULL_DETAILS: response.reviewerReports[0]?.reviewerDetails ?? 'Recenzento informacija nenurodyta',
+    REVIEWER_NAME_SIGNATURE: response.studentRecord.reviewerName ?? '', // Name for signature line
+
+    // Map review fields from the API report object
+    REVIEW_GOALS: response.reviewerReports[0]?.commentsGoals ?? undefined,
+    REVIEW_THEORY: response.reviewerReports[0]?.commentsTheory ?? undefined,
+    REVIEW_PRACTICAL: response.reviewerReports[0]?.commentsPractical ?? undefined,
+    REVIEW_THEORY_PRACTICAL_LINK: response.reviewerReports[0]?.commentsTheoryPracticalLink ?? undefined,
+    REVIEW_RESULTS: response.reviewerReports[0]?.commentsResults ?? undefined,
+    REVIEW_PRACTICAL_SIGNIFICANCE: response.reviewerReports[0]?.commentsPracticalSignificance ?? undefined,
+    REVIEW_LANGUAGE: response.reviewerReports[0]?.commentsLanguage ?? undefined,
+    REVIEW_PROS: response.reviewerReports[0]?.commentsPros ?? undefined,
+    REVIEW_CONS: response.reviewerReports[0]?.commentsCons ?? undefined,
+    REVIEW_QUESTIONS: response.reviewerReports[0]?.commentsQuestions ?? undefined,
+    FINAL_GRADE: response.reviewerReports[0]?.finalGrade ?? undefined, // Assuming 'finalGrade' field exists
+    REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined // Assuming Unix timestamp in seconds
+
+    // Map any other necessary fields...
+  };
+
+
+
 // Get the active year (either selected or from API)
 const activeYear = computed(() => {
   return yearFilter.value || allStudents.value?.year || null
@@ -798,16 +841,12 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           </template>
 
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
-            <UButton
-              :loading="isFetchingDocument"
-              icon="i-heroicons-document-text"
-              size="xs"
-              color="white"
-              variant="solid"
-              :label="$t('reviewer_report')"
-              :trailing="false"
-              class="p-1 text-xs"
-            />
+            <div v-if="getReviewerModalData(row)">
+              <PreviewReviewerReport
+                  :review-data="getReviewerModalData(row)"
+                  button-label="Peržiūrėti Recenziją"
+              />
+            </div>
           </template>
           <template v-else>
             <UButton

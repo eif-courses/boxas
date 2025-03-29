@@ -62,22 +62,46 @@
               @click="openDocument(doc)"
             />
           </template>
-          <template v-if="records.supervisorReports.length > 0">
+          <div
+            v-if="records && records.supervisorReports && records.supervisorReports.length > 0"
+            class="space-y-4"
+          >
             <template
               v-for="report in records.supervisorReports"
               :key="report.id"
             >
-              <UButton
-                :loading="isFetchingDocument"
-                icon="i-heroicons-document-text"
-                size="sm"
-                color="white"
-                variant="solid"
-                :label="$t('supervisor_report')"
-                @click="openSupervisorReport(report)"
-              />
+              <div>
+                <PreviewSupervisorReport
+                  :document-data="{
+                    // --- Data from main student record ---
+                    // Adjust field names based on your actual StudentRecord interface
+                    NAME: records.studentRecord?.studentName +' '+records.studentRecord?.studentLastname,
+                    PROGRAM: records.studentRecord?.studyProgram ?? 'N/A',
+                    CODE: records.studentRecord?.programCode ?? 'N/A',
+                    TITLE: records.studentRecord?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
+                    DEPT: records.studentRecord?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
+                    WORK: report.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                    // --- Data specific to THIS report ---
+                    EXPL: report.supervisorComments ?? '', // Use comments as EXPL
+                    OM: report.otherMatch ?? 0,
+                    SSM: report.oneMatch ?? 0,
+                    STUM: report.ownMatch ?? 0,
+                    JM: report.joinMatch ?? 0,
+                    createdDate: formatUnixDateTime(report.createdDate), // Format the timestamp for the component
+
+                    // --- Data that might need specific logic ---
+                    // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
+                    SUPER: report.supervisorName ?? 'N/A Supervisor',
+                    POS: report.supervisorPosition ?? 'N/A Position',
+                    // Use the report's creation date, formatted, for the main 'DATE' field
+                    DATE: formatUnixDate(report.createdDate)
+                  }"
+                  :button-label="$t('preview_supervisor_report')"
+                  :modal-title="$t('supervisor_report')"
+                />
+              </div>
             </template>
-          </template>
+          </div>
           <template v-else>
             <UButton
               disabled
@@ -230,218 +254,6 @@
       </div>
     </UCard>
   </div>
-
-  <div>
-    <UButton
-      label="Open Wide Modal"
-      @click="isOpen = true"
-    />
-
-    <UModal
-      v-model="isOpen"
-      prevent-close
-      :ui="{ width: 'sm:max-w-4xl' }"
-    >
-      <UCard :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ $t('supervisor_report') }}
-            </h3>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              class="-my-1"
-              @click="isOpen = false"
-            />
-          </div>
-        </template>
-
-        <div class="p-4">
-          {{ reportObjInModal.createdDate }}
-          <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded mt-4 animate-pulse" /> <!-- Example placeholder -->
-        </div>
-      </UCard>
-    </UModal>
-  </div>
-
-  <div>
-    <UButton
-      label="Rodyti dokumentą (DOCX Stilius)"
-      @click="openModalWithData"
-    />
-
-    <UModal
-      v-if="reportObjInModal"
-      v-model="isOpen"
-      prevent-close
-      :ui="{
-        width: 'sm:max-w-4xl' // Increased width for better layout
-        // We might need to control modal panel padding if card padding isn't enough
-        // or conflicts, but let's start with card padding.
-      }"
-    >
-      <UCard
-        :ui="{
-          ring: '',
-          divide: 'divide-y divide-gray-100 dark:divide-gray-800',
-          // Give ample padding for the content layout
-          body: { padding: 'p-6 sm:p-10' }, // Increased padding
-          header: { padding: 'p-4 sm:p-6' }
-        }"
-      >
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              Vadovo Atsiliepimas (Peržiūra)
-            </h3>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              class="-my-1"
-              @click="isOpen = false"
-            />
-          </div>
-        </template>
-
-        <!-- Document Body - Using divs and Tailwind for layout -->
-        <div class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif">
-          <!-- Top Right Header -->
-          <div class="text-right text-xs mb-10">
-            <p>Vilniaus kolegijos baigiamųjų darbų (projektų)</p>
-            <p>rengimo ir gynimo tvarkos aprašo</p>
-            <p class="font-semibold">
-              4 priedas
-            </p>
-          </div>
-
-          <!-- Centered Faculty/Dept -->
-          <div class="text-center uppercase font-semibold mb-10 space-y-1">
-            <p>Vilniaus kolegijos</p>
-            <p>Elektronikos ir informatikos fakultetas</p>
-            <p>{{ documentData.DEPT }}</p>
-          </div>
-
-          <!-- Centered Title -->
-          <div class="text-center uppercase font-semibold mb-10">
-            <p>Baigiamojo darbo vadovo atsiliepimas</p>
-          </div>
-
-          <!-- Study Program Line -->
-          <p class="mb-2">
-            Studijų programa: „{{ documentData.PROGRAM }}“, valstybinis kodas {{ documentData.CODE }}
-          </p>
-
-          <!-- Student Name Line (using flexbox for alignment) -->
-          <div class="flex justify-between items-end mb-0">
-            <span>Studentas (-ė):</span>
-            <span class="font-medium">{{ documentData.NAME }}</span>
-          </div>
-          <div class="text-right text-xs text-gray-500 dark:text-gray-400 -mt-1">
-            (vardas, pavardė)
-          </div>
-
-          <!-- Thesis Title Line -->
-          <p class="mt-4 mb-6">
-            Baigiamojo darbo tema: <span class="font-bold">{{ documentData.TITLE }}</span>
-          </p>
-
-          <!-- Explanation Paragraph -->
-          <p class="mt-6 mb-6 text-justify">
-            {{ documentData.EXPL }}
-          </p>
-
-          <!-- Suitability & Plagiarism -->
-          <div class="mt-6 space-y-2">
-            <p>Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
-            <p>Nustatyta sutaptis su kitais darbais sudaro {{ documentData.OM }} procentų viso darbo, iš jų:</p>
-            <div class="pl-8 space-y-1 text-sm">
-              <p>sutaptis su vienu šaltiniu – {{ documentData.SSM }} procentų viso darbo;</p>
-              <p>sutaptis su kitais to paties studento studijų rašto darbais sudaro {{ documentData.STUM }} procentų viso darbo;</p>
-              <p>sutaptis su kitų studentų to paties jungtinio darbo autorių darbais sudaro {{ documentData.JM }} procentų viso darbo.</p>
-            </div>
-          </div>
-
-          <!-- Supervisor Section (using grid for better alignment control) -->
-          <div class="mt-12 pt-8">
-            <p class="mb-4 font-semibold">
-              Patvirtinu:
-            </p>
-
-            <div class="flex items-end space-x-4 sm:space-x-8">
-              <div class="flex-shrink-0">
-                <p>Baigiamojo darbo vadovas:</p>
-                <p
-                  class="text-xs text-transparent select-none invisible h-4"
-                  aria-hidden="true"
-                />
-              </div>
-
-              <div class="flex-grow text-center px-2">
-                <div class="border-b border-gray-400 dark:border-gray-600 min-h-[1.5em] mb-1 flex items-center justify-center text-gray-500 dark:text-gray-400 italic text-xs space-x-1">
-                  <UIcon
-                    name="i-heroicons-check-circle"
-                    class="w-3 h-3 text-green-500"
-                  />
-                  <span>Signed Electronically</span>
-                  <UIcon
-                    name="i-heroicons-clock"
-                    class="w-3 h-3"
-                  />
-                  <span> {{ reportObjInModal.createdDate }}</span>
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  (parašas)
-                </p>
-              </div>
-
-              <div class="flex-shrink-0 text-right">
-                <p class="font-medium">
-                  {{ documentData.SUPER }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  (vardas, pavardė)
-                </p>
-              </div>
-            </div>
-
-            <div class="mt-4 text-center">
-              <p>Vilniaus kolegija Elektronikos ir informatikos fakultetas</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                (darbovietė)
-              </p>
-            </div>
-
-            <div class="mt-4 text-center">
-              <p>{{ documentData.POS }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                (pareigos)
-              </p>
-            </div>
-          </div>
-
-          <!-- Date Section -->
-          <div class="mt-8 text-center">
-            <p>{{ documentData.DATE }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              (data)
-            </p>
-          </div>
-        </div>
-
-        <template #footer>
-          <div class="text-right">
-            <UButton
-              label="Uždaryti"
-              @click="isOpen = false"
-            />
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -450,6 +262,7 @@ import 'vue-pdf-embed/dist/styles/annotationLayer.css'
 import 'vue-pdf-embed/dist/styles/textLayer.css'
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
+import {useUnixDateUtils} from "~/composables/useUnixDateUtils";
 
 definePageMeta({
   middleware: ['student-access']
@@ -462,6 +275,7 @@ const pdfSource = ref('https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae
 const showAllPages = ref(true)
 
 const isOpen = ref(false)
+const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
 
 // --- Reactive Data Object ---
 // This would typically come from an API call or props

@@ -43,5 +43,7 @@ export default {
   manage_users: 'Valdyti vartotojus',
   logs: 'Registracijos žurnalas',
   download: 'Atsisiųsti DOCX',
-  preview: 'Peržiūrėti'
+  preview: 'Peržiūrėti',
+  preview_supervisor_report: 'Peržiūrėti vadovo atsiliepimą',
+  signed_electronically: 'Pasirašyta elektroniniu būdu'
 }

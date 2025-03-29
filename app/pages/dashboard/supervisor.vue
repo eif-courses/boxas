@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import PlagiarismReportForm from '~/components/PlagiarismReportForm.vue'
 import type { StudentRecord } from '~~/server/utils/db'
+import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 
 definePageMeta({
   middleware: ['teacher-access']
 })
+const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
 
 const statusMessage = ref('')
 const statusError = ref(false)
@@ -992,13 +994,44 @@ const isPreviewOpen = ref(false)
           </template>
 
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <ActionDropdown
-              :main-action-label="$t('supervisor_report')"
-              main-action-icon="i-heroicons-magnifying-glass"
-              :main-action="() => handlePreview(row)"
-              :actions="getRowActions(row)"
-              :button-width="100"
-            />
+            <!--            <ActionDropdown -->
+            <!--              :main-action-label="$t('supervisor_report')" -->
+            <!--              main-action-icon="i-heroicons-magnifying-glass" -->
+            <!--              :main-action="() => handlePreview(row)" -->
+            <!--              :actions="getRowActions(row)" -->
+            <!--              :button-width="100" -->
+            <!--            /> -->
+
+            <div>
+              <PreviewSupervisorReport
+                :document-data="{
+                  // --- Data from main student record ---
+                  // Adjust field names based on your actual StudentRecord interface
+                  NAME: row.student?.studentName +' '+row.student?.studentLastname,
+                  PROGRAM: row.student?.studyProgram ?? 'N/A',
+                  CODE: row.student?.programCode ?? 'N/A',
+                  TITLE: row.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
+                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
+                  WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                  // --- Data specific to THIS report ---
+                  EXPL: row.supervisorReports[0].supervisorComments ?? '', // Use comments as EXPL
+                  OM: row.supervisorReports[0].otherMatch ?? 0,
+                  SSM: row.supervisorReports[0].oneMatch ?? 0,
+                  STUM: row.supervisorReports[0].ownMatch ?? 0,
+                  JM: row.supervisorReports[0].joinMatch ?? 0,
+                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
+
+                  // --- Data that might need specific logic ---
+                  // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
+                  SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
+                  POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
+                  // Use the report's creation date, formatted, for the main 'DATE' field
+                  DATE: formatUnixDate(row.supervisorReports[0].createdDate)
+                }"
+                :button-label="$t('preview_supervisor_report')"
+                :modal-title="$t('supervisor_report')"
+              />
+            </div>
           </template>
           <template v-else>
             <UButton
