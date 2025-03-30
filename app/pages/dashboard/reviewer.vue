@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import ReviewerReportForm from '~/components/ReviewerReportForm.vue'
-import type {DocumentRecord, ReviewerReport, StudentRecord, VideoRecord} from '~~/server/utils/db'
+import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -431,7 +431,6 @@ const { data: allStudents, status, error: fetchError } = useLazyAsyncData('revie
   watch: [yearFilter] // Only reload when year filter changes
 })
 
-
 interface StudentRecordsResponse {
   studentRecord: StudentRecord
   documents: DocumentRecord[]
@@ -442,7 +441,7 @@ interface StudentRecordsResponse {
 
 // TODO continue reviewer component
 const getReviewerModalData = (response: StudentRecordsResponse) => {
-  if (!response.studentRecord) return null; // Need student record
+  if (!response.studentRecord) return null // Need student record
 
   // Construct the object expected by ReviewerReportModal
   return {
@@ -470,9 +469,8 @@ const getReviewerModalData = (response: StudentRecordsResponse) => {
     REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined // Assuming Unix timestamp in seconds
 
     // Map any other necessary fields...
-  };
-
-
+  }
+}
 
 // Get the active year (either selected or from API)
 const activeYear = computed(() => {
@@ -843,8 +841,8 @@ watch([search, groupFilter, programFilter, pageCount], () => {
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
             <div v-if="getReviewerModalData(row)">
               <PreviewReviewerReport
-                  :review-data="getReviewerModalData(row)"
-                  button-label="Peržiūrėti Recenziją"
+                :review-data="getReviewerModalData(row)"
+                button-label="Peržiūrėti Recenziją"
               />
             </div>
           </template>
