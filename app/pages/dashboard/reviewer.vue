@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import ReviewerReportForm from '~/components/ReviewerReportForm.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
+import type { ReviewerReportDataType, ReviewerReportFormData } from '~/components/EditReviewerReportForm.vue'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -570,6 +571,73 @@ watch(pageCount, (newValue) => {
 watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
+
+// --- Assume 'studentAndReviewData' holds combined data ---
+// You need to fetch/construct this object containing student display info
+// and any *existing* reviewer report data to pre-fill the form.
+const studentAndReviewData = ref<ReviewerReportDataType>({
+  // --- Example Data ---
+  studentRecordId: 456, // Crucial ID
+  DEPT: 'Taikomosios Kompiuterijos Katedra',
+  PROGRAM: 'Kompiuterių Tinklų Administravimas',
+  CODE: '6531EX005',
+  NAME: 'Ona Onaitė',
+  TITLE: 'Debesų Kompiuterijos Sprendimų Analizė',
+  // Initial Editable Fields (could be from existing fetched report or empty)
+  REVIEWER_FULL_DETAILS: 'Lekt. Petras Petraitis, VIKO EIF, lektorius',
+  REVIEW_GOALS: 'Tikslai aiškūs...',
+  REVIEW_THEORY: 'Teorija pakankama...',
+  REVIEW_PRACTICAL: 'Praktinė dalis galėtų būti platesnė...',
+  // ... other initial review fields or empty strings ...
+  FINAL_GRADE: 8
+})
+
+const isParentSavingReview = ref(false)
+const toast = useToast()
+const handleReviewerReportSave = async (recordId: number | null, updatedData: ReviewerReportFormData) => {
+  // Need studentRecordId from the initial data context
+  // const recordId = studentAndReviewData.value?.studentRecordId // Get from your data source
+
+  if (recordId === undefined || recordId === null) {
+    toast.add({ title: 'Klaida', description: 'Trūksta studento įrašo ID recenzijos išsaugojimui.', color: 'red' })
+    return
+  }
+
+  isParentSavingReview.value = true
+  console.log(`Saving reviewer report for studentRecordId ${recordId}:`, updatedData)
+
+  const apiPayload = {
+    studentRecordId: recordId,
+    ...updatedData // Spread the editable fields
+    // Don't send REPORT_DATE, backend handles timestamp
+  }
+  delete apiPayload.REPORT_DATE // Ensure it's removed
+
+  try {
+    // --- MAKE API CALL to your Reviewer Report endpoint ---
+    const { data, error } = await useFetch('/api/students/reviewer-reports', { // <<< ADJUST ENDPOINT
+      method: 'POST', // Or PUT/PATCH if updating
+      body: apiPayload
+    })
+
+    if (error.value) {
+      console.error('Failed to save reviewer report:', error.value.statusCode, error.value.statusMessage, error.value.data)
+      toast.add({ title: 'Klaida', description: error.value.data?.message || 'Nepavyko išsaugoti recenzijos.', color: 'red' })
+    }
+    else {
+      console.log('Reviewer report saved successfully!', data.value)
+      toast.add({ title: 'Pavyko', description: data.value?.message || 'Recenzija sėkmingai išsaugota.', color: 'green' })
+      // TODO: Refresh data if needed
+    }
+  }
+  catch (err) {
+    console.error('Unexpected error saving reviewer report:', err)
+    toast.add({ title: 'Sistemos Klaida', description: 'Įvyko netikėta klaida.', color: 'red' })
+  }
+  finally {
+    isParentSavingReview.value = false
+  }
+}
 </script>
 
 <template>
@@ -682,12 +750,7 @@ watch([search, groupFilter, programFilter, pageCount], () => {
 
         <div class="p-4">
           <div class="flex justify-center">
-            <iframe
-              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject?.uid}/iframe`"
-              style="border: none; width: 800px; height: 450px;"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-              allowfullscreen="true"
-            />
+            Vaizdo irasas
           </div>
         </div>
       </UCard>
@@ -847,16 +910,29 @@ watch([search, groupFilter, programFilter, pageCount], () => {
             </div>
           </template>
           <template v-else>
-            <UButton
-              icon="i-heroicons-pencil-square"
-              size="xs"
-              color="amber"
-              variant="outline"
-              :label="$t('reviewer_report_not_ready')"
-              :trailing="false"
-              class="p-1 text-xs"
-              @click="sendStudentReportData(row.student)"
-            />
+            <!--            <UButton -->
+            <!--              icon="i-heroicons-pencil-square" -->
+            <!--              size="xs" -->
+            <!--              color="amber" -->
+            <!--              variant="outline" -->
+            <!--              :label="$t('reviewer_report_not_ready')" -->
+            <!--              :trailing="false" -->
+            <!--              class="p-1 text-xs" -->
+            <!--              @click="sendStudentReportData(row.student)" -->
+            <!--            /> -->
+
+            <div v-if="studentAndReviewData">
+              <EditReviewerReportForm
+                :initial-data="studentAndReviewData"
+                @save="handleReviewerReportSave(row.student.id, $event)"
+              />
+              <p v-if="isParentSavingReview">
+                Saving review...
+              </p>
+            </div>
+            <div v-else>
+              Loading data...
+            </div>
           </template>
         </div>
       </template>

@@ -1,416 +1,21 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import PlagiarismReportForm from '~/components/PlagiarismReportForm.vue'
 import type { StudentRecord } from '~~/server/utils/db'
-import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
+import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
 
 definePageMeta({
   middleware: ['teacher-access']
 })
+
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
+
+const { user } = useUserSession()
 
 const statusMessage = ref('')
 const statusError = ref(false)
 const isLoading = ref(false)
 
-// Constants for formatting
-const DEFAULT_FONT_SIZE = 12
-const DEFAULT_FONT_NAME = 'Times New Roman'
-
-// Helper function to create dotted line text
-const createDottedLine = (length = 70) => {
-  return '.'.repeat(length)
-}
-
-const generateReport = async (formData) => {
-  try {
-    isLoading.value = true
-    statusMessage.value = ''
-    statusError.value = false
-
-    // Import the required modules from docx
-    const docx = await import('docx')
-    const {
-      Document,
-      Paragraph,
-      TextRun,
-      AlignmentType,
-      HeadingLevel,
-      TabStopPosition,
-      TabStopType
-    } = docx
-
-    // Import saveAs from file-saver
-    const { saveAs } = await import('file-saver')
-
-    // Function to create a dotted line paragraph with formatting options
-    const createDottedLineParagraph = (
-      text = '',
-      preText = '',
-      postText = '',
-      alignment = AlignmentType.LEFT,
-      isBold = false,
-      fontSize = DEFAULT_FONT_SIZE
-    ) => {
-      const children = []
-
-      if (preText) {
-        children.push(new TextRun({
-          text: preText,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      if (text) {
-        children.push(new TextRun({
-          text,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-      else {
-        children.push(new TextRun({
-          text: createDottedLine(),
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      if (postText) {
-        children.push(new TextRun({
-          text: postText,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      return new Paragraph({
-        children,
-        alignment
-      })
-    }
-
-    // Helper function to create standard paragraph
-    const createStandardParagraph = (text, alignment = AlignmentType.LEFT, isBold = false, fontSize = DEFAULT_FONT_SIZE) => {
-      return new Paragraph({
-        children: [
-          new TextRun({
-            text,
-            bold: isBold,
-            size: fontSize * 2, // Size in half-points
-            font: DEFAULT_FONT_NAME
-          })
-        ],
-        alignment
-      })
-    }
-
-    // Create a new document
-    const doc = new Document({
-      styles: {
-        default: {
-          document: {
-            run: {
-              font: DEFAULT_FONT_NAME,
-              size: DEFAULT_FONT_SIZE * 2 // Size in half-points
-            }
-          }
-        }
-      },
-      sections: [
-        {
-          properties: {},
-          children: [
-            // Header
-            createStandardParagraph(
-              'Vilniaus kolegijos baigiamųjų darbų (projektų)',
-              AlignmentType.LEFT,
-              false
-            ),
-            createStandardParagraph(
-              'rengimo ir gynimo tvarkos aprašo',
-              AlignmentType.RIGHT,
-              false
-            ),
-            createStandardParagraph(
-              '4 priedas',
-              AlignmentType.RIGHT,
-              false
-            ),
-            new Paragraph({}),
-
-            // Title section
-            createStandardParagraph(
-              'VILNIAUS KOLEGIJOS',
-              AlignmentType.CENTER,
-              true
-            ),
-
-            // Faculty with dotted line - bold
-            createDottedLineParagraph(
-              formData.faculty || 'ELEKTRONIKOS IR INFORMATIKOS FAKULTETAS',
-              '',
-              '',
-              AlignmentType.CENTER,
-              true
-            ),
-
-            // Department with dotted line - bold
-            createDottedLineParagraph(
-              formData.department || 'PROGRAMINĖS ĮRANGOS KATEDRA',
-              '',
-              '',
-              AlignmentType.CENTER,
-              true
-            ),
-            new Paragraph({}),
-
-            // Title - bold
-            createStandardParagraph(
-              'BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS',
-              AlignmentType.CENTER,
-              true
-            ),
-            new Paragraph({}),
-
-            // Study program
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'Studijų programa: „',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.studyProgram || createDottedLine(40),
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: '", valstybinis kodas ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.studyCode || createDottedLine(20),
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-            new Paragraph({}),
-
-            // Student name
-            createDottedLineParagraph(
-              formData.studentName || '',
-              'Studentas (-ė) '
-            ),
-
-            createStandardParagraph('(vardas, pavardė)', AlignmentType.CENTER),
-
-            // Thesis title
-            createDottedLineParagraph(
-              formData.thesisTitle || '',
-              'Baigiamojo darbo tema '
-            ),
-
-            // Extra line for long thesis titles
-            createDottedLineParagraph(),
-
-            // Independence assessment
-            createStandardParagraph('Baigiamojo darbo autoriaus savarankiškumas, iniciatyva, darbo rengimo nuoseklumas'),
-
-            // Explanation text or dotted lines
-            createDottedLineParagraph(formData.explanationText || ''),
-            createDottedLineParagraph(''),
-            createDottedLineParagraph(''),
-
-            // Suitability statement
-            createStandardParagraph(
-              formData.isSuitable !== false
-                ? 'Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.'
-                : 'Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje dėl plagiato fakto nustatymo.'
-            ),
-
-            // Plagiarism percentage
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'Nustatyta sutaptis su kitais darbais sudaro ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.otherMatch || '...',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: ' procentų viso darbo, iš jų:',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            // Single source match
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'sutaptis su vienu šaltiniu -- ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.singleSourceMatch || '...',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: ' procentų viso darbo;',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            // Same student match
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'sutaptis su kitais to paties studento studijų rašto darbais sudaro ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.sameStudentMatch || '...',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: ' procentų viso darbo;',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            // Joint match
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'sutaptis su kitų studentų to paties jungtinio darbo autorių darbais sudaro ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.jointMatch || '...',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: ' procentų viso darbo.',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            new Paragraph({}),
-
-            // Signature section
-            createStandardParagraph('Baigiamojo darbo'),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'vadovas ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: createDottedLine(10),
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: ' ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: formData.supervisorName || createDottedLine(30),
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: '                     ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: '(parašas)',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: '                 ',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                }),
-                new TextRun({
-                  text: '(vardas, pavardė)',
-                  size: DEFAULT_FONT_SIZE * 2,
-                  font: DEFAULT_FONT_NAME
-                })
-              ]
-            }),
-
-            new Paragraph({}),
-
-            // Workplace
-            createDottedLineParagraph(formData.workplace || 'Vilniaus kolegija Elektronikos ir informatikos fakultetas'),
-            createStandardParagraph('(darbovietė)', AlignmentType.CENTER),
-
-            // Position
-            createDottedLineParagraph(formData.supervisorPosition || 'Lektorius'),
-            createStandardParagraph('(pareigos)', AlignmentType.CENTER),
-
-            // Date
-            createDottedLineParagraph(formData.dateField || new Date().toISOString().split('T')[0], '', '', AlignmentType.CENTER),
-            createStandardParagraph('(data)', AlignmentType.CENTER)
-          ]
-        }
-      ]
-    })
-
-    // Generate and save document
-    const blob = await docx.Packer.toBlob(doc)
-    saveAs(blob, `${formData.studentName || 'Report'}_vadovo_atsiliepimas.docx`)
-
-    statusMessage.value = 'Document generated successfully!'
-  }
-  catch (error) {
-    console.error('Error generating document:', error)
-    statusMessage.value = `Error: ${error.message}`
-    statusError.value = true
-  }
-  finally {
-    isLoading.value = false
-  }
-}
 const { t } = useI18n()
-// Columns
+
 const columns = [
   {
     key: 'studentGroup',
@@ -436,7 +41,6 @@ const columns = [
 
 const selectedColumns = ref(columns)
 const columnsTable = computed(() => columns.filter(column => selectedColumns.value.includes(column)))
-const excludeSelectColumn = computed(() => columns.filter(v => v.key !== 'select'))
 
 // Selected Rows
 const selectedRows = ref([])
@@ -469,11 +73,6 @@ const isFetchingDocument = ref(false)
 const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   isOpen.value = true
   videoObject.value = mVideo
-  studentObject.value = mStudent
-}
-
-const sendStudentReportData = (mStudent: StudentRecord) => {
-  isOpenReport.value = true
   studentObject.value = mStudent
 }
 
@@ -516,7 +115,6 @@ const openDocument = async (doc: DocumentRecord) => {
 }
 
 // Filters
-const nameFilter = ref('')
 const groupFilter = ref('')
 const programFilter = ref('')
 const yearFilter = ref(null)
@@ -658,72 +256,74 @@ watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
 
-function getRowActions(row) {
-  return [
-    {
-      label: t('download'),
-      icon: 'i-heroicons-arrow-down-tray',
-      click: () => handleDownloadDOCX(row)
-    },
-    {
-      label: t('preview'),
-      icon: 'i-heroicons-magnifying-glass',
-      click: () => handlePreview(row)
+const isParentSaving = ref(false)
+const toast = useToast()
+const handleReportSave = async (recordId: number | null, updatedData: SupervisorReportFormData) => {
+  // --- 1. Input Validation ---
+  if (recordId === undefined || recordId === null) { // Check against null too
+    console.error('handleReportSave called without a valid recordId!')
+    toast.add({ title: 'Klaida', description: 'Trūksta studento įrašo ID.', color: 'red' })
+    return
+  }
+  if (!updatedData) {
+    console.error('handleReportSave called without updatedData!')
+    toast.add({ title: 'Klaida', description: 'Negauti formos duomenys.', color: 'red' })
+    return
+  }
+
+  isParentSaving.value = true
+  console.log(`Parent received data for studentRecordId ${recordId}:`, updatedData)
+
+  // --- 2. Construct API Payload ---
+  const apiPayload = {
+    studentRecordId: recordId, // Use the ID passed from the template
+    EXPL: updatedData.EXPL,
+    WORK: updatedData.WORK,
+    OM: updatedData.OM,
+    SSM: updatedData.SSM,
+    STUM: updatedData.STUM,
+    JM: updatedData.JM,
+    POS: updatedData.POS,
+    PASS: updatedData.PASS
+  }
+
+  // --- 3. Make the API Call ---
+  try {
+    // --- CORRECTED ENDPOINT ---
+    const { data, error } = await useFetch('/api/students/supervisor-reports', { // Should match supervisor-reports.post.ts
+      method: 'POST',
+      body: apiPayload
+    })
+
+    if (error.value) {
+      console.error('Failed to save report:', error.value.statusCode, error.value.statusMessage, error.value.data)
+      toast.add({ // Uncommented toast
+        title: 'Klaida',
+        description: error.value.data?.message || error.value.statusMessage || 'Nepavyko išsaugoti atsiliepimo.',
+        color: 'red'
+      })
     }
-  ]
+    else {
+      console.log('Report saved successfully!', data.value)
+      toast.add({ // Uncommented toast
+        title: 'Pavyko',
+        description: data.value?.message || 'Atsiliepimas sėkmingai išsaugotas.',
+        color: 'green'
+      })
+      // TODO: Add data refresh logic here if needed
+      await refreshNuxtData('allStudents') // Refresh the main student list data
+    }
+  }
+  catch (err) {
+    console.error('Unexpected error during report save fetch:', err)
+    toast.add({ title: 'Sistemos Klaida', description: 'Įvyko netikėta klaida bandant išsaugoti.', color: 'red' }) // Uncommented toast
+  }
+  finally {
+    isParentSaving.value = false
+  }
 }
 
-// const rowActions = [
-//   {
-//     label: t('download'),
-//     icon: 'i-heroicons-arrow-down-tray',
-//     click: () => handleDownloadDOCX()
-//   },
-//   {
-//     label: t('preview'),
-//     icon: 'i-heroicons-magnifying-glass',
-//     click: () => handlePreview()
-//   }
-//   // {
-//   //   label: 'Delete',
-//   //   icon: 'i-heroicons-trash',
-//   //   click: () => handleDelete()
-//   // }
-// ]
 const previewStudentRecordObject = ref(null)
-function handlePreview(row) {
-  console.log(row)
-  previewStudentRecordObject.value = row
-  isPreviewOpen.value = true
-}
-
-function handleDownloadDOCX(row) {
-  const formData = ref({
-    studentName: '',
-    programCode: '',
-    thesisTitle: '',
-    totalMatchPercentage: 0,
-    singleSourceMaxMatch: 0,
-    sameStudentWorkMatch: 0,
-    jointWorkMatch: 0,
-    supervisorComments: '',
-    advisorName: 'Marius Gžegoževskis',
-    advisorPosition: 'Lektorius',
-    advisorInstitution: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-    date: new Date().toISOString().substring(0, 10)
-  })
-  generateReport(formData)
-
-  console.log('handle docx: ' + row)
-}
-
-// function handleDuplicate() {
-//   console.log('Duplicate action')
-// }
-//
-// function handleDelete() {
-//   console.log('Delete action')
-// }
 
 const isPreviewOpen = ref(false)
 </script>
@@ -837,14 +437,7 @@ const isPreviewOpen = ref(false)
         </template>
 
         <div class="p-4">
-          <div class="flex justify-center">
-            <iframe
-              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject?.uid}/iframe`"
-              style="border: none; width: 800px; height: 450px;"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-              allowfullscreen="true"
-            />
-          </div>
+          Modal tekstas
         </div>
       </UCard>
     </UModal>
@@ -873,11 +466,6 @@ const isPreviewOpen = ref(false)
           </div>
 
           <div class="container mx-auto py-4 px-4">
-            <PlagiarismReportForm
-              :student="studentObject"
-              @submit="generateReport"
-            />
-
             <div
               v-if="isLoading"
               class="mt-4 p-4 bg-blue-100 text-blue-700"
@@ -1026,7 +614,8 @@ const isPreviewOpen = ref(false)
                   SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
                   POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
                   // Use the report's creation date, formatted, for the main 'DATE' field
-                  DATE: formatUnixDate(row.supervisorReports[0].createdDate)
+                  DATE: formatUnixDate(row.supervisorReports[0].createdDate),
+                  PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
                 }"
                 :button-label="$t('preview_supervisor_report')"
                 :modal-title="$t('supervisor_report')"
@@ -1034,16 +623,29 @@ const isPreviewOpen = ref(false)
             </div>
           </template>
           <template v-else>
-            <UButton
-              icon="i-heroicons-pencil-square"
-              size="xs"
-              color="amber"
-              variant="outline"
-              :label="$t('supervisor_report_not_ready')"
-              :trailing="false"
-              class="p-1 text-xs"
-              @click="sendStudentReportData(row.student)"
-            />
+            <div>
+              <EditSupervisorReportForm
+                :initial-data="{
+                  studentRecordId: row.student?.id,
+                  DEPT: row.student?.department ? row.student.department + ' katedra' : 'N/A Katedra',
+                  PROGRAM: row.student?.studyProgram ?? 'N/A',
+                  CODE: row.student?.programCode ?? 'N/A',
+                  NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
+                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
+                  SUPER: user?.displayName ?? 'N/A',
+                  EXPL: '',
+                  OM: 0,
+                  SSM: 0,
+                  STUM: 0,
+                  JM: 0,
+                  WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                  POS: '',
+                  PASS: 1
+                }"
+                button-label="Pildyti Atsiliepimą"
+                @save="handleReportSave(row.student?.id ?? null, $event)"
+              />
+            </div>
           </template>
         </div>
       </template>

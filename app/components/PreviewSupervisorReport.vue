@@ -95,7 +95,13 @@
 
           <!-- Suitability & Plagiarism -->
           <div class="mt-6 space-y-2">
-            <p>Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
+            <template v-if="documentData.PASS === 1">
+              <p>Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
+            </template>
+            <template v-if="documentData.PASS === 0">
+              <p>Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
+            </template>
+
             <p>Nustatyta sutaptis su kitais darbais sudaro {{ documentData.OM }} procentų viso darbo, iš jų:</p>
             <div class="[text-indent:3rem] space-y-1 text-sm">
               <p>sutaptis su vienu šaltiniu – {{ documentData.SSM }} procentų viso darbo;</p>
@@ -198,7 +204,9 @@ interface DocumentDataType {
   SUPER: string
   POS: string
   DATE: string // Could be string or Date
-  createdDate?: string | Date // Assuming createdDate comes with the data now
+  createdDate?: string | Date
+  PASS: number
+  // Assuming createdDate comes with the data now
   // Add any other fields if necessary
 }
 

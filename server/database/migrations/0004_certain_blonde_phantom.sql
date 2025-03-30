@@ -1,0 +1,1 @@
+ALTER TABLE `supervisor_reports` ADD `is_pass_or_failed` integer DEFAULT 0;

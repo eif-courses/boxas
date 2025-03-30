@@ -73,6 +73,7 @@ export const supervisorReports = sqliteTable('supervisor_reports', {
   supervisorName: text('supervisor_name').notNull().default(''),
   supervisorPosition: text('supervisor_position').notNull().default(''),
   supervisorWorkplace: text('supervisor_workplace').notNull().default(''),
+  isPassOrFailed: integer('is_pass_or_failed').default(0),
   isSigned: integer('is_signed').notNull().default(0),
   otherMatch: real('other_match').notNull().default(0),
   oneMatch: real('one_match').notNull().default(0),
