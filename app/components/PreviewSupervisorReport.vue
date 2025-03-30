@@ -45,80 +45,71 @@
           </div>
         </template>
 
-        <!-- Document Body -->
         <div class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif">
-          <!-- Top Right Header -->
           <div class="text-right text-xs mb-10">
-            <p>Vilniaus kolegijos baigiamųjų darbų (projektų)</p>
-            <p>rengimo ir gynimo tvarkos aprašo</p>
+            <p>{{ $t('supervisor_top_right_first') }}</p>
+            <p>{{ $t('supervisor_top_right_second') }}</p>
             <p class="font-semibold">
-              4 priedas
+              {{ $t('supervisor_top_right_third') }}
             </p>
           </div>
 
-          <!-- Centered Faculty/Dept -->
           <div class="text-center uppercase font-semibold mb-10 space-y-1">
-            <p>Vilniaus kolegijos</p>
-            <p>Elektronikos ir informatikos fakultetas</p>
-            <!-- Use prop data -->
-            <p>{{ documentData.DEPT }} KATEDRA</p>
+            <p>{{ $t('supervisor_center_first') }}</p>
+            <p>{{ $t('supervisor_center_second') }}</p>
+            <p>{{ documentData.DEPT }} {{ $t('supervisor_center_third') }}</p>
           </div>
 
-          <!-- Centered Title -->
           <div class="text-center uppercase font-semibold mb-10">
-            <p>Baigiamojo darbo vadovo atsiliepimas</p>
+            <p>{{ $t('supervisor_center_title') }}</p>
           </div>
 
-          <!-- Study Program Line -->
           <p class="mb-2">
-            Studijų programa: „{{ documentData.PROGRAM }}“, valstybinis kodas {{ documentData.CODE }}
+            {{ $t('supervisor_program_line_first') }}: „{{ documentData.PROGRAM }}“, {{ $t('supervisor_program_line_second') }} {{ documentData.CODE }}
           </p>
 
           <!-- Student Name Line -->
           <div class="flex justify-between items-end mb-0">
-            <span>Studentas (-ė):</span>
+            <span>{{ $t('supervisor_student_name') }}:</span>
             <span class="font-medium">{{ documentData.NAME }}</span>
           </div>
           <div class="text-right text-xs text-gray-500 dark:text-gray-400">
-            (vardas, pavardė)
+           {{ $t('supervisor_name_surname') }}
           </div>
 
-          <!-- Thesis Title Line -->
           <p class="mt-4 mb-6">
-            Baigiamojo darbo tema: <span class="font-bold">{{ documentData.TITLE }}</span>
+            {{ $t('supervisor_final_project_title') }}: <span class="font-bold">{{ documentData.TITLE }}</span>
           </p>
 
-          <!-- Explanation Paragraph -->
           <p class="mt-6 [text-indent:3rem] text-justify">
             {{ documentData.EXPL }}
           </p>
 
-          <!-- Suitability & Plagiarism -->
           <div class="mt-6 space-y-2">
             <template v-if="documentData.PASS === 1">
-              <p>Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
+              <p>{{ $t('supervisor_plagiarism_first') }}</p>
             </template>
             <template v-if="documentData.PASS === 0">
-              <p>Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.</p>
+              <p>{{ $t('supervisor_plagiarism_second') }}</p>
             </template>
 
-            <p>Nustatyta sutaptis su kitais darbais sudaro {{ documentData.OM }} procentų viso darbo, iš jų:</p>
+            <p>{{ $t('supervisor_plagiarism_third') }} {{ documentData.OM }} {{ $t('supervisor_plagiarism_fourth') }}:</p>
             <div class="[text-indent:3rem] space-y-1 text-sm">
-              <p>sutaptis su vienu šaltiniu – {{ documentData.SSM }} procentų viso darbo;</p>
-              <p>sutaptis su kitais to paties studento studijų rašto darbais sudaro {{ documentData.STUM }} procentų viso darbo;</p>
-              <p>sutaptis su kitų studentų to paties jungtinio darbo autorių darbais sudaro {{ documentData.JM }} procentų viso darbo.</p>
+              <p>{{ $t('supervisor_plagiarism_fifth') }} – {{ documentData.SSM }} {{ $t('supervisor_plagiarism_eight') }};</p>
+              <p>{{ $t('supervisor_plagiarism_sixth') }} {{ documentData.STUM }} {{ $t('supervisor_plagiarism_eight') }};</p>
+              <p>{{ $t('supervisor_plagiarism_seventh') }} {{ documentData.JM }} {{ $t('supervisor_plagiarism_eight') }}.</p>
             </div>
           </div>
 
           <!-- Supervisor Section -->
           <div class="mt-12 pt-8">
             <p class="mb-4 font-semibold">
-              Patvirtinu:
+              {{ $t('supervisor_section_first') }}:
             </p>
 
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between sm:space-x-4">
               <div class="mb-1 sm:mb-0">
-                <p>Baigiamojo darbo vadovas (-ė):</p>
+                <p>{{ $t('supervisor_section_second') }}:</p>
 
                 <p
                   class="text-xs text-transparent select-none invisible h-8 hidden sm:block"
@@ -132,7 +123,7 @@
                 </p>
 
                 <div class="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mt-1">
-                  <p>(vardas, pavardė, parašas)</p>
+                  <p> {{ $t('supervisor_name_surname_signature') }}</p>
                   <div class="flex items-center justify-start sm:justify-end space-x-1">
                     <UIcon
                       name="i-heroicons-check-circle"
@@ -148,32 +139,30 @@
             <div class="mt-4 text-center">
               <p>{{ documentData.WORK }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                (darbovietė)
+                {{ $t('supervisor_workplace') }}
               </p>
             </div>
             <div class="mt-4 text-center">
               <p>{{ documentData.POS }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                (pareigos)
+                {{ $t('supervisor_position') }}
               </p>
             </div>
           </div>
 
-          <!-- Date Section -->
           <div class="mt-8 text-center">
             <p>{{ documentData.DATE }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              (data)
+              {{ $t('supervisor_date') }}
             </p>
           </div>
         </div>
 
-        <!-- Modal Footer -->
         <template #footer>
           <div class="text-right">
             <UButton
               color="red"
-              label="Uždaryti"
+              :label="$t('modal_close')"
               @click="closeModal"
             />
           </div>

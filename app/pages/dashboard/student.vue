@@ -232,8 +232,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import 'vue-pdf-embed/dist/styles/annotationLayer.css'
-import 'vue-pdf-embed/dist/styles/textLayer.css'
+
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'

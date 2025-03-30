@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import ReviewerReportForm from '~/components/ReviewerReportForm.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 import type { ReviewerReportDataType, ReviewerReportFormData } from '~/components/EditReviewerReportForm.vue'
 
@@ -11,275 +10,6 @@ const statusMessage = ref('')
 const statusError = ref(false)
 const isLoading = ref(false)
 
-// Constants for formatting
-const DEFAULT_FONT_SIZE = 12
-const DEFAULT_FONT_NAME = 'Times New Roman'
-
-// Helper function to create dotted line text
-const createDottedLine = (length = 70) => {
-  return '.'.repeat(length)
-}
-
-const generateReport = async (formData) => {
-  try {
-    isLoading.value = true
-    statusMessage.value = ''
-    statusError.value = false
-
-    // Import the required modules from docx
-    const docx = await import('docx')
-    const {
-      Document,
-      Paragraph,
-      TextRun,
-      AlignmentType,
-      HeadingLevel,
-      TabStopPosition,
-      TabStopType
-    } = docx
-
-    // Import saveAs from file-saver
-    const { saveAs } = await import('file-saver')
-
-    // Function to create a dotted line paragraph with formatting options
-    const createDottedLineParagraph = (
-      text = '',
-      preText = '',
-      postText = '',
-      alignment = AlignmentType.LEFT,
-      isBold = false,
-      fontSize = DEFAULT_FONT_SIZE
-    ) => {
-      const children = []
-
-      if (preText) {
-        children.push(new TextRun({
-          text: preText,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      if (text) {
-        children.push(new TextRun({
-          text,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-      else {
-        children.push(new TextRun({
-          text: createDottedLine(),
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      if (postText) {
-        children.push(new TextRun({
-          text: postText,
-          bold: isBold,
-          size: fontSize * 2,
-          font: DEFAULT_FONT_NAME
-        }))
-      }
-
-      return new Paragraph({
-        children,
-        alignment
-      })
-    }
-
-    // Helper function to create standard paragraph
-    const createStandardParagraph = (text, alignment = AlignmentType.LEFT, isBold = false, fontSize = DEFAULT_FONT_SIZE) => {
-      return new Paragraph({
-        children: [
-          new TextRun({
-            text,
-            bold: isBold,
-            size: fontSize * 2, // Size in half-points
-            font: DEFAULT_FONT_NAME
-          })
-        ],
-        alignment
-      })
-    }
-
-    // Create a new document
-    const doc = new Document({
-      styles: {
-        default: {
-          document: {
-            run: {
-              font: DEFAULT_FONT_NAME,
-              size: DEFAULT_FONT_SIZE * 2 // Size in half-points
-            }
-          }
-        }
-      },
-      sections: [
-        {
-          properties: {},
-          children: [
-            // Header
-            createStandardParagraph(
-              'Vilniaus kolegijos baigiamųjų darbų (projektų)',
-              AlignmentType.LEFT,
-              false
-            ),
-            createStandardParagraph(
-              'rengimo ir gynimo tvarkos aprašo',
-              AlignmentType.RIGHT,
-              false
-            ),
-            createStandardParagraph(
-              '5 priedas',
-              AlignmentType.RIGHT,
-              false
-            ),
-            new Paragraph({}),
-
-            // Title section
-            createStandardParagraph(
-              'VILNIAUS KOLEGIJOS',
-              AlignmentType.CENTER,
-              true
-            ),
-
-            // Faculty with dotted line - bold
-            createDottedLineParagraph(
-              formData.faculty || 'ELEKTRONIKOS IR INFORMATIKOS FAKULTETAS',
-              '',
-              '',
-              AlignmentType.CENTER,
-              true
-            ),
-
-            // Department with dotted line - bold
-            createDottedLineParagraph(
-              formData.department || 'PROGRAMINĖS ĮRANGOS KATEDRA',
-              '',
-              '',
-              AlignmentType.CENTER,
-              true
-            ),
-            new Paragraph({}),
-
-            // Title - bold
-            createStandardParagraph(
-              'BAIGIAMOJO DARBO RECENZIJA',
-              AlignmentType.CENTER,
-              true
-            ),
-            new Paragraph({}),
-
-            // Thesis title
-            createDottedLineParagraph(
-              formData.thesisTitle || '',
-              'Baigiamojo darbo tema '
-            ),
-
-            // Extra line for long thesis titles
-            createDottedLineParagraph(),
-
-            // Student name
-            createDottedLineParagraph(
-              formData.studentName || '',
-              'Baigiamojo darbo autorius '
-            ),
-
-            createStandardParagraph('(vardas, pavardė)', AlignmentType.CENTER),
-
-            // Reviewer information
-            createDottedLineParagraph(
-              `${formData.reviewerPersonalInfo.name || ''}`,
-              'Recenzentas '
-            ),
-
-            createStandardParagraph('(vardas, pavardė, darbovietė, pareigos, pedagoginis vardas, mokslinis laipsnis)', AlignmentType.CENTER),
-            new Paragraph({}),
-
-            // Thesis evaluation sections
-            createStandardParagraph('Baigiamojo darbo tikslas, uždaviniai, problemos sprendimas'),
-            createDottedLineParagraph(formData.reviewFields.purposeAndObjectives || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Teorinės dalies vertinimas'),
-            createDottedLineParagraph(formData.reviewFields.theoreticalPartEvaluation || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Tiriamosios / projektinės dalies vertinimas'),
-            createDottedLineParagraph(formData.reviewFields.researchPartEvaluation || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Tiriamosios / projektinės dalies ryšys su teorine dalimis'),
-            createDottedLineParagraph(formData.reviewFields.theoryResearchConnection || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Baigiamojo darbo rezultatai ir išvados'),
-            createDottedLineParagraph(formData.reviewFields.resultsAndConclusions || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Baigiamojo darbo praktinė reikšmė (pritaikymo galimybės)'),
-            createDottedLineParagraph(formData.reviewFields.practicalSignificance || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Kalbos taisyklingumas'),
-            createDottedLineParagraph(formData.reviewFields.languageCorrectness || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Baigiamojo darbo privalumai'),
-            createDottedLineParagraph(formData.reviewFields.thesisStrengths || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Baigiamojo darbo trūkumai'),
-            createDottedLineParagraph(formData.reviewFields.thesisWeaknesses || ''),
-            createDottedLineParagraph(''),
-
-            createStandardParagraph('Klausimai darbo autoriui'),
-            createDottedLineParagraph(formData.reviewFields.questionsForAuthor || ''),
-            createDottedLineParagraph(''),
-            new Paragraph({}),
-
-            // Grade
-            createStandardParagraph(
-              `Baigiamojo darbo įvertinimas (dešimties balų sistemoje) ${formData.grade || '___'} (įrašyti)`,
-              AlignmentType.LEFT,
-              true
-            ),
-            new Paragraph({}),
-
-            // Signature line
-            createDottedLineParagraph(
-              formData.reviewerPersonalInfo.name || '',
-              '',
-              '',
-              AlignmentType.RIGHT
-            ),
-            createStandardParagraph('(vardas, pavardė, parašas)', AlignmentType.RIGHT)
-          ]
-        }
-      ]
-    })
-
-    // Generate and save document
-    const blob = await docx.Packer.toBlob(doc)
-    saveAs(blob, `${formData.studentName || 'Report'}_recenzija.docx`)
-
-    statusMessage.value = 'Document generated successfully!'
-  }
-  catch (error) {
-    console.error('Error generating document:', error)
-    statusMessage.value = `Error: ${error.message}`
-    statusError.value = true
-  }
-  finally {
-    isLoading.value = false
-  }
-}
 const { t } = useI18n()
 // Columns
 const columns = [
@@ -307,7 +37,6 @@ const columns = [
 
 const selectedColumns = ref(columns)
 const columnsTable = computed(() => columns.filter(column => selectedColumns.value.includes(column)))
-const excludeSelectColumn = computed(() => columns.filter(v => v.key !== 'select'))
 
 // Selected Rows
 const selectedRows = ref([])
@@ -340,11 +69,6 @@ const isFetchingDocument = ref(false)
 const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   isOpen.value = true
   videoObject.value = mVideo
-  studentObject.value = mStudent
-}
-
-const sendStudentReportData = (mStudent: StudentRecord) => {
-  isOpenReport.value = true
   studentObject.value = mStudent
 }
 
@@ -389,7 +113,7 @@ const openDocument = async (doc: DocumentRecord) => {
 // Interfaces
 
 // Filters
-const nameFilter = ref('')
+
 const groupFilter = ref('')
 const programFilter = ref('')
 const yearFilter = ref(null)
@@ -783,11 +507,6 @@ const handleReviewerReportSave = async (recordId: number | null, updatedData: Re
             <h1 class="text-2xl font-bold mb-6">
               {{ studentObject?.finalProjectTitle }}
             </h1>
-
-            <ReviewerReportForm
-              :student="studentObject"
-              @submit="generateReport"
-            />
 
             <div
               v-if="isLoading"
