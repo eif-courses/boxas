@@ -74,9 +74,7 @@ export default defineEventHandler(async (event) => {
     const parsedReviewerReports = userReviewerReports.map((report) => {
       try {
         return {
-          ...report,
-          reviewerPersonalInfo: report.reviewerPersonalInfo ? JSON.parse(report.reviewerPersonalInfo) : {},
-          reviewFields: report.reviewFields ? JSON.parse(report.reviewFields) : {}
+          ...report
         }
       }
       catch (error) {
@@ -92,7 +90,7 @@ export default defineEventHandler(async (event) => {
 
     // Return the response
     return {
-      studentRecord,
+      student: studentRecord,
       documents: userDocuments,
       videos: userVideos,
       supervisorReports: userSupervisorReports,

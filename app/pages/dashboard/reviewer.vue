@@ -432,7 +432,7 @@ const { data: allStudents, status, error: fetchError } = useLazyAsyncData('revie
 })
 
 interface StudentRecordsResponse {
-  studentRecord: StudentRecord
+  student: StudentRecord
   documents: DocumentRecord[]
   videos: VideoRecord[]
   supervisorReports: SupervisorReport[]
@@ -441,33 +441,33 @@ interface StudentRecordsResponse {
 
 // TODO continue reviewer component
 const getReviewerModalData = (response: StudentRecordsResponse) => {
-  if (!response.studentRecord) return null // Need student record
+  if (!response.student) return null // Need student record
 
   // Construct the object expected by ReviewerReportModal
   return {
-    STUDENT_NAME: response.studentRecord.studentName ?? 'N/A',
-    THESIS_TITLE: response.studentRecord.finalProjectTitle ?? 'N/A',
+    STUDENT_NAME: response.student.studentName + ' ' + response.student.studentLastname,
+    THESIS_TITLE: response.student.finalProjectTitle ?? 'N/A',
     FACULTY: 'Elektronikos ir informatikos fakultetas', // Or from studentRecord if available
-    DEPARTMENT: response.studentRecord.department ?? 'N/A',
+    DEPARTMENT: response.student.department ?? 'N/A',
 
     // Combine reviewer details (you might get this differently from API)
-    REVIEWER_FULL_DETAILS: response.reviewerReports[0]?.reviewerDetails ?? 'Recenzento informacija nenurodyta',
-    REVIEWER_NAME_SIGNATURE: response.studentRecord.reviewerName ?? '', // Name for signature line
+    REVIEWER_FULL_DETAILS: response.student.reviewerName + ' ' + response.reviewerReports[0]?.reviewerPersonalDetails,
+    REVIEWER_NAME_SIGNATURE: response.student.reviewerName ?? '', // Name for signature line
 
     // Map review fields from the API report object
-    REVIEW_GOALS: response.reviewerReports[0]?.commentsGoals ?? undefined,
-    REVIEW_THEORY: response.reviewerReports[0]?.commentsTheory ?? undefined,
-    REVIEW_PRACTICAL: response.reviewerReports[0]?.commentsPractical ?? undefined,
-    REVIEW_THEORY_PRACTICAL_LINK: response.reviewerReports[0]?.commentsTheoryPracticalLink ?? undefined,
-    REVIEW_RESULTS: response.reviewerReports[0]?.commentsResults ?? undefined,
-    REVIEW_PRACTICAL_SIGNIFICANCE: response.reviewerReports[0]?.commentsPracticalSignificance ?? undefined,
-    REVIEW_LANGUAGE: response.reviewerReports[0]?.commentsLanguage ?? undefined,
-    REVIEW_PROS: response.reviewerReports[0]?.commentsPros ?? undefined,
-    REVIEW_CONS: response.reviewerReports[0]?.commentsCons ?? undefined,
-    REVIEW_QUESTIONS: response.reviewerReports[0]?.commentsQuestions ?? undefined,
-    FINAL_GRADE: response.reviewerReports[0]?.finalGrade ?? undefined, // Assuming 'finalGrade' field exists
-    REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined // Assuming Unix timestamp in seconds
-
+    REVIEW_GOALS: response.reviewerReports[0]?.reviewGoals ?? undefined,
+    REVIEW_THEORY: response.reviewerReports[0]?.reviewTheory ?? undefined,
+    REVIEW_PRACTICAL: response.reviewerReports[0]?.reviewPractical ?? undefined,
+    REVIEW_THEORY_PRACTICAL_LINK: response.reviewerReports[0]?.reviewTheoryPracticalLink ?? undefined,
+    REVIEW_RESULTS: response.reviewerReports[0]?.reviewResults ?? undefined,
+    REVIEW_PRACTICAL_SIGNIFICANCE: response.reviewerReports[0]?.reviewPracticalSignificance ?? undefined,
+    REVIEW_LANGUAGE: response.reviewerReports[0]?.reviewLanguage ?? undefined,
+    REVIEW_PROS: response.reviewerReports[0]?.reviewPros ?? undefined,
+    REVIEW_CONS: response.reviewerReports[0]?.reviewCons ?? undefined,
+    REVIEW_QUESTIONS: response.reviewerReports[0]?.reviewQuestions ?? undefined,
+    FINAL_GRADE: response.reviewerReports[0]?.grade ?? undefined, // Assuming 'finalGrade' field exists
+    REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined,
+    IS_SIGNED: response.reviewerReports[0]?.isSigned ?? undefined
     // Map any other necessary fields...
   }
 }

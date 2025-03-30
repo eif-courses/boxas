@@ -86,9 +86,18 @@ export const supervisorReports = sqliteTable('supervisor_reports', {
 export const reviewerReports = sqliteTable('reviewer_reports', {
   id: integer('id').primaryKey(),
   studentRecordId: integer('student_record_id').references(() => studentRecords.id, { onDelete: 'cascade' }),
+  reviewerPersonalDetails: text('reviewer_personal_details').notNull().default(''),
   grade: real('grade').notNull().default(0),
-  reviewerPersonalInfo: text('reviewer_personal_info').notNull(),
-  reviewFields: text('review_fields').notNull(),
+  reviewGoals: text('review_goals').notNull().default(''),
+  reviewTheory: text('review_theory').notNull().default(''),
+  reviewPractical: text('review_practical').notNull().default(''),
+  reviewTheoryPracticalLink: text('review_theory_practical_link').notNull().default(''),
+  reviewResults: text('review_results').notNull().default(''),
+  reviewPracticalSignificance: text('review_practical_significance'),
+  reviewLanguage: text('review_language').notNull().default(''),
+  reviewPros: text('review_pros').notNull().default(''),
+  reviewCons: text('review_cons').notNull().default(''),
+  reviewQuestions: text('review_questions').notNull().default(''),
   isSigned: integer('is_signed').notNull().default(0),
   createdDate: integer('created_date').default(sql`(strftime('%s', 'now'))`)
 }, table => ({

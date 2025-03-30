@@ -79,7 +79,7 @@
             <span>Studentas (-ė):</span>
             <span class="font-medium">{{ documentData.NAME }}</span>
           </div>
-          <div class="text-right text-xs text-gray-500 dark:text-gray-400 -mt-1">
+          <div class="text-right text-xs text-gray-500 dark:text-gray-400">
             (vardas, pavardė)
           </div>
 
@@ -109,38 +109,36 @@
             <p class="mb-4 font-semibold">
               Patvirtinu:
             </p>
-            <div class="flex items-end space-x-4 sm:space-x-8">
-              <div class="flex-shrink-0">
+
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between sm:space-x-4">
+              <div class="mb-1 sm:mb-0">
                 <p>Baigiamojo darbo vadovas (-ė):</p>
+
                 <p
-                  class="text-xs text-transparent select-none invisible h-4"
+                  class="text-xs text-transparent select-none invisible h-8 hidden sm:block"
                   aria-hidden="true"
                 />
               </div>
-              <div class="flex-grow text-center px-2">
-                <div class="border-b border-gray-400 dark:border-gray-600 min-h-[1.5em] mb-1 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs space-x-1">
-                  <UIcon
-                    name="i-heroicons-check-circle"
-                    class="w-3 h-3 text-green-500"
-                  />
-                  <span>{{ $t('signed_electronically') }}, </span>
-                  <template v-if="documentData.createdDate">
-                    <span>{{ new Date(documentData.createdDate).getTime() }}</span>
-                  </template>
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  (parašas)
-                </p>
-              </div>
-              <div class="flex-shrink-0 text-right">
+
+              <div class="text-left sm:text-right">
                 <p class="font-medium">
                   {{ documentData.SUPER }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  (vardas, pavardė)
-                </p>
+
+                <div class="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mt-1">
+                  <p>(vardas, pavardė, parašas)</p>
+                  <div class="flex items-center justify-start sm:justify-end space-x-1">
+                    <UIcon
+                      name="i-heroicons-check-circle"
+                      class="w-3 h-3 text-green-500"
+                    />
+                    <span>{{ $t('signed_electronically') }}</span>
+                    <span>, {{ new Date(documentData.DATE).getTime() }}</span>
+                  </div>
+                </div>
               </div>
             </div>
+
             <div class="mt-4 text-center">
               <p>{{ documentData.WORK }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">

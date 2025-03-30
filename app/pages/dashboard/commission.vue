@@ -240,15 +240,12 @@
             {{ row.student.reviewerName }}
           </div>
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
-            <UButton
-              icon="i-heroicons-document-text"
-              size="xs"
-              color="white"
-              variant="solid"
-              :label="$t('reviewer_report')"
-              :trailing="false"
-              class="p-1 text-xs"
-            />
+            <div v-if="getReviewerModalData(row)">
+              <PreviewReviewerReport
+                :review-data="getReviewerModalData(row)"
+                button-label="Peržiūrėti Recenziją"
+              />
+            </div>
           </template>
           <template v-else>
             <div class="flex gap-2 justify-left">
@@ -450,7 +447,7 @@ definePageMeta({
 
 const { t } = useI18n()
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
-
+const { getReviewerModalData } = useReviewerReports()
 const columns = [{
   key: 'favorite',
   sortable: false,

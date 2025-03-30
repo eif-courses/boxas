@@ -149,7 +149,45 @@ export const useReviewerReports = (baseUrl = '/api/students/reviewer-reports') =
       isLoading.value = false
     }
   }
+  interface StudentRecordsResponse {
+    student: StudentRecord
+    documents: DocumentRecord[]
+    videos: VideoRecord[]
+    supervisorReports: SupervisorReport[]
+    reviewerReports: ReviewerReport[]
+  }
 
+  const getReviewerModalData = (response: StudentRecordsResponse) => {
+    if (!response.student) return null // Need student record
+
+    // Construct the object expected by ReviewerReportModal
+    return {
+      STUDENT_NAME: response.student.studentName + ' ' + response.student.studentLastname,
+      THESIS_TITLE: response.student.finalProjectTitle ?? 'N/A',
+      FACULTY: 'Elektronikos ir informatikos fakultetas', // Or from studentRecord if available
+      DEPARTMENT: response.student.department ?? 'N/A',
+
+      // Combine reviewer details (you might get this differently from API)
+      REVIEWER_FULL_DETAILS: response.student.reviewerName + ' ' + response.reviewerReports[0]?.reviewerPersonalDetails,
+      REVIEWER_NAME_SIGNATURE: response.student.reviewerName ?? '', // Name for signature line
+
+      // Map review fields from the API report object
+      REVIEW_GOALS: response.reviewerReports[0]?.reviewGoals ?? undefined,
+      REVIEW_THEORY: response.reviewerReports[0]?.reviewTheory ?? undefined,
+      REVIEW_PRACTICAL: response.reviewerReports[0]?.reviewPractical ?? undefined,
+      REVIEW_THEORY_PRACTICAL_LINK: response.reviewerReports[0]?.reviewTheoryPracticalLink ?? undefined,
+      REVIEW_RESULTS: response.reviewerReports[0]?.reviewResults ?? undefined,
+      REVIEW_PRACTICAL_SIGNIFICANCE: response.reviewerReports[0]?.reviewPracticalSignificance ?? undefined,
+      REVIEW_LANGUAGE: response.reviewerReports[0]?.reviewLanguage ?? undefined,
+      REVIEW_PROS: response.reviewerReports[0]?.reviewPros ?? undefined,
+      REVIEW_CONS: response.reviewerReports[0]?.reviewCons ?? undefined,
+      REVIEW_QUESTIONS: response.reviewerReports[0]?.reviewQuestions ?? undefined,
+      FINAL_GRADE: response.reviewerReports[0]?.grade ?? undefined, // Assuming 'finalGrade' field exists
+      REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined,
+      IS_SIGNED: response.reviewerReports[0]?.isSigned ?? undefined
+      // Map any other necessary fields...
+    }
+  }
   return {
     isLoading,
     error,
@@ -157,6 +195,7 @@ export const useReviewerReports = (baseUrl = '/api/students/reviewer-reports') =
     getReportById,
     updateReport,
     deleteReport,
-    getReportsByStudentId
+    getReportsByStudentId,
+    getReviewerModalData
   }
 }

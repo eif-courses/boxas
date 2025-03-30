@@ -10,22 +10,23 @@
     </div>
 
     <UCard
-      v-else-if="records?.studentRecord"
+      v-else-if="records?.student"
       class="p-4 shadow-md"
     >
       <template #header>
         <h2 class="text-lg font-bold">
-          {{ records.studentRecord.studentName }} {{ records.studentRecord.studentLastname }}
+          {{ records.student.studentName }} {{ records.student.studentLastname }}
         </h2>
         <p class="text-sm text-gray-500">
-          {{ records.studentRecord.studentGroup }} - {{ records.studentRecord.studyProgram }} ({{ records.studentRecord.currentYear }})
+          {{ records.student.studentGroup }} - {{ records.student.studyProgram }}
+          ({{ records.student.currentYear }})
         </p>
       </template>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <p><strong>Vadovas:</strong> {{ records.studentRecord.supervisorEmail }}</p>
-          <p><strong>Recenzentas:</strong> {{ records.studentRecord.reviewerEmail }}</p>
+          <p><strong>Vadovas:</strong> {{ records.student.supervisorEmail }}</p>
+          <p><strong>Recenzentas:</strong> {{ records.student.reviewerEmail }}</p>
         </div>
       </div>
 
@@ -74,12 +75,12 @@
                 <PreviewSupervisorReport
                   :document-data="{
                     // --- Data from main student record ---
-                    // Adjust field names based on your actual StudentRecord interface
-                    NAME: records.studentRecord?.studentName +' '+records.studentRecord?.studentLastname,
-                    PROGRAM: records.studentRecord?.studyProgram ?? 'N/A',
-                    CODE: records.studentRecord?.programCode ?? 'N/A',
-                    TITLE: records.studentRecord?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
-                    DEPT: records.studentRecord?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
+                    // Adjust field names based on your actual student interface
+                    NAME: records.student?.studentName +' '+records.student?.studentLastname,
+                    PROGRAM: records.student?.studyProgram ?? 'N/A',
+                    CODE: records.student?.programCode ?? 'N/A',
+                    TITLE: records.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
+                    DEPT: records.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from student
                     WORK: report.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
                     // --- Data specific to THIS report ---
                     EXPL: report.supervisorComments ?? '', // Use comments as EXPL
@@ -90,7 +91,7 @@
                     createdDate: formatUnixDateTime(report.createdDate), // Format the timestamp for the component
 
                     // --- Data that might need specific logic ---
-                    // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
+                    // Assuming supervisor details might be on student or fetched/known elsewhere
                     SUPER: report.supervisorName ?? 'N/A Supervisor',
                     POS: report.supervisorPosition ?? 'N/A Position',
                     // Use the report's creation date, formatted, for the main 'DATE' field
@@ -118,15 +119,12 @@
               v-for="report in records.reviewerReports"
               :key="report.id"
             >
-              <UButton
-                :loading="isFetchingDocument"
-                icon="i-heroicons-document-text"
-                size="sm"
-                color="white"
-                variant="solid"
-                :label="$t('reviewer_report')"
-                @click="openReviewerReport(report)"
-              />
+              <div v-if="getReviewerModalData(records)">
+                <PreviewReviewerReport
+                  :review-data="getReviewerModalData(records)"
+                  button-label="Peržiūrėti Recenziją"
+                />
+              </div>
             </template>
           </template>
           <template v-else>
@@ -181,7 +179,7 @@
         <!--          color="white" -->
         <!--          variant="solid" -->
         <!--          label="Peržiūrėti vaizdo įrašą" -->
-        <!--          @click="sendStudentData(records?.videos[0], records.studentRecord)" -->
+        <!--          @click="sendStudentData(records?.videos[0], records.student)" -->
         <!--        /> -->
       </div>
       <div v-else>
@@ -225,31 +223,7 @@
         <UDivider class="p-4" />
       </div>
 
-      <h3 class="text-lg font-semibold">
-        Supervisor Reports
-      </h3>
-      <div v-if="records.supervisorReports.length > 0">
-        <template
-          v-for="report in records.supervisorReports"
-          :key="report.id"
-        >
-          <p>{{ report }}</p>
-        </template>
-      </div>
-
-      <h3 class="text-lg font-semibold">
-        Reviewer Reports
-      </h3>
-      <div v-if="records.reviewerReports.length > 0">
-        <template
-          v-for="report in records.reviewerReports"
-          :key="report.id"
-        >
-          <p>{{ report }}</p>
-        </template>
-      </div>
-
-      <div v-else-if="records.documents.length === 0 && records.videos.length === 0">
+      <div v-else-if="records.videos.length === 0">
         <p>Įkelkite vaizdo įrašą ir dokumentus.</p>
       </div>
     </UCard>
@@ -262,7 +236,7 @@ import 'vue-pdf-embed/dist/styles/annotationLayer.css'
 import 'vue-pdf-embed/dist/styles/textLayer.css'
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
-import {useUnixDateUtils} from "~/composables/useUnixDateUtils";
+import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 
 definePageMeta({
   middleware: ['student-access']
@@ -434,12 +408,13 @@ onMounted(() => {
 
 // Define the structure of the complete API response
 interface StudentRecordsResponse {
-  studentRecord: StudentRecord
+  student: StudentRecord
   documents: DocumentRecord[]
   videos: VideoRecord[]
   supervisorReports: SupervisorReport[]
   reviewerReports: ReviewerReport[]
 }
+
 const { data: records, error, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')
 
 // const { data: records, error, pending } = await useFetch<StudentRecordsResponse>('/api/students/get-documents')
@@ -508,6 +483,8 @@ const openModalWithData = (report: SupervisorReport) => {
   reportObjInModal.value = report
   isOpen.value = true
 }
+
+const { getReviewerModalData } = useReviewerReports()
 </script>
 
 <style scoped>
@@ -539,7 +516,7 @@ const openModalWithData = (report: SupervisorReport) => {
   box-shadow: 0 2px 8px 4px rgba(0, 0, 0, 0.1);
 }
 
- pre {
-   line-height: 1.6;
- }
+pre {
+  line-height: 1.6;
+}
 </style>
