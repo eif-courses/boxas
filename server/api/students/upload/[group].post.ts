@@ -1,5 +1,5 @@
 import { defineEventHandler, readMultipartFormData, createError } from 'h3'
-import { unzip, strFromU8 } from 'fflate'
+import { unzip } from 'fflate'
 import { eq, and, desc } from 'drizzle-orm'
 import { AwsClient } from 'aws4fetch'
 import { documents, studentRecords } from '~~/server/database/schema'
