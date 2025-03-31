@@ -59,9 +59,14 @@ const props = defineProps({
   },
   modalTitle: {
     type: String,
-    default: 'Recenzijos Pildymas / Redagavimas'
+    default: 'Review Completion / Editing'
+  },
+  formVariant: {
+    type: String as PropType<'lt' | 'en'>, // Define possible variants
+    required: true // Make it required so parent MUST specify
   }
 })
+const isEnglishVariant = computed(() => props.formVariant === 'en')
 
 // --- Emits ---
 const emit = defineEmits<{
@@ -168,7 +173,6 @@ const handleSave = async () => {
 
 <template>
   <div>
-    <!-- Trigger Button -->
     <UButton
       :label="buttonLabel"
       icon="i-heroicons-pencil-square"
@@ -178,7 +182,6 @@ const handleSave = async () => {
       @click="openModal"
     />
 
-    <!-- The Modal -->
     <UModal
       v-model="isOpen"
       prevent-close
@@ -195,7 +198,7 @@ const handleSave = async () => {
         <template #header>
           <div class="flex items-center">
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white truncate">
-              {{ modalTitle }}
+              {{ isEnglishVariant ? 'Review Completion / Editing' : 'Recenzijos Pildymas / Redagavimas' }}
             </h3>
             <UButton
               color="gray"
@@ -210,72 +213,62 @@ const handleSave = async () => {
           </div>
         </template>
 
-        <!-- Document Body -> NOW A FORM -->
         <UForm
           :state="formData"
           :validate="validate"
           class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif"
           @submit="handleSave"
         >
-          <!-- Top Right Header (Display Only) -->
           <div class="text-right text-xs mb-10">
-            <p>Vilniaus kolegijos baigiamųjų darbų (projektų)</p>
-            <p>rengimo ir gynimo tvarkos aprašo</p>
+            <p> {{ isEnglishVariant ? 'Final Theses (Projects) of Vilnius College' : 'Vilniaus kolegijos baigiamųjų darbų (projektų)' }}</p>
+            <p>{{ isEnglishVariant ? 'preparation and defense procedure description': 'rengimo ir gynimo tvarkos aprašo' }}</p>
             <p class="font-semibold">
-              5 priedas
+              {{ isEnglishVariant ? 'appendix 5' : '5 priedas' }}
             </p>
           </div>
 
-          <!-- Centered Faculty/Dept (Display Only) -->
           <div class="text-center uppercase font-semibold mb-10 space-y-1">
-            <p>Vilniaus kolegijos</p>
-            <p>Elektronikos ir informatikos fakultetas</p>
-            <p>{{ displayData.DEPT }} KATEDRA</p>
+            <p>{{ isEnglishVariant ? 'Vilnius kolegija': 'Vilniaus kolegijos' }}</p>
+            <p>{{ isEnglishVariant ? 'Faculty of Electronics and Informatics' : 'Elektronikos ir informatikos fakultetas' }} </p>
+            <p>{{ displayData.DEPT }} {{ isEnglishVariant ? 'DEPARTMENT' : 'KATEDRA' }}</p>
           </div>
-
-          <!-- Centered Title (Display Only) -->
           <div class="text-center uppercase font-semibold mb-10">
-            <p>Baigiamojo darbo recenzija</p>
+            <p>{{ isEnglishVariant ? 'Final Thesis Review' : 'Baigiamojo darbo recenzija' }}</p>
           </div>
 
-          <!-- Study Program Line (Display Only) -->
           <p class="mb-2">
-            Studijų programa: „{{ displayData.PROGRAM }}“, valstybinis kodas {{ displayData.CODE }}
+            {{ isEnglishVariant ? 'Study program' : 'Studijų programa' }}: „{{ displayData.PROGRAM }}“, {{ isEnglishVariant ? 'state code': 'valstybinis kodas' }} {{ displayData.CODE }}
           </p>
 
-          <!-- Student Name Line (Display Only) -->
           <div class="flex justify-between items-end mb-0">
-            <span>Studentas (-ė):</span>
+            <span>{{ isEnglishVariant ? 'Student' : 'Studentas (-ė)' }}:</span>
             <span class="font-medium">{{ displayData.NAME }}</span>
           </div>
           <div class="text-right text-xs text-gray-500 dark:text-gray-400">
-            (vardas, pavardė)
+            {{ isEnglishVariant ? '(first name, last name)': '(vardas, pavardė)' }}
           </div>
 
-          <!-- Thesis Title Line (Display Only) -->
           <p class="mt-4 mb-6">
-            Baigiamojo darbo tema: <span class="font-bold">{{ displayData.TITLE }}</span>
+            {{ isEnglishVariant ? 'Final Thesis Topic' : 'Baigiamojo darbo tema' }}: <span class="font-bold">{{ displayData.TITLE }}</span>
           </p>
 
-          <!-- Reviewer Details -> EDITABLE -->
           <UFormGroup
-            label="Recenzentas"
+            :label="isEnglishVariant ? 'Reviewer' : 'Recenzentas'"
             name="REVIEWER_FULL_DETAILS"
             required
           >
             <UInput
               v-model="formData.REVIEWER_FULL_DETAILS"
-              placeholder="Vardas, Pavardė, Darbovietė, Pareigos..."
+              :placeholder="isEnglishVariant ? 'First Name, Last Name, Workplace, Position...' : 'Vardas, Pavardė, Darbovietė, Pareigos...'"
             />
             <template #hint>
-              (vardas, pavardė, darbovietė, pareigos, pedagoginis vardas, mokslinis laipsnis)
+              {{ isEnglishVariant ? '(First name, Last name, Workplace, Position, Academic title, Scientific degree)' : '(vardas, pavardė, darbovietė, pareigos, pedagoginis vardas, mokslinis laipsnis)' }}
             </template>
           </UFormGroup>
 
-          <!-- Review Criteria Section -> EDITABLE -->
           <div class="space-y-3 mt-8">
             <UFormGroup
-              label="Baigiamojo darbo tikslas, uždaviniai, problemos sprendimas:"
+              :label="isEnglishVariant ? 'Final Thesis Goal, Objectives, Problem Solving:' : 'Baigiamojo darbo tikslas, uždaviniai, problemos sprendimas:'"
               name="REVIEW_GOALS"
               required
             >
@@ -286,7 +279,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Teorinės dalies vertinimas:"
+              :label="isEnglishVariant ? 'Evaluation of the theoretical part:' : 'Teorinės dalies vertinimas:'"
               name="REVIEW_THEORY"
               required
             >
@@ -297,7 +290,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Tiriamosios / projektinės dalies vertinimas:"
+              :label="isEnglishVariant ? 'Evaluation of the research/design part:' : 'Tiriamosios/projektinės dalies vertinimas:'"
               name="REVIEW_PRACTICAL"
               required
             >
@@ -308,7 +301,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Tiriamosios / projektinės dalies ryšys su teorine dalimis:"
+              :label="isEnglishVariant ? 'Relationship between the research/design part and the theoretical part:' : 'Tiriamosios / projektinės dalies ryšys su teorine dalimis:'"
               name="REVIEW_THEORY_PRACTICAL_LINK"
             >
               <UTextarea
@@ -318,7 +311,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Baigiamojo darbo rezultatai ir išvados:"
+              :label="isEnglishVariant ? 'Final Thesis Results and Conclusions:' : 'Baigiamojo darbo rezultatai ir išvados:'"
               name="REVIEW_RESULTS"
             >
               <UTextarea
@@ -328,7 +321,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Baigiamojo darbo praktinė reikšmė (pritaikymo galimybės):"
+              :label="isEnglishVariant ? 'Practical implications of the thesis (possible applications):' : 'Baigiamojo darbo praktinė reikšmė (pritaikymo galimybės):'"
               name="REVIEW_PRACTICAL_SIGNIFICANCE"
             >
               <UTextarea
@@ -338,7 +331,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Kalbos taisyklingumas:"
+              :label="isEnglishVariant ? 'Correctness of language:' : 'Kalbos taisyklingumas:'"
               name="REVIEW_LANGUAGE"
             >
               <UTextarea
@@ -348,7 +341,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Baigiamojo darbo privalumai:"
+              :label="isEnglishVariant ? 'Advantages of a Thesis:' : 'Baigiamojo darbo privalumai:'"
               name="REVIEW_PROS"
             >
               <UTextarea
@@ -358,7 +351,7 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Baigiamojo darbo trūkumai:"
+              :label="isEnglishVariant ? 'Cons of a Thesis:' : 'Baigiamojo darbo trūkumai:'"
               name="REVIEW_CONS"
             >
               <UTextarea
@@ -368,21 +361,20 @@ const handleSave = async () => {
               />
             </UFormGroup>
             <UFormGroup
-              label="Klausimai darbo autoriui:"
+              :label="isEnglishVariant ? 'Questions for the Author:' : 'Klausimai darbo autoriui:'"
               name="REVIEW_QUESTIONS"
             >
               <UTextarea
                 v-model="formData.REVIEW_QUESTIONS"
                 :rows="3"
-                placeholder="Klausimai..."
+                :placeholder="isEnglishVariant ? 'Questions for the Author:' : 'Klausimai darbo autoriui:'"
               />
             </UFormGroup>
           </div>
 
-          <!-- Final Grade -> EDITABLE -->
           <div class="mt-12 pt-8">
             <UFormGroup
-              label="Baigiamojo darbo įvertinimas (dešimties balų sistemoje)"
+              :label="isEnglishVariant ? 'Assessment of the final thesis (ten-point system)' : 'Baigiamojo darbo įvertinimas (dešimties balų sistemoje)'"
               name="FINAL_GRADE"
               required
             >
@@ -396,37 +388,35 @@ const handleSave = async () => {
                   placeholder="0-10"
                   class="w-24"
                 />
-                <span class="text-xs text-gray-500 dark:text-gray-400">(įrašyti balą)</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ isEnglishVariant ? '(fill in the grade)' : '(įrašyti balą)' }}</span>
               </div>
             </UFormGroup>
             <div class="mt-2 text-right text-xs text-gray-500 dark:text-gray-400">
               <p>{{ initialData.REVIEWER_NAME_SIGNATURE ?? formData.REVIEWER_FULL_DETAILS }}</p>
-              <p>(vardas, pavardė, parašas)</p>
+              <p> {{ isEnglishVariant ? '(name, surname, signature)' : '(vardas, pavardė, parašas)' }} </p>
             </div>
           </div>
 
-          <!-- Date Section (Display Date from formData) -->
           <div class="mt-8 text-center">
             <p>{{ formattedFormDate }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              (data)
+              {{ isEnglishVariant ? '(date)' : '(data)' }}
             </p>
           </div>
 
-          <!-- Footer Buttons within the UForm -->
           <div class="text-right space-x-2 pt-4 border-t border-gray-200 dark:border-gray-800 mt-6">
             <UButton
               type="button"
               color="gray"
               variant="ghost"
-              label="Atšaukti"
+              :label="isEnglishVariant ? 'Save as Draft' : 'Išsaugoti kaip juodraštį'"
               :disabled="isSaving"
               @click="closeModal"
             />
             <UButton
               type="submit"
               color="primary"
-              label="Išsaugoti Recenziją"
+              :label="isEnglishVariant ? 'Approve and Submit' : 'Patvirtinti ir pateikti'"
               :loading="isSaving"
             />
           </div>

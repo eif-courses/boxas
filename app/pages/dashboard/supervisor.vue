@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { StudentRecord } from '~~/server/utils/db'
 import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
+import {useFormUtilities} from "~/composables/useFormUtilities";
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -326,6 +327,8 @@ const handleReportSave = async (recordId: number | null, updatedData: Supervisor
 const previewStudentRecordObject = ref(null)
 
 const isPreviewOpen = ref(false)
+
+const { determineFormVariant } = useFormUtilities()
 </script>
 
 <template>
@@ -582,14 +585,6 @@ const isPreviewOpen = ref(false)
           </template>
 
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <!--            <ActionDropdown -->
-            <!--              :main-action-label="$t('supervisor_report')" -->
-            <!--              main-action-icon="i-heroicons-magnifying-glass" -->
-            <!--              :main-action="() => handlePreview(row)" -->
-            <!--              :actions="getRowActions(row)" -->
-            <!--              :button-width="100" -->
-            <!--            /> -->
-
             <div>
               <PreviewSupervisorReport
                 :document-data="{
@@ -617,6 +612,7 @@ const isPreviewOpen = ref(false)
                   DATE: formatUnixDate(row.supervisorReports[0].createdDate),
                   PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
                 }"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 :button-label="$t('preview_supervisor_report')"
                 :modal-title="$t('supervisor_report')"
               />
@@ -627,7 +623,7 @@ const isPreviewOpen = ref(false)
               <EditSupervisorReportForm
                 :initial-data="{
                   studentRecordId: row.student?.id,
-                  DEPT: row.student?.department ? row.student.department + ' katedra' : 'N/A Katedra',
+                  DEPT: row.student?.department ? row.student.department : 'N/A Katedra',
                   PROGRAM: row.student?.studyProgram ?? 'N/A',
                   CODE: row.student?.programCode ?? 'N/A',
                   NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
@@ -640,8 +636,10 @@ const isPreviewOpen = ref(false)
                   JM: 0,
                   WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
                   POS: '',
-                  PASS: 1
+                  PASS: 1,
+                  DATE: new Date().toDateString().toString()
                 }"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 button-label="Pildyti Atsiliepimą"
                 @save="handleReportSave(row.student?.id ?? null, $event)"
               />

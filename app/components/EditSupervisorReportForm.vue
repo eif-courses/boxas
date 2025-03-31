@@ -6,6 +6,7 @@ import type { FormError } from '#ui/types'
 
 export interface SupervisorReportDataType {
   // Display Only (from initial data)
+  studentRecordId: string
   DEPT: string
   PROGRAM: string
   CODE: string
@@ -53,8 +54,14 @@ const props = defineProps({
   modalTitle: {
     type: String,
     default: 'Vadovo Atsiliepimo Pildymas / Redagavimas' // Default for editing
+  },
+  formVariant: {
+    type: String as PropType<'lt' | 'en'>, // Define possible variants
+    required: true // Make it required so parent MUST specify
   }
 })
+
+const isEnglishVariant = computed(() => props.formVariant === 'en')
 
 // --- Emits ---
 // Define the 'save' event that will emit the edited data
@@ -161,20 +168,18 @@ const displayData = computed(() => ({
   // DATE: props.initialData.DATE // Display original date if needed
 }))
 const defenseOptions = [
-  { value: 1, label: 'Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje ' },
-  // Value is now 0 (number)
-  { value: 0, label: 'Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje dėl plagiato fakto nustatymo' }
+  { value: 1, label: isEnglishVariant.value ? 'The thesis is suitable for defense at the Final Thesis Defense Committee meeting.' : 'Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.' },
+  { value: 0, label: isEnglishVariant.value ? 'The thesis is not suitable for defense at the Final Thesis Defense Committee meeting due to plagiarism detection.' : 'Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje dėl plagiato fakto nustatymo.' }
 ]
 
 const defenseAllowedText = computed(() => {
   // Returns the correct word based on formData.PASS being 1 or 0
-  return formData.value.PASS === 1 ? 'tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.' : 'netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje dėl plagiato fakto nustatymo.'
+  return formData.value.PASS === 1 ? isEnglishVariant.value ? 'The thesis is suitable for defense at the Final Thesis Defense Committee meeting.' : 'Baigiamasis darbas tinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje.' : isEnglishVariant.value ? 'The thesis is not suitable for defense at the Final Thesis Defense Committee meeting due to plagiarism detection.' : 'Baigiamasis darbas netinkamas ginti Baigiamųjų darbų gynimo komisijos posėdyje dėl plagiato fakto nustatymo.'
 })
 </script>
 
 <template>
   <div>
-    <!-- Trigger Button -->
     <UButton
       :label="buttonLabel"
       icon="i-heroicons-pencil-square"
@@ -184,7 +189,6 @@ const defenseAllowedText = computed(() => {
       @click="openModal"
     />
 
-    <!-- The Modal -->
     <UModal
       v-model="isOpen"
       prevent-close
@@ -201,7 +205,7 @@ const defenseAllowedText = computed(() => {
         <template #header>
           <div class="flex items-center">
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white truncate">
-              {{ modalTitle }}
+              {{ isEnglishVariant ? 'Final Thesis Supervisor\'s Review Form': 'Baigiamojo darbo vadovo atsiliepimo pildymas' }}
             </h3>
             <UButton
               color="gray"
@@ -216,84 +220,75 @@ const defenseAllowedText = computed(() => {
           </div>
         </template>
 
-        <!-- Document Body -> NOW A FORM -->
         <UForm
           :state="formData"
           :validate="validate"
           class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif"
           @submit="handleSave"
         >
-          <!-- Top Right Header (Display Only) -->
           <div class="text-right text-xs mb-10">
-            <p>Vilniaus kolegijos baigiamųjų darbų (projektų)</p>
-            <p>rengimo ir gynimo tvarkos aprašo</p>
+            <p>{{ isEnglishVariant ? 'Vilnius Kolegija Final Thesis (Projects)': 'Vilniaus kolegijos baigiamųjų darbų (projektų)' }} </p>
+            <p>{{ isEnglishVariant ? 'preparation and defense procedure description': 'rengimo ir gynimo tvarkos aprašo' }}</p>
             <p class="font-semibold">
-              4 priedas
+              {{ isEnglishVariant ? 'appendix 4' : '4 priedas' }}
             </p>
           </div>
 
-          <!-- Centered Faculty/Dept (Display Only) -->
           <div class="text-center uppercase font-semibold mb-10 space-y-1">
-            <p>Vilniaus kolegijos</p>
-            <p>Elektronikos ir informatikos fakultetas</p>
-            <p>{{ displayData.DEPT }} KATEDRA</p>
+            <p>{{ isEnglishVariant ? 'Vilnius kolegija': 'Vilniaus kolegijos' }}</p>
+            <p>{{ isEnglishVariant ? 'Faculty of Electronics and Informatics' : 'Elektronikos ir informatikos fakultetas' }} </p>
+            <p>{{ displayData.DEPT }} {{ isEnglishVariant ? 'DEPARTMENT' : 'KATEDRA' }}</p>
           </div>
 
-          <!-- Centered Title (Display Only) -->
           <div class="text-center uppercase font-semibold mb-10">
-            <p>Baigiamojo darbo vadovo atsiliepimas</p>
+            <p>
+              {{ isEnglishVariant ? 'Final Thesis Supervisor\'s Review': 'Baigiamojo darbo vadovo atsiliepimas' }}
+            </p>
           </div>
 
-          <!-- Study Program Line (Display Only) -->
           <p class="mb-2">
-            Studijų programa: „{{ displayData.PROGRAM }}“, valstybinis kodas {{ displayData.CODE }}
+            {{ isEnglishVariant ? 'Study program' : 'Studijų programa' }}: „{{ displayData.PROGRAM }}“, {{ isEnglishVariant ? 'state code': 'valstybinis kodas' }} {{ displayData.CODE }}
           </p>
 
-          <!-- Student Name Line (Display Only) -->
           <div class="flex justify-between items-end mb-0">
-            <span>Studentas (-ė):</span>
+            <span>{{ isEnglishVariant ? 'Student' : 'Studentas (-ė)' }}:</span>
             <span class="font-medium">{{ displayData.NAME }}</span>
           </div>
           <div class="text-right text-xs text-gray-500 dark:text-gray-400">
-            (vardas, pavardė)
+            {{ isEnglishVariant ? '(first name, last name)': '(vardas, pavardė)' }}
           </div>
 
-          <!-- Thesis Title Line (Display Only) -->
           <p class="mt-4 mb-6">
-            Baigiamojo darbo tema: <span class="font-bold">{{ displayData.TITLE }}</span>
+            {{ isEnglishVariant ? 'Final Thesis Topic' : 'Baigiamojo darbo tema' }}: <span class="font-bold">{{ displayData.TITLE }}</span>
           </p>
 
-          <!-- Explanation Paragraph -> EDITABLE -->
           <UFormGroup
-            label="Atsiliepimo tekstas"
+            :label="isEnglishVariant ? 'Feedback Text' : 'Atsiliepimo tekstas'"
             name="EXPL"
             required
           >
             <UTextarea
               v-model="formData.EXPL"
               :rows="6"
-              placeholder="Baigiamojo darbo autoriaus savarankiškumas, iniciatyva, darbo rengimo nuoseklumas"
+              :placeholder="isEnglishVariant ? 'The author\'s independence, initiative, and consistency in thesis preparation...' : 'Baigiamojo darbo autoriaus savarankiškumas, iniciatyva, darbo rengimo nuoseklumas...'"
             />
-            <!-- Note: text-indent won't work dynamically on textarea -->
           </UFormGroup>
 
-          <!-- Suitability & Plagiarism -> EDITABLE -->
           <div class="mt-6 space-y-3">
-            <p>Baigiamasis darbas <span class="font-medium">{{ defenseAllowedText }}</span></p>
+            <p> {{ defenseAllowedText }} </p>
 
             <URadioGroup
               v-model="formData.PASS"
               :options="defenseOptions"
-              legend="Pasirinkite vieną:"
+              :legend="isEnglishVariant ? 'Choose One:': 'Pasirinkite vieną:'"
             />
 
-            <!-- Overall Match -->
             <UFormGroup
               name="OM"
               required
             >
-              <div class="flex items-center space-x-2 text-sm">
-                <span>Nustatyta sutaptis su kitais darbais sudaro</span>
+              <div class="flex items-center space-x-2 text-sm gap-2">
+                <span>{{ isEnglishVariant ? 'The identified match with other works constitutes' : 'Nustatyta sutaptis su kitais darbais sudaro' }}</span>
                 <UInput
                   v-model.number="formData.OM"
                   type="number"
@@ -304,17 +299,17 @@ const defenseAllowedText = computed(() => {
                   class="w-20"
                   placeholder="0.0"
                 />
-                <span>procentų viso darbo, iš jų:</span>
+                <span>{{ isEnglishVariant ? 'percent of the entire work, of which:': 'procentų viso darbo, iš jų:' }}</span>
               </div>
             </UFormGroup>
-            <!-- Specific Matches - Indented -->
+
             <div class="pl-8 space-y-2 text-sm">
               <UFormGroup
                 name="SSM"
                 required
               >
                 <div class="flex items-center space-x-2">
-                  <span>sutaptis su vienu šaltiniu –</span>
+                  <span>{{ isEnglishVariant ? 'match with one source' : 'sutaptis su vienu šaltiniu' }} </span>
                   <UInput
                     v-model.number="formData.SSM"
                     type="number"
@@ -325,7 +320,7 @@ const defenseAllowedText = computed(() => {
                     class="w-20"
                     placeholder="0.0"
                   />
-                  <span>procentų viso darbo;</span>
+                  <span>{{ isEnglishVariant ? 'percent of the entire work;': 'procentų viso darbo;' }}</span>
                 </div>
               </UFormGroup>
               <UFormGroup
@@ -333,7 +328,7 @@ const defenseAllowedText = computed(() => {
                 required
               >
                 <div class="flex items-center space-x-2">
-                  <span>sutaptis su kitais to paties studento studijų rašto darbais sudaro</span>
+                  <span>{{ isEnglishVariant ? 'match with other written works of the same student constitutes': 'sutaptis su kitais to paties studento studijų rašto darbais sudaro' }}</span>
                   <UInput
                     v-model.number="formData.STUM"
                     type="number"
@@ -344,7 +339,7 @@ const defenseAllowedText = computed(() => {
                     class="w-20"
                     placeholder="0.0"
                   />
-                  <span>procentų viso darbo;</span>
+                  <span>{{ isEnglishVariant ? 'percent of the entire work;': 'procentų viso darbo;' }}</span>
                 </div>
               </UFormGroup>
               <UFormGroup
@@ -352,7 +347,7 @@ const defenseAllowedText = computed(() => {
                 required
               >
                 <div class="flex items-center space-x-2">
-                  <span>sutaptis su kitų studentų to paties jungtinio darbo autorių darbais sudaro</span>
+                  <span>{{ isEnglishVariant ? 'match with works of other students who are authors of the same joint work constitutes': 'sutaptis su kitų studentų to paties jungtinio darbo autorių darbais sudaro' }}</span>
                   <UInput
                     v-model.number="formData.JM"
                     type="number"
@@ -363,20 +358,19 @@ const defenseAllowedText = computed(() => {
                     class="w-20"
                     placeholder="0.0"
                   />
-                  <span>procentų viso darbo.</span>
+                  <span>{{ isEnglishVariant ? 'percent of the entire work.': 'procentų viso darbo.' }}</span>
                 </div>
               </UFormGroup>
             </div>
           </div>
 
-          <!-- Supervisor Section (Display Only Name, Edit WORK/POS) -->
           <div class="mt-12 pt-8">
             <p class="mb-4 font-semibold">
-              Patvirtinu:
+              {{ isEnglishVariant ? 'I Confirm:' : 'Patvirtinu:' }}
             </p>
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between sm:space-x-4 mb-4">
               <div class="mb-1 sm:mb-0">
-                <p>Baigiamojo darbo vadovas (-ė):</p>
+                <p>{{ isEnglishVariant ? 'Final Thesis Supervisor:': 'Baigiamojo darbo vadovas (-ė):' }}</p>
                 <p
                   class="text-xs text-transparent select-none invisible h-8 hidden sm:block"
                   aria-hidden="true"
@@ -387,74 +381,64 @@ const defenseAllowedText = computed(() => {
                   {{ displayData.SUPER }}
                 </p>
                 <div class="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mt-1">
-                  <p>(vardas, pavardė, parašas)</p>
+                  <p>{{ isEnglishVariant ? '(first name, last name, signature)' : '(vardas, pavardė, parašas)' }}</p>
                   <!-- <div class="flex items-center justify-start sm:justify-end space-x-1"> ... </div> -->
                 </div>
               </div>
             </div>
 
             <UFormGroup
-              label="Darbovietė"
+              :label="isEnglishVariant ? 'Workplace': 'Darbovietė'"
               name="WORK"
               required
               class="mt-4"
             >
               <UInput
                 v-model="formData.WORK"
-                placeholder="Įrašykite darbovietę"
+                :placeholder="isEnglishVariant ? 'Enter Your Workplace...' : 'Įrašykite darbovietę...'"
               />
             </UFormGroup>
 
             <UFormGroup
-              label="Pareigos"
+              :label="isEnglishVariant ? 'Position' : 'Pareigos'"
               name="POS"
               required
               class="mt-4"
             >
               <UInput
                 v-model="formData.POS"
-                placeholder="Įrašykite pareigas"
+                :placeholder="isEnglishVariant ? 'Enter Your Position/Duties' :'Nurodykite savo pareigas...'"
               />
             </UFormGroup>
           </div>
 
-          <!-- Date Section (Display Only Original Date) -->
           <div class="mt-8 text-center">
             <p>{{ formattedFormDate }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              (data)
+              {{ isEnglishVariant ? '(date)' : '(data)' }}
             </p>
           </div>
 
-          <!-- Footer Buttons within the UForm -->
           <div class="text-right space-x-2 pt-4 border-t border-gray-200 dark:border-gray-800 mt-6">
             <UButton
               type="button"
               color="gray"
               variant="ghost"
-              label="Atšaukti"
+              :label="isEnglishVariant ? 'Cancel' : 'Atšaukti'"
               :disabled="isSaving"
+              icon="i-heroicons-x-mark"
               @click="closeModal"
             />
+
             <UButton
               type="submit"
-              color="primary"
-              label="Išsaugoti"
+              color="emerald"
+              :label="isEnglishVariant ? 'Approve and Submit' : 'Patvirtinti ir pateikti'"
               :loading="isSaving"
+              icon="i-heroicons-check-circle"
             />
           </div>
-          <!-- Note: UForm doesn't have a direct footer slot, -->
-          <!-- buttons need to be placed before closing </UForm> -->
-          <!-- Or place them in the UCard footer slot -->
         </UForm>
-
-        <!-- Modal Footer -->
-        <!-- Remove buttons from here if placed within UForm -->
-        <!--
-        <template #footer>
-            Place Save/Cancel buttons here if NOT using UForm's submit event
-        </template>
-         -->
       </UCard>
     </UModal>
   </div>

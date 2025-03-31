@@ -89,7 +89,7 @@
                     STUM: report.ownMatch ?? 0,
                     JM: report.joinMatch ?? 0,
                     createdDate: formatUnixDateTime(report.createdDate), // Format the timestamp for the component
-
+                    PASS: report.isPassOrFailed ?? 1,
                     // --- Data that might need specific logic ---
                     // Assuming supervisor details might be on student or fetched/known elsewhere
                     SUPER: report.supervisorName ?? 'N/A Supervisor',
@@ -98,6 +98,7 @@
                     DATE: formatUnixDate(report.createdDate)
                   }"
                   :button-label="$t('preview_supervisor_report')"
+                  :form-variant="determineFormVariant(records.student?.studentGroup)"
                   :modal-title="$t('supervisor_report')"
                 />
               </div>
@@ -122,6 +123,7 @@
               <div v-if="getReviewerModalData(records)">
                 <PreviewReviewerReport
                   :review-data="getReviewerModalData(records)"
+                  :form-variant="determineFormVariant(records.student?.studentGroup)"
                   button-label="Peržiūrėti Recenziją"
                 />
               </div>
@@ -236,6 +238,7 @@ import { ref } from 'vue'
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
+import {useFormUtilities} from "~/composables/useFormUtilities";
 
 definePageMeta({
   middleware: ['student-access']
@@ -391,7 +394,7 @@ const fetchVideos = async () => {
     console.error('Error fetching videos:', error)
   }
 }
-
+const { determineFormVariant } = useFormUtilities()
 // Fetch videos on component mount
 onMounted(() => {
   fetchVideos()

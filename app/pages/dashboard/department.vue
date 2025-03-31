@@ -197,7 +197,7 @@
                   STUM: row.supervisorReports[0].ownMatch ?? 0,
                   JM: row.supervisorReports[0].joinMatch ?? 0,
                   createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
-
+                  PASS: row.supervisorReports[0].isPassOrFailed ?? 1,
                   // --- Data that might need specific logic ---
                   // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
                   SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
@@ -206,6 +206,7 @@
                   DATE: formatUnixDate(row.supervisorReports[0].createdDate)
                 }"
                 :button-label="$t('preview_supervisor_report')"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 :modal-title="$t('supervisor_report')"
               />
             </div>
@@ -229,6 +230,7 @@
             <div v-if="getReviewerModalData(row)">
               <PreviewReviewerReport
                 :review-data="getReviewerModalData(row)"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 button-label="Peržiūrėti Recenziją"
               />
             </div>
@@ -426,6 +428,7 @@
 
 <script lang="ts" setup>
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
+import { useFormUtilities } from '~/composables/useFormUtilities'
 
 definePageMeta({
   middleware: ['department-access']
@@ -827,4 +830,6 @@ async function updateProjectTitle({ studentId, finalProjectTitle }) {
   }
 }
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
+
+const { determineFormVariant } = useFormUtilities()
 </script>

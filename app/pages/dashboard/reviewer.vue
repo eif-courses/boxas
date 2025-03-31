@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 import type { ReviewerReportDataType, ReviewerReportFormData } from '~/components/EditReviewerReportForm.vue'
+import { useFormUtilities } from '~/composables/useFormUtilities'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -362,6 +363,8 @@ const handleReviewerReportSave = async (recordId: number | null, updatedData: Re
     isParentSavingReview.value = false
   }
 }
+
+const { determineFormVariant } = useFormUtilities()
 </script>
 
 <template>
@@ -624,6 +627,7 @@ const handleReviewerReportSave = async (recordId: number | null, updatedData: Re
             <div v-if="getReviewerModalData(row)">
               <PreviewReviewerReport
                 :review-data="getReviewerModalData(row)"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 button-label="Peržiūrėti Recenziją"
               />
             </div>
@@ -642,6 +646,7 @@ const handleReviewerReportSave = async (recordId: number | null, updatedData: Re
 
             <div v-if="studentAndReviewData">
               <EditReviewerReportForm
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
                 :initial-data="studentAndReviewData"
                 @save="handleReviewerReportSave(row.student.id, $event)"
               />
