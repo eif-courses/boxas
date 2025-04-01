@@ -17,17 +17,10 @@ export const departmentHeads = sqliteTable('department_heads', {
 
 export const commissionMembers = sqliteTable('commission_members', {
   id: integer('id').primaryKey(),
-  email: text('email').notNull(),
+  token: text('token').notNull().unique(),
   department: text('department').notNull(),
-  jobTitle: text('job_title').notNull().default('Komisijos narys'),
   isActive: integer('is_active').default(1),
   createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
-}, (table) => {
-  return {
-    emailIdx: index('commission_email_idx').on(table.email),
-    deptIdx: index('commission_dept_idx').on(table.department),
-    activeEmailIdx: index('commission_active_email_idx').on(table.isActive, table.email)
-  }
 })
 
 export const studentRecords = sqliteTable('student_records', {

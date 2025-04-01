@@ -153,7 +153,7 @@ const logout = async () => {
           />
 
           <UButton
-            v-if="authStore.hasDepartmentHeadAccess() || authStore.hasCommisionAccess()"
+            v-if="authStore.hasDepartmentHeadAccess()"
             :to="`/${locale}/dashboard/commission`"
             icon="i-heroicons-check-circle"
             :label="$t('nav_commission')"

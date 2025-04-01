@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="data?.success">
     <UCard
       class="w-full"
       :ui="{
@@ -438,6 +438,9 @@
       <!--      </UCard> -->
     </UModal>
   </div>
+  <div v-else>
+    Access Denied ❌
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -445,8 +448,17 @@ import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 
 definePageMeta({
-  middleware: ['department-access']
+  middleware: ['commision-access']
 })
+
+const route = useRoute()
+const token = route.query.token
+
+const { data, error } = await useFetch(`/api/admin/validate-temp-token?token=${token}`)
+
+if (error.value) {
+  console.error('Access Denied:', error.value)
+}
 
 const { t } = useI18n()
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
@@ -501,62 +513,6 @@ const toast = useToast()
 const updateCounter = ref(0)
 
 // Simplified toggle function that forces refresh
-async function toggleFavorite(student) {
-  try {
-    // Get the current status and prepare new status
-    const currentStatus = student.isFavorite
-    const newStatus = currentStatus === 1 ? 0 : 1
-    const actionText = newStatus === 1 ? 'added to' : 'removed from'
-
-    // Set loading state
-    isRefreshing.value = true
-
-    // Call API to update favorite status
-    await $fetch(`/api/students/favorite/${student.id}`, {
-      method: 'PATCH',
-      body: { isFavorite: newStatus }
-    })
-
-    // After API succeeds, refresh the data
-    const queryParams = new URLSearchParams()
-    if (yearFilter.value) {
-      queryParams.set('year', yearFilter.value.toString())
-    }
-
-    // Get fresh data from server
-    const response = await $fetch(`/api/students/department?${queryParams.toString()}`)
-
-    // Update the data
-    allStudents.value = response
-
-    // Increment counter to force complete UI refresh
-    updateCounter.value++
-
-    // Show success notification
-    toast.add({
-      title: `${student.studentName} ${student.studentLastname}`,
-      description: `Successfully ${actionText} favorites`,
-      icon: newStatus === 1 ? 'i-heroicons-star-solid' : 'i-heroicons-star',
-      color: 'amber',
-      timeout: 3000
-    })
-  }
-  catch (error) {
-    console.error('Error updating favorite status:', error)
-
-    // Show error toast
-    toast.add({
-      title: 'Error',
-      description: 'Failed to update favorites status',
-      icon: 'i-heroicons-exclamation-triangle',
-      color: 'red',
-      timeout: 5000
-    })
-  }
-  finally {
-    isRefreshing.value = false
-  }
-}
 
 // Use the same function for the refresh button
 async function refreshData() {
@@ -569,7 +525,7 @@ async function refreshData() {
       queryParams.set('year', yearFilter.value.toString())
     }
 
-    const response = await $fetch(`/api/students/commission?${queryParams.toString()}`)
+    const response = await $fetch(`/api/students/commission?token=${token}`)
     allStudents.value = response
 
     // Increment counter to force UI refresh
@@ -672,13 +628,13 @@ const resetFilters = () => {
 const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
 
 const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allStudents', async () => {
-  const queryParams = new URLSearchParams()
-  if (yearFilter.value) {
-    queryParams.set('year', yearFilter.value.toString())
-  }
+  // const queryParams = new URLSearchParams()
+  // if (yearFilter.value) {
+  //   queryParams.set('year', yearFilter.value.toString())
+  // }
 
   try {
-    const response = await $fetch(`/api/students/commission?${queryParams.toString()}`)
+    const response = await $fetch(`/api/students/commission?token=${token}`)
     return response
   }
   catch (err) {

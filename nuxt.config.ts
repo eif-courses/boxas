@@ -51,5 +51,11 @@ export default defineNuxtConfig({
     langDir: 'lang',
     strategy: 'prefix_and_default',
     defaultLocale: 'en-GB'
+  },
+  runtimeConfig: {
+    JWT_SECRET: process.env.JWT_SECRET, // Not exposed to the frontend
+    public: {
+      APP_URL: process.env.APP_URL // Exposed to the frontend
+    }
   }
 })

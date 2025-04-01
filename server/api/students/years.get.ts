@@ -8,16 +8,16 @@ export default defineEventHandler(async (event) => {
   logger.info('Processing request for academic years')
 
   try {
-    const { user } = await requireUserSession(event)
+    // const { user } = await requireUserSession(event)
+    //
+    // if (!user) {
+    //   logger.error('Unauthorized access attempt', {
+    //     endpoint: 'academic-years'
+    //   })
+    //   throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    // }
 
-    if (!user) {
-      logger.error('Unauthorized access attempt', {
-        endpoint: 'academic-years'
-      })
-      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-    }
-
-    logger.info('User authenticated', { email: user.mail })
+    // logger.info('User authenticated', { email: user.mail })
 
     const db = useDB()
     logger.debug('Executing database query for academic years')

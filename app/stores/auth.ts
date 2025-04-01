@@ -14,6 +14,10 @@ export const useAuthStore = defineStore('auth', {
       isStudent: boolean
       isReviewer: boolean
       isAdmin: boolean
+    },
+    temporaryCommissionInfo: null as null | {
+      department: string
+      // Add other info returned by your /api/commission/check endpoint if needed
     }
   }),
   actions: {
@@ -26,6 +30,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async setUser(userData) {
+      this.temporaryCommissionInfo = null
+
       let role = 'teacher' // Default role
 
       // Use mail or email property (whichever is available)
@@ -63,23 +69,6 @@ export const useAuthStore = defineStore('auth', {
         isDepartmentHead = false
       }
 
-      let isCommission = false
-
-      try {
-        // Call the department commission check API
-        const response = await $fetch('/api/users/is-commission-member', {
-          method: 'GET'
-        })
-
-        // Update the department commission status from the response
-        isCommission = response.isCommissionMember === true
-      }
-      catch (error) {
-        console.error('Error checking department commission status:', error)
-        // Default to false if there's an error
-        isCommission = false
-      }
-
       // Create the user object with all needed properties
       this.user = {
         displayName: userData.displayName,
@@ -89,10 +78,50 @@ export const useAuthStore = defineStore('auth', {
         jobTitle: userData.jobTitle || null,
         isTeacher: role === 'teacher' || userData.jobTitle === 'Dėstytojas' || isDepartmentHead,
         isDepartmentHead: isDepartmentHead,
-        isCommission: role === 'commission' || isCommission,
+        isCommission: role === 'commission',
         isStudent: role === 'student',
         isReviewer: true, // role === 'reviewer'
         isAdmin: role === 'admin'
+      }
+    },
+    // --- ADDED: Action to attempt setting temporary access via token ---
+    async setTemporaryCommissionAccess(token: string): Promise<boolean> {
+      // Clear existing user/temp access first
+      this.user = null
+      this.temporaryCommissionInfo = null
+
+      if (!token) {
+        console.warn('Attempted to set temporary access with empty token.')
+        return false
+      }
+
+      console.log('Attempting to validate commission token...')
+      try {
+        // Call your token validation endpoint
+        const response = await $fetch('/api/users/is-commission-member', { // Use your GET endpoint
+          method: 'GET',
+          query: { token } // Pass token as query parameter
+        })
+
+        if (response && response.isValid && response.memberInfo) {
+          console.log('Token is valid. Setting temporary commission access.', response.memberInfo)
+          // Store the relevant info returned by the API
+          this.temporaryCommissionInfo = {
+            department: response.memberInfo.department
+            // Store other relevant info if needed
+          }
+          return true // Indicate success
+        }
+        else {
+          console.log('Token is invalid or inactive.')
+          this.temporaryCommissionInfo = null // Ensure it's cleared
+          return false // Indicate failure
+        }
+      }
+      catch (error) {
+        console.error('Error validating commission token:', error)
+        this.temporaryCommissionInfo = null // Clear on error
+        return false // Indicate failure
       }
     },
 
@@ -102,8 +131,9 @@ export const useAuthStore = defineStore('auth', {
     hasDepartmentHeadAccess() {
       return this.user?.isDepartmentHead === true
     },
-    hasCommisionAccess() {
-      return this.user?.isCommission === true
+    hasCommissionAccess() {
+      // User has access if they are logged in as commission OR have temporary access set
+      return this.user?.isCommission === true || !!this.temporaryCommissionInfo
     },
     hasStudentAccess() {
       return this.user?.isStudent === true
@@ -118,19 +148,32 @@ export const useAuthStore = defineStore('auth', {
     // Clear user data on logout
     clearUser() {
       this.user = null
-      // Also clear session if using the session system
+      this.temporaryCommissionInfo = null // <<< Also clear temporary access
       const { clear } = useUserSession()
-      clear()
+      try { clear() }
+      catch (e) { console.warn('Error clearing session', e) }
     }
   },
   getters: {
     // Get current user
+    // getUser: state => state.user,
+    //
+    // // Check if user is authenticated
+    // isAuthenticated: state => !!state.user,
+    //
+    // // Get user's primary role
+    // userRole: state => state.user?.role || 'guest'
     getUser: state => state.user,
+    isAuthenticated: state => !!state.user, // Based on logged-in user only
+    // --- ADDED: Getter to check if *any* commission access exists ---
+    isCommissionMemberOrHasTokenAccess: state => !!state.user?.isCommission || !!state.temporaryCommissionInfo,
+    // --- ADDED: Getter for temporary info ---
+    getTemporaryCommissionInfo: state => state.temporaryCommissionInfo,
+    userRole: (state) => { // Role prioritizes logged-in user
+      if (state.user) return state.user.role || 'guest'
+      if (state.temporaryCommissionInfo) return 'commission' // Assign a role for token access
+      return 'guest'
+    }
 
-    // Check if user is authenticated
-    isAuthenticated: state => !!state.user,
-
-    // Get user's primary role
-    userRole: state => state.user?.role || 'guest'
   }
 })
