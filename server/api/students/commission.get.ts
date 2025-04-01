@@ -1,83 +1,100 @@
 // server/api/commission-data.get.ts
 
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { eq, and, inArray, sql } from 'drizzle-orm' // Removed 'desc' as using sql.max
+import { eq, and, inArray, sql, gt } from 'drizzle-orm' // Added 'gt' for expiration check
 import {
   studentRecords,
   documents,
   videos,
   reviewerReports,
   supervisorReports,
-  commissionMembers // Only need commissionMembers schema now
-} from '~~/server/database/schema' // Adjust path
-// Assuming schema files export the correct table types (e.g., Documents, Videos etc.)
+  commissionMembers
+} from '~~/server/database/schema'
 import type { DocumentRecord, VideoRecord, ReviewerReport, SupervisorReport, StudentRecord } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   const logger = event.context.logger || console
-  logger.info('Processing commission data request (TOKEN ONLY)')
+  logger.info('Processing commission data request')
 
   const query = getQuery(event)
-  const token = query.token as string | undefined
+  const accessCode = query.code as string | undefined // Changed from token to code
   const requestedYear = parseInt(query.year as string) || null
-  // Department filter from query is generally NOT needed/advised for token access,
-  // as the token should dictate the department. Keep for potential admin override?
-  // const departmentFilterFromQuery = query.department as string | null;
 
-  logger.debug('Request parameters', { requestedYear, hasToken: !!token })
+  logger.debug('Request parameters', { requestedYear, hasAccessCode: !!accessCode })
 
   const db = useDB()
   const conditions = []
-  let userDepartment: string | null = null // Department derived ONLY from token
+  let userDepartment: string | null = null
 
-  // --- 1. Token Validation ---
-  if (!token || typeof token !== 'string' || token.trim() === '') {
-    logger.warn('Access denied: Missing or invalid token query parameter.')
+  // --- 1. Access Code Validation ---
+  if (!accessCode || typeof accessCode !== 'string' || accessCode.trim() === '') {
+    logger.warn('Access denied: Missing or invalid access code parameter.')
     throw createError({
       statusCode: 401, // Unauthorized
-      statusMessage: 'Unauthorized: Access token is required.'
+      statusMessage: 'Unauthorized: Access code is required.'
     })
   }
 
-  logger.debug(`Validating token: ${token.substring(0, 5)}...`)
+  logger.debug(`Validating access code: ${accessCode.substring(0, 5)}...`)
   try {
+    const currentTimestamp = Math.floor(Date.now() / 1000) // Current time in seconds
+
     const commissionMember = await db.query.commissionMembers.findFirst({
       where: and(
-        eq(commissionMembers.token, token),
-        eq(commissionMembers.isActive, 1)
+        eq(commissionMembers.accessCode, accessCode), // Changed from token to accessCode
+        eq(commissionMembers.isActive, 1),
+        gt(commissionMembers.expiresAt, currentTimestamp) // Added expiration check
       ),
-      columns: { id: true, department: true }
+      columns: { id: true, department: true, expiresAt: true }
     })
 
     if (!commissionMember) {
-      logger.warn('Access denied: Provided token is invalid or inactive.')
-      throw createError({
-        statusCode: 403, // Forbidden
-        statusMessage: 'Forbidden: Invalid or inactive access token.'
+      // Check if it's expired or invalid
+      const expiredMember = await db.query.commissionMembers.findFirst({
+        where: and(
+          eq(commissionMembers.accessCode, accessCode),
+          eq(commissionMembers.isActive, 1)
+        ),
+        columns: { id: true, expiresAt: true }
       })
+
+      if (expiredMember && expiredMember.expiresAt < currentTimestamp) {
+        logger.warn('Access denied: Provided access code has expired.')
+        throw createError({
+          statusCode: 403, // Forbidden
+          statusMessage: 'Forbidden: Access code has expired.'
+        })
+      }
+      else {
+        logger.warn('Access denied: Provided access code is invalid or inactive.')
+        throw createError({
+          statusCode: 403, // Forbidden
+          statusMessage: 'Forbidden: Invalid or inactive access code.'
+        })
+      }
     }
 
-    logger.info('Token valid and active.', { tokenId: commissionMember.id, department: commissionMember.department })
-    userDepartment = commissionMember.department // Department comes ONLY from token record
-    conditions.push(eq(studentRecords.department, userDepartment))
+    logger.info('Access code valid and active.', {
+      memberId: commissionMember.id,
+      department: commissionMember.department,
+      expiresAt: new Date(commissionMember.expiresAt * 1000).toISOString()
+    })
+
+    // Update last accessed timestamp
+    await db.update(commissionMembers)
+      .set({ lastAccessedAt: currentTimestamp })
+      .where(eq(commissionMembers.id, commissionMember.id))
+
+    userDepartment = commissionMember.department
+    conditions.push(eq(studentRecords.studyProgram, userDepartment))
   }
-  catch (tokenError: any) {
-    logger.error('Database error checking token', { error: tokenError.message })
+  catch (accessError: any) {
+    logger.error('Database error checking access code', { error: accessError.message })
     throw createError({
       statusCode: 500,
-      statusMessage: 'Internal Server Error checking access token.'
+      statusMessage: 'Internal Server Error checking access code.'
     })
   }
-
-  // --- Optional: Apply explicit department filter from query ---
-  // Use with caution. Should this token be allowed to see other departments?
-  // if (departmentFilterFromQuery && userDepartment !== departmentFilterFromQuery) {
-  //   logger.info('Overriding department filter based on query parameter (Admin/Special Token?).', { original: userDepartment, new: departmentFilterFromQuery });
-  //   conditions = conditions.filter(cond => JSON.stringify(cond).indexOf('"field":"department"') === -1);
-  //   conditions.push(eq(studentRecords.department, departmentFilterFromQuery));
-  //   userDepartment = departmentFilterFromQuery; // Update effective department
-  // }
-  // --- ---
 
   // --- 2. Fetch Data Based on Determined Conditions ---
   try {
@@ -88,7 +105,6 @@ export default defineEventHandler(async (event) => {
       const latestYearResult = await db
         .select({ maxYear: sql<number>`max(${studentRecords.currentYear})` })
         .from(studentRecords)
-      // Conditions array will contain the department filter at this point
         .where(and(...conditions))
         .limit(1)
         .execute()
@@ -105,7 +121,7 @@ export default defineEventHandler(async (event) => {
     const studentRecordsResult = await db.select()
       .from(studentRecords)
       .where(and(...conditions))
-      .orderBy(studentRecords.studentGroup, studentRecords.studentLastname) // Example Order
+      .orderBy(studentRecords.studentGroup, studentRecords.studentLastname)
       .execute()
 
     // --- 3. Handle No Students Found ---
@@ -115,9 +131,12 @@ export default defineEventHandler(async (event) => {
         students: [],
         total: 0,
         year: targetYear,
-        // isDepartmentHead: false, // No longer relevant without session
-        isCommissionMember: true, // Access was granted via token
-        userDepartment // The department the token is valid for
+        isCommissionMember: true,
+        userDepartment,
+        accessExpires: new Date((await db.query.commissionMembers.findFirst({
+          where: eq(commissionMembers.accessCode, accessCode),
+          columns: { expiresAt: true }
+        }))?.expiresAt * 1000).toLocaleDateString()
       }
     }
 
@@ -167,16 +186,21 @@ export default defineEventHandler(async (event) => {
     })
 
     // Map student records and attach related data using the maps
-    const studentsData = studentRecordsResult.map((student: StudentRecord) => { // Explicit type
+    const studentsData = studentRecordsResult.map((student: StudentRecord) => {
       return {
-        student, // The main student record object
-        documents: documentsMap.get(student.id) || [], // Get docs from map or empty array
-        videos: videosMap.get(student.id) || [], // Get videos from map or empty array
-        reviewerReports: reviewerReportsMap.get(student.id) || [], // Get reviewer reports or empty
-        supervisorReports: supervisorReportsMap.get(student.id) || [] // Get supervisor reports or empty
+        student,
+        documents: documentsMap.get(student.id) || [],
+        videos: videosMap.get(student.id) || [],
+        reviewerReports: reviewerReportsMap.get(student.id) || [],
+        supervisorReports: supervisorReportsMap.get(student.id) || []
       }
     })
-    // --- End Data Organization ---
+
+    // Get the expiration date for this access code
+    const accessExpires = await db.query.commissionMembers.findFirst({
+      where: eq(commissionMembers.accessCode, accessCode),
+      columns: { expiresAt: true }
+    })
 
     logger.info('Response prepared successfully.')
     // --- 6. Return Final Response ---
@@ -184,13 +208,12 @@ export default defineEventHandler(async (event) => {
       students: studentsData,
       total: studentRecordsResult.length,
       year: targetYear,
-      // isDepartmentHead: false, // Not relevant without session
-      isCommissionMember: true, // Access was via token
-      userDepartment // The department filter that was applied
+      isCommissionMember: true,
+      userDepartment,
+      accessExpires: new Date(accessExpires?.expiresAt * 1000).toLocaleDateString()
     }
   }
   catch (error: any) {
-    // Catch errors from year determination, student fetch, or related data fetch
     logger.error('Error fetching or processing commission data:', {
       error: error.message,
       stack: error.stack

@@ -1,469 +1,484 @@
 <template>
-  <div v-if="data?.success">
-    <UCard
-      class="w-full"
-      :ui="{
-        base: '',
-        ring: '',
-        divide: 'divide-y divide-gray-200 dark:divide-gray-700',
-        header: { padding: 'px-4 py-5' },
-        body: { padding: '', base: 'divide-y divide-gray-200 dark:divide-gray-700' },
-        footer: { padding: 'p-4' }
-      }"
-    >
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3">
-        <div class="flex flex-1 w-full sm:w-auto">
-          <UInput
-            v-model="search"
-            icon="i-heroicons-magnifying-glass-20-solid"
-            :placeholder="$t('search')"
-            class="w-full"
+  <UCard
+    class="w-full"
+    :ui="{
+      base: '',
+      ring: '',
+      divide: 'divide-y divide-gray-200 dark:divide-gray-700',
+      header: { padding: 'px-4 py-5' },
+      body: { padding: '', base: 'divide-y divide-gray-200 dark:divide-gray-700' },
+      footer: { padding: 'p-4' }
+    }"
+  >
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3">
+      <div class="flex flex-1 w-full sm:w-auto">
+        <UInput
+          v-model="search"
+          icon="i-heroicons-magnifying-glass-20-solid"
+          :placeholder="$t('search')"
+          class="w-full"
+        />
+      </div>
+
+      <!--        <div class="flex items-center gap-3"> -->
+      <!--          <div class="flex items-center gap-2"> -->
+      <!--            <UToggle -->
+      <!--              v-model="showFavoritesOnly" -->
+      <!--              color="amber" -->
+      <!--            > -->
+      <!--              <template #left> -->
+      <!--                <UIcon -->
+      <!--                  name="i-heroicons-star" -->
+      <!--                  class="w-5 h-5 text-amber-400" -->
+      <!--                /> -->
+      <!--              </template> -->
+      <!--            </UToggle> -->
+
+      <!--            {{ $t('favorites') }} -->
+      <!--            <span -->
+      <!--              class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer" -->
+      <!--              @click="showFavoritesOnly = !showFavoritesOnly" -->
+      <!--            > -->
+
+      <!--              <UBadge -->
+      <!--                v-if="allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length > 0" -->
+      <!--                color="amber" -->
+      <!--                variant="solid" -->
+      <!--                size="xs" -->
+      <!--                class="ml-1" -->
+      <!--              > -->
+      <!--                {{ allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length }} -->
+      <!--              </UBadge> -->
+      <!--            </span> -->
+      <!--          </div> -->
+      <!--        </div> -->
+    </div>
+
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
+          <USelect
+            v-model="pageCount"
+            :options="[3, 5, 10, 20, 30, 40]"
+            class="w-16"
+            size="xs"
+            @update:model-value="value => pageCount = Number(value)"
           />
         </div>
 
-        <!--        <div class="flex items-center gap-3"> -->
-        <!--          <div class="flex items-center gap-2"> -->
-        <!--            <UToggle -->
-        <!--              v-model="showFavoritesOnly" -->
-        <!--              color="amber" -->
-        <!--            > -->
-        <!--              <template #left> -->
-        <!--                <UIcon -->
-        <!--                  name="i-heroicons-star" -->
-        <!--                  class="w-5 h-5 text-amber-400" -->
-        <!--                /> -->
-        <!--              </template> -->
-        <!--            </UToggle> -->
-
-        <!--            {{ $t('favorites') }} -->
-        <!--            <span -->
-        <!--              class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer" -->
-        <!--              @click="showFavoritesOnly = !showFavoritesOnly" -->
-        <!--            > -->
-
-        <!--              <UBadge -->
-        <!--                v-if="allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length > 0" -->
-        <!--                color="amber" -->
-        <!--                variant="solid" -->
-        <!--                size="xs" -->
-        <!--                class="ml-1" -->
-        <!--              > -->
-        <!--                {{ allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length }} -->
-        <!--              </UBadge> -->
-        <!--            </span> -->
-        <!--          </div> -->
-        <!--        </div> -->
-      </div>
-
-      <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
-        <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
-            <USelect
-              v-model="pageCount"
-              :options="[3, 5, 10, 20, 30, 40]"
-              class="w-16"
-              size="xs"
-              @update:model-value="value => pageCount = Number(value)"
-            />
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
-            <USelect
-              v-model="yearFilter"
-              :options="availableYears"
-              class="w-20"
-              size="xs"
-              :placeholder="$t('all_years')"
-              clearable
-              :loading="yearsLoading"
-            />
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
-            <USelect
-              v-model="groupFilter"
-              :options="uniqueGroups"
-              class="w-24 flex-grow"
-              size="xs"
-              :placeholder="$t('all')"
-              clearable
-            />
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
-            <USelect
-              v-model="programFilter"
-              :options="uniquePrograms"
-              class="w-24 flex-grow"
-              size="xs"
-              :placeholder="$t('all')"
-              clearable
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
-          <!--          <USelectMenu -->
-          <!--            v-model="selectedColumns" -->
-          <!--            :options="excludeSelectColumn" -->
-          <!--            multiple -->
-          <!--          > -->
-          <!--            <UButton -->
-          <!--              icon="i-heroicons-view-columns" -->
-          <!--              color="gray" -->
-          <!--              size="xs" -->
-          <!--            > -->
-          <!--              {{ $t('choose_columns') }} -->
-          <!--            </UButton> -->
-          <!--          </USelectMenu> -->
-
-          <UButton
-            icon="i-heroicons-funnel"
-            color="gray"
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
+          <USelect
+            v-model="yearFilter"
+            :options="availableYears"
+            class="w-20"
             size="xs"
-            :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter && !showFavoritesOnly"
-            @click="resetFilters"
-          >
-            {{ $t('reset') }}
-          </UButton>
+            :placeholder="$t('all_years')"
+            clearable
+            :loading="yearsLoading"
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
+          <USelect
+            v-model="groupFilter"
+            :options="uniqueGroups"
+            class="w-24 flex-grow"
+            size="xs"
+            :placeholder="$t('all')"
+            clearable
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
+          <USelect
+            v-model="programFilter"
+            :options="uniquePrograms"
+            class="w-24 flex-grow"
+            size="xs"
+            :placeholder="$t('all')"
+            clearable
+          />
         </div>
       </div>
 
-      <UTable
-        v-if="filteredStudents.students.length > 0"
-        :key="`table-${updateCounter}`"
-        v-model:sort="sort"
-        :rows="filteredStudents.students"
-        :columns="columnsTable"
-        :loading="status === 'pending' || isRefreshing"
-        sort-asc-icon="i-heroicons-arrow-up"
-        sort-desc-icon="i-heroicons-arrow-down"
-        sort-mode="manual"
-        class="w-full"
-        :ui="{
-          td: { base: 'whitespace-nowrap px-2 py-1' },
-          th: { base: 'px-2 py-1' },
-          default: { checkbox: { color: 'primary' } }
-        }"
-      >
-        <!--        <template #favorite-data="{ row }"> -->
-        <!--          <div class="flex justify-center items-center"> -->
-        <!--            &lt;!&ndash; Using v-if/v-else for better reactivity &ndash;&gt; -->
+      <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
+        <!--          <USelectMenu -->
+        <!--            v-model="selectedColumns" -->
+        <!--            :options="excludeSelectColumn" -->
+        <!--            multiple -->
+        <!--          > -->
         <!--            <UButton -->
-        <!--              v-if="row.student.isFavorite === 1" -->
-        <!--              icon="i-heroicons-star-solid" -->
+        <!--              icon="i-heroicons-view-columns" -->
+        <!--              color="gray" -->
         <!--              size="xs" -->
-        <!--              color="amber" -->
-        <!--              variant="ghost" -->
-        <!--              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-100" -->
-        <!--              @click.stop="toggleFavorite(row.student)" -->
-        <!--            /> -->
-        <!--            <UButton -->
-        <!--              v-else -->
-        <!--              icon="i-heroicons-star" -->
-        <!--              size="xs" -->
-        <!--              color="amber" -->
-        <!--              variant="ghost" -->
-        <!--              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-50 hover:opacity-80" -->
-        <!--              @click.stop="toggleFavorite(row.student)" -->
-        <!--            /> -->
-        <!--          </div> -->
-        <!--        </template> -->
+        <!--            > -->
+        <!--              {{ $t('choose_columns') }} -->
+        <!--            </UButton> -->
+        <!--          </USelectMenu> -->
 
-        <template #group-data="{ row }">
-          <div class="text-center w-12">
-            {{ row.student.studentGroup }}
-          </div>
-        </template>
-
-        <template #name-data="{ row }">
-          <div class="truncate font-bold">
-            {{ row.student.studentName }} {{ row.student.studentLastname }}
-          </div>
-          <div>{{ row.student.finalProjectTitle }}</div>
-          <div>{{ row.student.finalProjectTitleEn }}</div>
-        </template>
-
-        <template #supervisor-data="{ row }">
-          <div class="truncate mb-1">
-            {{ row.student.supervisorEmail }}
-          </div>
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <div>
-              <PreviewSupervisorReport
-                :document-data="{
-                  // --- Data from main student record ---
-                  // Adjust field names based on your actual StudentRecord interface
-                  NAME: row.student?.studentName +' '+row.student?.studentLastname,
-                  PROGRAM: row.student?.studyProgram ?? 'N/A',
-                  CODE: row.student?.programCode ?? 'N/A',
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
-                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
-                  WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  // --- Data specific to THIS report ---
-                  EXPL: row.supervisorReports[0].supervisorComments ?? '', // Use comments as EXPL
-                  OM: row.supervisorReports[0].otherMatch ?? 0,
-                  SSM: row.supervisorReports[0].oneMatch ?? 0,
-                  STUM: row.supervisorReports[0].ownMatch ?? 0,
-                  JM: row.supervisorReports[0].joinMatch ?? 0,
-                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
-                  PASS: row.supervisorReports[0].isPassOrFailed ?? 1,
-                  // --- Data that might need specific logic ---
-                  // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
-                  SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
-                  POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
-                  // Use the report's creation date, formatted, for the main 'DATE' field
-                  DATE: formatUnixDate(row.supervisorReports[0].createdDate)
-                }"
-                :button-label="$t('preview_supervisor_report')"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                :modal-title="$t('supervisor_report')"
-              />
-            </div>
-          </template>
-          <template v-else>
-            <div class="flex gap-2 justify-left">
-              <UIcon
-                name="i-heroicons-clock"
-                class="w-5 h-5 text-yellow-500"
-              />
-              <span>{{ $t('supervisor_report') }} ({{ $t('report_not_filled') }})</span>
-            </div>
-          </template>
-        </template>
-
-        <template #reviewer-data="{ row }">
-          <div class="truncate mb-1">
-            {{ row.student.reviewerName }}
-          </div>
-          <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
-            <div v-if="getReviewerModalData(row)">
-              <PreviewReviewerReport
-                :review-data="getReviewerModalData(row)"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                button-label="Peržiūrėti Recenziją"
-              />
-            </div>
-          </template>
-          <template v-else>
-            <div class="flex gap-2 justify-left">
-              <UIcon
-                name="i-heroicons-clock"
-                class="w-5 h-5 text-yellow-500"
-              />
-              <span>{{ $t('reviewer_report') }} ({{ $t('report_not_filled') }})</span>
-            </div>
-          </template>
-        </template>
-
-        <template #actions-data="{ row }">
-          <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
-            <UButton
-              v-if="row.videos && row.videos[0]"
-              icon="i-heroicons-video-camera"
-              size="xs"
-              color="white"
-              variant="solid"
-              label="Vaizdo"
-              :trailing="false"
-              class="p-1 text-xs"
-              @click="sendStudentData(row.videos[0], row.student)"
-            />
-
-            <template
-              v-for="doc in row.documents || []"
-              :key="doc.id"
-            >
-              <UButton
-                :loading="isFetchingDocument"
-                :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
-                size="xs"
-                color="white"
-                variant="solid"
-                :label="doc.documentType === 'PDF' ? 'PDF' : 'ZIP'"
-                :trailing="false"
-                class="p-1 text-xs"
-                @click="openDocument(doc)"
-              />
-            </template>
-          </div>
-        </template>
-
-        <!--        <template #status-data="{ row }"> -->
-        <!--          <div class="flex items-center gap-2 justify-center"> -->
-        <!--            <template v-if="row.reviewerReports && row.reviewerReports.length > 0 && row.supervisorReports && row.supervisorReports.length > 0"> -->
-        <!--              <UIcon -->
-        <!--                name="i-heroicons-check-circle" -->
-        <!--                class="w-5 h-5 text-green-500" -->
-        <!--              /> -->
-        <!--              <span>Pateikta</span> -->
-        <!--            </template> -->
-        <!--            <template v-else> -->
-        <!--              <UIcon -->
-        <!--                name="i-heroicons-clock" -->
-        <!--                class="w-5 h-5 text-yellow-500" -->
-        <!--              /> -->
-        <!--              <span>Laukiama...</span> -->
-        <!--            </template> -->
-        <!--          </div> -->
-        <!--        </template> -->
-      </UTable>
-
-      <div
-        v-if="status === 'pending' || isRefreshing"
-        class="p-6 text-center"
-      >
-        <UIcon
-          name="i-heroicons-arrow-path"
-          class="animate-spin h-8 w-8 mx-auto text-gray-400"
-        />
-        <p class="mt-2 text-sm text-gray-500">
-          {{ isRefreshing ? 'Refreshing data...' : 'Loading student data...' }}
-        </p>
-      </div>
-
-      <div
-        v-else-if="fetchError"
-        class="p-4 text-red-500"
-      >
-        {{ fetchError.message }}
-      </div>
-
-      <div
-        v-else-if="filteredStudents.students.length === 0"
-        class="p-6 text-center"
-      >
-        <UIcon
-          name="i-heroicons-document-magnifying-glass"
-          class="h-10 w-10 mx-auto text-gray-400"
-        />
-        <p class="mt-2 text-gray-500">
-          No students found matching your criteria
-        </p>
         <UButton
-          v-if="showFavoritesOnly"
+          icon="i-heroicons-funnel"
           color="gray"
-          size="sm"
-          class="mt-3"
-          @click="showFavoritesOnly = false"
+          size="xs"
+          :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter && !showFavoritesOnly"
+          @click="resetFilters"
         >
-          Clear favorites filter
+          {{ $t('reset') }}
         </UButton>
       </div>
+    </div>
 
-      <template #footer>
-        <div class="flex flex-wrap justify-between items-center">
-          <div>
-            <span class="text-sm leading-5">
-              {{ $t('showing') }}
-              <span class="font-medium">{{ pageFrom }}</span>
-              {{ $t('to') }}
-              <span class="font-medium">{{ pageTo }}</span>
-              {{ $t('off') }}
-              <span class="font-medium">{{ pageTotal }}</span>
-            </span>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <UButton
-              v-if="allStudents.value?.students?.length > 0"
-              icon="i-heroicons-arrow-path"
-              color="gray"
-              variant="ghost"
-              size="sm"
-              :loading="isRefreshing"
-              @click="refreshData"
-            >
-              Refresh
-            </UButton>
-
-            <UPagination
-              v-model="page"
-              :page-count="Number(pageCount)"
-              :total="pageTotal"
-              :ui="{
-                wrapper: 'flex items-center gap-1',
-                rounded: '!rounded-full min-w-[32px] justify-center',
-                default: {
-                  activeButton: {
-                    variant: 'outline'
-                  }
-                }
-              }"
-            />
-          </div>
-        </div>
-      </template>
-    </UCard>
-
-    <UModal
-      v-model="isOpen"
-      prevent-close
+    <UTable
+      v-if="filteredStudents.students.length > 0"
+      :key="`table-${updateCounter}`"
+      v-model:sort="sort"
+      :rows="filteredStudents.students"
+      :columns="columnsTable"
+      :loading="status === 'pending' || isRefreshing"
+      sort-asc-icon="i-heroicons-arrow-up"
+      sort-desc-icon="i-heroicons-arrow-down"
+      sort-mode="manual"
+      class="w-full"
+      :ui="{
+        td: { base: 'whitespace-nowrap px-2 py-1' },
+        th: { base: 'px-2 py-1' },
+        default: { checkbox: { color: 'primary' } }
+      }"
     >
-      <!--      <UCard -->
-      <!--        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }" -->
-      <!--        class="w-full max-w-6xl" -->
-      <!--      > -->
-      <!--        <template #header> -->
-      <!--          <div class="flex items-center justify-between"> -->
-      <!--            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white"> -->
-      <!--              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} {{ studentObject?.studentLastname }} ({{ studentObject?.currentYear }}) -->
-      <!--              pristatomasis vaizdo įrašas -->
-      <!--            </h3> -->
+      <!--        <template #favorite-data="{ row }"> -->
+      <!--          <div class="flex justify-center items-center"> -->
+      <!--            &lt;!&ndash; Using v-if/v-else for better reactivity &ndash;&gt; -->
       <!--            <UButton -->
-      <!--              color="gray" -->
+      <!--              v-if="row.student.isFavorite === 1" -->
+      <!--              icon="i-heroicons-star-solid" -->
+      <!--              size="xs" -->
+      <!--              color="amber" -->
       <!--              variant="ghost" -->
-      <!--              icon="i-heroicons-x-mark-20-solid" -->
-      <!--              class="ml-4" -->
-      <!--              @click="isOpen = false" -->
+      <!--              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-100" -->
+      <!--              @click.stop="toggleFavorite(row.student)" -->
+      <!--            /> -->
+      <!--            <UButton -->
+      <!--              v-else -->
+      <!--              icon="i-heroicons-star" -->
+      <!--              size="xs" -->
+      <!--              color="amber" -->
+      <!--              variant="ghost" -->
+      <!--              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-50 hover:opacity-80" -->
+      <!--              @click.stop="toggleFavorite(row.student)" -->
       <!--            /> -->
       <!--          </div> -->
       <!--        </template> -->
 
-      <!--        <div class="p-4"> -->
-      <!--          <div class="flex justify-center"> -->
-      <!--            <iframe -->
-      <!--              v-if="videoObject?.uid" -->
-      <!--              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject.uid}/iframe`" -->
-      <!--              style="border: none; width: 800px; height: 450px;" -->
-      <!--              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" -->
-      <!--              allowfullscreen -->
-      <!--            /> -->
+      <template #group-data="{ row }">
+        <div class="text-center w-12">
+          {{ row.student.studentGroup }}
+        </div>
+      </template>
+
+      <template #name-data="{ row }">
+        <div class="truncate font-bold">
+          {{ row.student.studentName }} {{ row.student.studentLastname }}
+        </div>
+        <div>{{ row.student.finalProjectTitle }}</div>
+        <div>{{ row.student.finalProjectTitleEn }}</div>
+      </template>
+
+      <template #supervisor-data="{ row }">
+        <div class="truncate mb-1">
+          {{ row.student.supervisorEmail }}
+        </div>
+        <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
+          <div>
+            <PreviewSupervisorReport
+              :document-data="{
+                // --- Data from main student record ---
+                // Adjust field names based on your actual StudentRecord interface
+                NAME: row.student?.studentName +' '+row.student?.studentLastname,
+                PROGRAM: row.student?.studyProgram ?? 'N/A',
+                CODE: row.student?.programCode ?? 'N/A',
+                TITLE: row.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
+                DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
+                WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                // --- Data specific to THIS report ---
+                EXPL: row.supervisorReports[0].supervisorComments ?? '', // Use comments as EXPL
+                OM: row.supervisorReports[0].otherMatch ?? 0,
+                SSM: row.supervisorReports[0].oneMatch ?? 0,
+                STUM: row.supervisorReports[0].ownMatch ?? 0,
+                JM: row.supervisorReports[0].joinMatch ?? 0,
+                createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
+                PASS: row.supervisorReports[0].isPassOrFailed ?? 1,
+                // --- Data that might need specific logic ---
+                // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
+                SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
+                POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
+                // Use the report's creation date, formatted, for the main 'DATE' field
+                DATE: formatUnixDate(row.supervisorReports[0].createdDate)
+              }"
+              :button-label="$t('preview_supervisor_report')"
+              :form-variant="determineFormVariant(row.student?.studentGroup)"
+              :modal-title="$t('supervisor_report')"
+            />
+          </div>
+        </template>
+        <template v-else>
+          <div class="flex gap-2 justify-left">
+            <UIcon
+              name="i-heroicons-clock"
+              class="w-5 h-5 text-yellow-500"
+            />
+            <span>{{ $t('supervisor_report') }} ({{ $t('report_not_filled') }})</span>
+          </div>
+        </template>
+      </template>
+
+      <template #reviewer-data="{ row }">
+        <div class="truncate mb-1">
+          {{ row.student.reviewerName }}
+        </div>
+        <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
+          <div v-if="getReviewerModalData(row)">
+            <PreviewReviewerReport
+              :review-data="getReviewerModalData(row)"
+              :form-variant="determineFormVariant(row.student?.studentGroup)"
+              button-label="Peržiūrėti Recenziją"
+            />
+          </div>
+        </template>
+        <template v-else>
+          <div class="flex gap-2 justify-left">
+            <UIcon
+              name="i-heroicons-clock"
+              class="w-5 h-5 text-yellow-500"
+            />
+            <span>{{ $t('reviewer_report') }} ({{ $t('report_not_filled') }})</span>
+          </div>
+        </template>
+      </template>
+
+      <template #actions-data="{ row }">
+        <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
+          <UButton
+            v-if="row.videos && row.videos[0]"
+            icon="i-heroicons-video-camera"
+            size="xs"
+            color="white"
+            variant="solid"
+            label="Vaizdo"
+            :trailing="false"
+            class="p-1 text-xs"
+            @click="sendStudentData(row.videos[0], row.student)"
+          />
+
+          <template
+            v-for="doc in row.documents || []"
+            :key="doc.id"
+          >
+            <UButton
+              :loading="isFetchingDocument"
+              :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
+              size="xs"
+              color="white"
+              variant="solid"
+              :label="doc.documentType === 'PDF' ? 'PDF' : 'ZIP'"
+              :trailing="false"
+              class="p-1 text-xs"
+              @click="openDocument(doc)"
+            />
+          </template>
+        </div>
+      </template>
+
+      <!--        <template #status-data="{ row }"> -->
+      <!--          <div class="flex items-center gap-2 justify-center"> -->
+      <!--            <template v-if="row.reviewerReports && row.reviewerReports.length > 0 && row.supervisorReports && row.supervisorReports.length > 0"> -->
+      <!--              <UIcon -->
+      <!--                name="i-heroicons-check-circle" -->
+      <!--                class="w-5 h-5 text-green-500" -->
+      <!--              /> -->
+      <!--              <span>Pateikta</span> -->
+      <!--            </template> -->
+      <!--            <template v-else> -->
+      <!--              <UIcon -->
+      <!--                name="i-heroicons-clock" -->
+      <!--                class="w-5 h-5 text-yellow-500" -->
+      <!--              /> -->
+      <!--              <span>Laukiama...</span> -->
+      <!--            </template> -->
       <!--          </div> -->
-      <!--        </div> -->
-      <!--      </UCard> -->
-    </UModal>
-  </div>
-  <div v-else>
-    Access Denied ❌
-  </div>
+      <!--        </template> -->
+    </UTable>
+
+    <div
+      v-if="status === 'pending' || isRefreshing"
+      class="p-6 text-center"
+    >
+      <UIcon
+        name="i-heroicons-arrow-path"
+        class="animate-spin h-8 w-8 mx-auto text-gray-400"
+      />
+      <p class="mt-2 text-sm text-gray-500">
+        {{ isRefreshing ? 'Refreshing data...' : 'Loading student data...' }}
+      </p>
+    </div>
+
+    <div
+      v-else-if="fetchError"
+      class="p-4 text-red-500"
+    >
+      {{ fetchError.message }}
+    </div>
+
+    <div
+      v-else-if="filteredStudents.students.length === 0"
+      class="p-6 text-center"
+    >
+      <UIcon
+        name="i-heroicons-document-magnifying-glass"
+        class="h-10 w-10 mx-auto text-gray-400"
+      />
+      <p class="mt-2 text-gray-500">
+        No students found matching your criteria
+      </p>
+      <UButton
+        v-if="showFavoritesOnly"
+        color="gray"
+        size="sm"
+        class="mt-3"
+        @click="showFavoritesOnly = false"
+      >
+        Clear favorites filter
+      </UButton>
+    </div>
+
+    <template #footer>
+      <div class="flex flex-wrap justify-between items-center">
+        <div>
+          <span class="text-sm leading-5">
+            {{ $t('showing') }}
+            <span class="font-medium">{{ pageFrom }}</span>
+            {{ $t('to') }}
+            <span class="font-medium">{{ pageTo }}</span>
+            {{ $t('off') }}
+            <span class="font-medium">{{ pageTotal }}</span>
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <UButton
+            v-if="allStudents.value?.students?.length > 0"
+            icon="i-heroicons-arrow-path"
+            color="gray"
+            variant="ghost"
+            size="sm"
+            :loading="isRefreshing"
+            @click="refreshData"
+          >
+            Refresh
+          </UButton>
+
+          <UPagination
+            v-model="page"
+            :page-count="Number(pageCount)"
+            :total="pageTotal"
+            :ui="{
+              wrapper: 'flex items-center gap-1',
+              rounded: '!rounded-full min-w-[32px] justify-center',
+              default: {
+                activeButton: {
+                  variant: 'outline'
+                }
+              }
+            }"
+          />
+        </div>
+      </div>
+    </template>
+  </UCard>
+
+  <UModal
+    v-model="isOpen"
+    prevent-close
+  >
+    <!--      <UCard -->
+    <!--        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }" -->
+    <!--        class="w-full max-w-6xl" -->
+    <!--      > -->
+    <!--        <template #header> -->
+    <!--          <div class="flex items-center justify-between"> -->
+    <!--            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white"> -->
+    <!--              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} {{ studentObject?.studentLastname }} ({{ studentObject?.currentYear }}) -->
+    <!--              pristatomasis vaizdo įrašas -->
+    <!--            </h3> -->
+    <!--            <UButton -->
+    <!--              color="gray" -->
+    <!--              variant="ghost" -->
+    <!--              icon="i-heroicons-x-mark-20-solid" -->
+    <!--              class="ml-4" -->
+    <!--              @click="isOpen = false" -->
+    <!--            /> -->
+    <!--          </div> -->
+    <!--        </template> -->
+
+    <!--        <div class="p-4"> -->
+    <!--          <div class="flex justify-center"> -->
+    <!--            <iframe -->
+    <!--              v-if="videoObject?.uid" -->
+    <!--              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject.uid}/iframe`" -->
+    <!--              style="border: none; width: 800px; height: 450px;" -->
+    <!--              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" -->
+    <!--              allowfullscreen -->
+    <!--            /> -->
+    <!--          </div> -->
+    <!--        </div> -->
+    <!--      </UCard> -->
+  </UModal>
 </template>
 
 <script lang="ts" setup>
-import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
-import { useFormUtilities } from '~/composables/useFormUtilities'
+const { t } = useI18n()
 
+const { getReviewerModalData } = useReviewerReports()
+const { determineFormVariant } = useFormUtilities()
+const { formatUnixDateTime, formatUnixDate } = useUnixDateUtils()
+
+const groupFilter = ref('')
+const programFilter = ref('')
+const yearFilter = ref(null)
 definePageMeta({
   middleware: ['commision-access']
 })
 
 const route = useRoute()
-const token = route.query.token
+const accessCode = route.query.code
 
-const { data, error } = await useFetch(`/api/admin/validate-temp-token?token=${token}`)
+// Remove separate validation and fetch data directly
+const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allStudents', async () => {
+  try {
+    const response = await $fetch('/api/students/commission', {
+      query: {
+        code: accessCode,
+        year: yearFilter.value
+      }
+    })
+    return response
+  }
+  catch (err) {
+    console.error('Error fetching student data:', err)
+    throw err
+  }
+}, {
+  default: () => ({
+    students: [],
+    total: 0,
+    year: null
+  }),
+  watch: [yearFilter]
+})
 
-if (error.value) {
-  console.error('Access Denied:', error.value)
-}
-
-const { t } = useI18n()
-const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
-const { getReviewerModalData } = useReviewerReports()
-const { determineFormVariant } = useFormUtilities()
 const columns = [{
   key: 'favorite',
   sortable: false,
@@ -520,12 +535,12 @@ async function refreshData() {
 
   isRefreshing.value = true
   try {
-    const queryParams = new URLSearchParams()
-    if (yearFilter.value) {
-      queryParams.set('year', yearFilter.value.toString())
-    }
-
-    const response = await $fetch(`/api/students/commission?token=${token}`)
+    const response = await $fetch('/api/students/commission', {
+      query: {
+        code: accessCode,
+        year: yearFilter.value ? yearFilter.value.toString() : null
+      }
+    })
     allStudents.value = response
 
     // Increment counter to force UI refresh
@@ -611,10 +626,6 @@ const openDocument = async (doc) => {
   }
 }
 
-const groupFilter = ref('')
-const programFilter = ref('')
-const yearFilter = ref(null)
-
 const resetFilters = () => {
   search.value = ''
   selectedStatus.value = []
@@ -626,29 +637,6 @@ const resetFilters = () => {
 
 // Dynamic years from API
 const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
-
-const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allStudents', async () => {
-  // const queryParams = new URLSearchParams()
-  // if (yearFilter.value) {
-  //   queryParams.set('year', yearFilter.value.toString())
-  // }
-
-  try {
-    const response = await $fetch(`/api/students/commission?token=${token}`)
-    return response
-  }
-  catch (err) {
-    console.error('Error fetching student data:', err)
-    throw err
-  }
-}, {
-  default: () => ({
-    students: [],
-    total: 0,
-    year: null
-  }),
-  watch: [yearFilter]
-})
 
 const filteredStudents = computed(() => {
   if (!allStudents.value?.students) {
@@ -739,64 +727,4 @@ watch(pageCount, (newValue) => {
 watch([search, groupFilter, programFilter, pageCount, showFavoritesOnly], () => {
   page.value = 1
 })
-
-async function updateProjectTitle({ studentId, finalProjectTitle }) {
-  try {
-    // Optimistic update: Update the local state immediately
-    const studentIndex = filteredStudents.value.students.findIndex(
-      row => row.student.id === studentId
-    )
-
-    if (studentIndex !== -1) {
-      // Update the title in the local state
-      filteredStudents.value.students[studentIndex].student.finalProjectTitle = finalProjectTitle
-
-      // Force table to update by incrementing the counter
-      updateCounter.value++
-    }
-
-    // Then make the API call
-    const { data, error } = await useFetch('/api/students/project-title', {
-      method: 'PATCH',
-      body: {
-        id: studentId,
-        finalProjectTitle
-      }
-    })
-
-    if (error.value) {
-      // If there's an error, revert the optimistic update
-      if (studentIndex !== -1) {
-        // Get the original data from the server again
-        const { data: refreshData } = await useFetch(`/api/students/${studentId}`)
-        if (refreshData.value) {
-          filteredStudents.value.students[studentIndex].student.finalProjectTitle
-              = refreshData.value.finalProjectTitle
-        }
-      }
-
-      throw new Error(error.value.message || 'Failed to update project title')
-    }
-
-    // Show success notification
-    toast.add({
-      title: t('success'),
-      description: finalProjectTitle,
-      color: 'green'
-    })
-
-    return true
-  }
-  catch (err) {
-    // Show error notification
-    toast.add({
-      title: t('error'),
-      description: err.message || finalProjectTitle,
-      color: 'red'
-    })
-
-    console.error('Update error:', err)
-    return false
-  }
-}
 </script>

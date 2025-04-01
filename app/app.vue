@@ -153,15 +153,6 @@ const logout = async () => {
           />
 
           <UButton
-            v-if="authStore.hasDepartmentHeadAccess()"
-            :to="`/${locale}/dashboard/commission`"
-            icon="i-heroicons-check-circle"
-            :label="$t('nav_commission')"
-            :color="isActiveRoute('/commission') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <UButton
             v-if="authStore.hasAdminAccess() || authStore.hasDepartmentHeadAccess()"
             :to="`/${locale}/dashboard/admin`"
             icon="i-heroicons-cog"

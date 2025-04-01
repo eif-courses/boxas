@@ -17,10 +17,12 @@ export const departmentHeads = sqliteTable('department_heads', {
 
 export const commissionMembers = sqliteTable('commission_members', {
   id: integer('id').primaryKey(),
-  token: text('token').notNull().unique(),
+  accessCode: text('access_code').notNull().unique(), // Changed from token to accessCode
   department: text('department').notNull(),
   isActive: integer('is_active').default(1),
-  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
+  expiresAt: integer('expires_at').notNull(), // Added expiration timestamp
+  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`),
+  lastAccessedAt: integer('last_accessed_at') // Track last access time
 })
 
 export const studentRecords = sqliteTable('student_records', {

@@ -1,81 +1,114 @@
-// server/api/commission/check.get.ts  // Example path - use GET for checks
+// server/api/commission/check.get.ts
 
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, gt } from 'drizzle-orm'
 import { commissionMembers } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   const logger = event.context.logger || console // Use logger if available
-  logger.info('Processing commission member token check request')
+  logger.info('Processing commission member access check request')
 
-  // --- 1. Get Token from Query Parameters ---
+  // --- 1. Get Access Code from Query Parameters ---
   const query = getQuery(event)
-  const tokenToCheck = query.token as string | undefined // Get token from query
+  const accessCode = query.code as string | undefined // Get access code from query
 
   // --- 2. Validate Input ---
-  if (!tokenToCheck || typeof tokenToCheck !== 'string' || tokenToCheck.trim() === '') {
-    logger.warn('Token check request missing or invalid token query parameter.')
+  if (!accessCode || typeof accessCode !== 'string' || accessCode.trim() === '') {
+    logger.warn('Access check request missing or invalid code query parameter.')
     throw createError({
       statusCode: 400,
-      statusMessage: 'Bad Request: Missing or invalid token query parameter.'
+      statusMessage: 'Bad Request: Missing or invalid access code parameter.'
     })
   }
-  // Be cautious about logging sensitive tokens in production environments
-  logger.debug(`Checking database for token: ${tokenToCheck.substring(0, 5)}...`) // Log first few chars
+  logger.debug(`Checking database for access code: ${accessCode.substring(0, 5)}...`) // Log first few chars
 
   // --- 3. Database Check ---
   const db = useDB()
   try {
-    logger.debug('Querying commission member status by token')
-    // Use findFirst as token should be unique
+    logger.debug('Querying commission member status by access code')
+    const currentTimestamp = Math.floor(Date.now() / 1000) // Current time in seconds
+
+    // Use findFirst as access code should be unique
     const commissionMember = await db.query.commissionMembers.findFirst({
       where: and(
-        eq(commissionMembers.token, tokenToCheck), // Check against the token column
-        eq(commissionMembers.isActive, 1) // Ensure member is active
+        eq(commissionMembers.accessCode, accessCode), // Check against the accessCode column
+        eq(commissionMembers.isActive, 1), // Ensure member is active
+        gt(commissionMembers.expiresAt, currentTimestamp) // Check if not expired
       ),
-      columns: { // Select only the necessary columns
+      columns: {
         id: true,
-        department: true
-        // Add other fields you might want to return if valid
+        department: true,
+        expiresAt: true
       }
     })
 
-    const isValidAndActive = !!commissionMember // Convert result to boolean
+    const isValidAndActive = !!commissionMember
 
     if (isValidAndActive) {
-      logger.info('Provided token corresponds to an active commission member.', {
-        tokenId: commissionMember.id, // Log ID instead of token
+      logger.info('Provided access code corresponds to an active commission member.', {
+        memberId: commissionMember.id,
         department: commissionMember.department
       })
-      // Return success and potentially some non-sensitive info
+
+      // Update last accessed timestamp
+      await db.update(commissionMembers)
+        .set({ lastAccessedAt: currentTimestamp })
+        .where(eq(commissionMembers.id, commissionMember.id))
+
+      // Calculate remaining validity time
+      const remainingSeconds = commissionMember.expiresAt - currentTimestamp
+      const remainingDays = Math.ceil(remainingSeconds / (60 * 60 * 24))
+
+      // Return success and member info
       return {
         isValid: true,
-        memberInfo: { // Return useful info associated with the token
-          department: commissionMember.department
-          // Add other fields if needed
+        memberInfo: {
+          department: commissionMember.department,
+          expiresIn: `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`
         }
       }
     }
     else {
-      // Token not found or member is inactive
-      logger.info('Provided token is invalid or corresponds to an inactive member.')
-      // Return failure status
-      return {
-        isValid: false,
-        memberInfo: null // Explicitly null
+      // Check if the access code exists but is expired
+      const expiredMember = await db.query.commissionMembers.findFirst({
+        where: and(
+          eq(commissionMembers.accessCode, accessCode),
+          eq(commissionMembers.isActive, 1)
+          // Only checking if it exists but is expired
+        ),
+        columns: {
+          id: true,
+          expiresAt: true
+        }
+      })
+
+      if (expiredMember && expiredMember.expiresAt < currentTimestamp) {
+        logger.info('Provided access code has expired.')
+        return {
+          isValid: false,
+          error: 'expired',
+          memberInfo: null
+        }
+      }
+      else {
+        logger.info('Provided access code is invalid or corresponds to an inactive member.')
+        return {
+          isValid: false,
+          error: 'invalid',
+          memberInfo: null
+        }
       }
     }
   }
   catch (error: any) {
-    logger.error('Database error during commission member token check:', {
-      tokenPrefix: tokenToCheck.substring(0, 5), // Log prefix for correlation
+    logger.error('Database error during commission member access check:', {
+      codePrefix: accessCode.substring(0, 5),
       error: error.message,
-      stack: error.stack // Important for debugging
+      stack: error.stack
     })
     throw createError({
       statusCode: 500,
-      statusMessage: 'Internal Server Error while checking commission status.'
-      // Avoid exposing detailed DB errors to the client
+      statusMessage: 'Internal Server Error while checking commission access.'
     })
   }
 })

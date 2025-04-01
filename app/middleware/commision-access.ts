@@ -3,7 +3,7 @@ import { useAuthStore } from '~/stores/auth' // Adjust path
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const authStore = useAuthStore()
-  const token = to.query.token as string | undefined // Get token from URL query ?token=...
+  const token = to.query.code as string | undefined // Get token from URL query ?token=...
 
   console.log('Commission Access Middleware: Path=', to.path, 'Token=', token ? token.substring(0, 5) + '...' : 'None')
 

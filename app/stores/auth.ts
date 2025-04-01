@@ -85,12 +85,12 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     // --- ADDED: Action to attempt setting temporary access via token ---
-    async setTemporaryCommissionAccess(token: string): Promise<boolean> {
+    async setTemporaryCommissionAccess(code: string): Promise<boolean> {
       // Clear existing user/temp access first
       this.user = null
       this.temporaryCommissionInfo = null
 
-      if (!token) {
+      if (!code) {
         console.warn('Attempted to set temporary access with empty token.')
         return false
       }
@@ -100,7 +100,7 @@ export const useAuthStore = defineStore('auth', {
         // Call your token validation endpoint
         const response = await $fetch('/api/users/is-commission-member', { // Use your GET endpoint
           method: 'GET',
-          query: { token } // Pass token as query parameter
+          query: { code } // Pass token as query parameter
         })
 
         if (response && response.isValid && response.memberInfo) {
