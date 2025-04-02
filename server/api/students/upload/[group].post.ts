@@ -1,6 +1,6 @@
 import { defineEventHandler, readMultipartFormData, createError } from 'h3'
 import { unzip } from 'fflate'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { AwsClient } from 'aws4fetch'
 import { documents, studentRecords } from '~~/server/database/schema'
 
@@ -8,29 +8,19 @@ export default defineEventHandler(async (event) => {
   // Get logger from event context
   const logger = event.context.logger || console
 
-  logger.info('Processing ZIP upload request')
+  logger.info('Processing ZIP upload request (all groups)')
 
   const { user } = await requireUserSession(event)
   if (!user) {
     logger.error('Unauthorized access attempt', {
-      endpoint: 'zip-upload'
+      endpoint: 'zip-upload-all'
     })
     throw createError({ statusCode: 403, message: 'Access denied: User not authenticated' })
   }
 
   logger.info('User authenticated', { email: user.mail })
 
-  const params = event.context.params as { group: string }
-  const { group } = params
-  logger.info('Request parameters', { group })
-
-  // Check if group is defined
-  if (!group) {
-    logger.warn('Missing group parameter')
-    throw createError({ statusCode: 400, message: 'Group parameter is required' })
-  }
-
-  // Get latest year and student records as in your original code
+  // Get latest year
   logger.debug('Finding latest academic year')
   const latestYearRecord = await useDB()
     .select({ year: studentRecords.currentYear })
@@ -52,7 +42,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No ZIP files uploaded' })
   }
 
-  // Load students
+  // Load all students for the latest year (without group filter)
   const students = await useDB()
     .select({
       id: studentRecords.id,
@@ -64,17 +54,12 @@ export default defineEventHandler(async (event) => {
       studentLastname: studentRecords.studentLastname
     })
     .from(studentRecords)
-    .where(
-      and(
-        eq(studentRecords.currentYear, latestYear),
-        eq(studentRecords.studentGroup, group)
-      )
-    )
+    .where(eq(studentRecords.currentYear, latestYear))
 
   logger.info('Student records loaded', {
     count: students.length,
-    group,
-    year: latestYear
+    year: latestYear,
+    groups: [...new Set(students.map(s => s.studentGroup))].join(', ')
   })
 
   const results = {
@@ -83,6 +68,7 @@ export default defineEventHandler(async (event) => {
     processed: 0
   }
 
+  // The rest of your processing logic remains the same
   for (const file of files) {
     logger.info('Processing ZIP file', {
       filename: file.filename,
@@ -106,6 +92,7 @@ export default defineEventHandler(async (event) => {
         entriesCount: Object.keys(zipEntries).length
       })
 
+      // Rest of your ZIP processing code remains the same
       for (const [path, fileData] of Object.entries(zipEntries)) {
         // Only process PDFs
         if (!path.endsWith('.pdf')) continue
@@ -134,13 +121,14 @@ export default defineEventHandler(async (event) => {
           continue
         }
 
-        // Try different matching strategies (same as your original code)
+        // Use the same matching function
         const matchedStudent = findStudentByName(students, extractedFullName, logger)
 
         if (matchedStudent) {
           logger.info('Student match found', {
             extractedName: extractedFullName,
-            studentName: `${matchedStudent.studentName} ${matchedStudent.studentLastname}`
+            studentName: `${matchedStudent.studentName} ${matchedStudent.studentLastname}`,
+            group: matchedStudent.studentGroup
           })
 
           results.matched++
