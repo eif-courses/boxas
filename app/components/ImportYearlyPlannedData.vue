@@ -1,13 +1,6 @@
-<script setup lang="ts">
-
-</script>
-
 <template>
-  <FileUpload />
-
-  <UploadZip />
+  <div class="space-y-6">
+    <FileUpload />
+    <UploadZip />
+  </div>
 </template>
-
-<style scoped>
-
-</style>

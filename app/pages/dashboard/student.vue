@@ -23,15 +23,6 @@
         </p>
       </template>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <p><strong>Vadovas:</strong> {{ records.student.supervisorEmail }}</p>
-          <p><strong>Recenzentas:</strong> {{ records.student.reviewerEmail }}</p>
-        </div>
-      </div>
-
-      <UDivider class="my-4" />
-
       <h3 class="text-lg font-semibold">
         Dokumentai
       </h3>
@@ -185,48 +176,14 @@
         <!--        /> -->
       </div>
       <div v-else>
-        <UCard>
-          <template #header>
-            <h1>Įkelkite savo programinio kodo paaiškinimo vaizdą</h1>
-          </template>
-          <div class="upload-section">
-            <form
-              enctype="multipart/form-data"
-              @submit.prevent="uploadVideo"
-            >
-              <div class="file-input">
-                <label for="video-file">Select Video File</label>
-                <input
-                  id="video-file"
-                  type="file"
-                  accept="video/*"
-                  required
-                  @change="handleFileChange"
-                >
-              </div>
-              <button
-                type="submit"
-                :disabled="isUploading"
-              >
-                {{ isUploading ? 'Uploading...' : 'Upload Video' }}
-              </button>
-            </form>
-          </div>
-        </UCard>
+        <VideoUploader
+          title="Įkelkite savo programinio kodo paaiškinimo vaizdą"
+          @video-uploaded="handleVideoUploadSuccess"
+        />
       </div>
 
       <div v-if="records.documents.length === 0 || records.documents.every(doc => doc.documentType !== 'ZIP')">
-        <UCard>
-          <template #header>
-            <h1>Įkelkite savo programinio kodo ZIP archyvą</h1>
-          </template>
-          <ZipUploader @zip-uploaded="handleZipUpload" />
-        </UCard>
-        <UDivider class="p-4" />
-      </div>
-
-      <div v-else-if="records.videos.length === 0">
-        <p>Įkelkite vaizdo įrašą ir dokumentus.</p>
+        <ZipUploader @zip-uploaded="handleZipUpload" />
       </div>
     </UCard>
   </div>
@@ -238,7 +195,7 @@ import { ref } from 'vue'
 import ZipUploader from '~/components/ZipUploader.vue'
 import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord } from '~~/server/utils/db'
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
-import {useFormUtilities} from "~/composables/useFormUtilities";
+import { useFormUtilities } from '~/composables/useFormUtilities'
 
 definePageMeta({
   middleware: ['student-access']
@@ -485,7 +442,13 @@ const openModalWithData = (report: SupervisorReport) => {
   reportObjInModal.value = report
   isOpen.value = true
 }
-
+const handleVideoUploadSuccess = async (result) => {
+  console.log('Video uploaded successfully:', result)
+  // Refresh the student data to show the new video
+  await refresh()
+  // Refresh the videos list
+  await fetchVideos()
+}
 const { getReviewerModalData } = useReviewerReports()
 </script>
 
