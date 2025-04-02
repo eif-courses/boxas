@@ -6,18 +6,82 @@ const router = useRouter()
 const colorMode = useColorMode()
 const { t, locale } = useI18n()
 
-onMounted(() => {
+const redirectBasedOnRole = async () => {
+  // Debug logs to help troubleshoot
+  console.log('Current role checks:', {
+    admin: authStore.hasAdminAccess(),
+    departmentHead: authStore.hasDepartmentHeadAccess(),
+    teacher: authStore.hasTeacherAccess(),
+    reviewer: authStore.hasReviewerAccess(),
+    student: authStore.hasStudentAccess()
+  })
+
+  // Redirect based on role hierarchy
+  if (authStore.hasAdminAccess()) {
+    console.log('Redirecting to admin dashboard')
+    return navigateTo(`/${locale.value}/dashboard/admin`)
+  }
+  else if (authStore.hasDepartmentHeadAccess()) {
+    console.log('Redirecting to department dashboard')
+    return navigateTo(`/${locale.value}/dashboard/department`)
+  }
+  else if (authStore.hasTeacherAccess()) {
+    console.log('Redirecting to supervisor dashboard')
+    return navigateTo(`/${locale.value}/dashboard/supervisor`)
+  }
+  else if (authStore.hasReviewerAccess()) {
+    console.log('Redirecting to reviewer dashboard')
+    return navigateTo(`/${locale.value}/dashboard/reviewer`)
+  }
+  else if (authStore.hasStudentAccess()) {
+    console.log('Redirecting to student dashboard')
+    return navigateTo(`/${locale.value}/dashboard/student`)
+  }
+  // Default fallback if no specific role is detected
+  else {
+    console.log('No specific role found, redirecting to general dashboard')
+    return navigateTo(`/${locale.value}/dashboard`)
+  }
+}
+
+onMounted(async () => {
+  console.log('Mounted, loggedIn:', loggedIn.value, 'user:', !!user.value)
+
   if (loggedIn.value && user.value) {
-    authStore.setUser(user.value)
+    try {
+      await authStore.setUser(user.value)
+      console.log('User set in authStore, checking for redirect')
+
+      // Modified condition to check if we're not already on a dashboard page
+      if (!route.path.includes('/dashboard')) {
+        console.log('Not on dashboard, redirecting based on role')
+        await redirectBasedOnRole()
+      }
+    }
+    catch (error) {
+      console.error('Error in onMounted redirect:', error)
+    }
   }
 })
 
-watch(loggedIn, (newValue) => {
+watch(loggedIn, async (newValue, oldValue) => {
+  console.log('loggedIn changed:', oldValue, '->', newValue)
+
   if (!newValue) {
+    console.log('User logged out, navigating to home')
     navigateTo('/')
   }
   else if (user.value) {
-    authStore.setUser(user.value)
+    try {
+      console.log('User logged in, setting user in authStore')
+      await authStore.setUser(user.value)
+
+      console.log('Redirecting after login')
+      await redirectBasedOnRole()
+    }
+    catch (error) {
+      console.error('Error in loggedIn watcher:', error)
+    }
   }
 })
 
@@ -81,7 +145,7 @@ const logout = async () => {
 
   authStore.clearUser()
   await clear()
-  await router.push('/login')
+  await router.push('/')
 }
 </script>
 
@@ -104,16 +168,9 @@ const logout = async () => {
             {{ $t('app_name') }}
           </NuxtLink>
         </h3>
-        <UButton
-          v-if="!loggedIn"
-          to="/api/auth/microsoft"
-          icon="i-simple-icons-microsoft"
-          label="Login with Microsoft"
-          color="primary"
-          external
-        />
+
         <div
-          v-else
+          v-if="loggedIn"
           class="flex flex-wrap sm:mx-0 gap-2"
         >
           <UButton

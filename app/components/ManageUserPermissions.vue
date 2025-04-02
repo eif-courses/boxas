@@ -143,7 +143,12 @@
 </template>
 
 <script setup lang="ts">
-const appUrl = useRuntimeConfig().public.appUrl || 'http://localhost:3000'
+const config = useRuntimeConfig()
+const isDev = process.env.NODE_ENV === 'development'
+
+const appUrl = isDev
+  ? 'http://localhost:3000'
+  : (config.public.appUrl || 'https://boxas.nuxt.dev')
 const toast = useToast()
 
 // Department options (replace with your actual departments)
@@ -224,7 +229,7 @@ async function createAccess() {
     }
 
     // Refresh list
-    fetchAccessCodes()
+    await fetchAccessCodes()
 
     toast.add({
       title: 'Success',

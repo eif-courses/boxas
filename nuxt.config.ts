@@ -11,6 +11,11 @@ export default defineNuxtConfig({
   devtools: {
     enabled: true
   },
+  runtimeConfig: {
+    public: {
+      appUrl: process.env.APP_URL || 'https://boxas.nuxt.dev'
+    }
+  },
   future: { compatibilityVersion: 4 },
   compatibilityDate: '2024-07-30',
   nitro: {
@@ -51,11 +56,5 @@ export default defineNuxtConfig({
     langDir: 'lang',
     strategy: 'prefix_and_default',
     defaultLocale: 'en-GB'
-  },
-  runtimeConfig: {
-    JWT_SECRET: process.env.JWT_SECRET, // Not exposed to the frontend
-    public: {
-      APP_URL: process.env.APP_URL // Exposed to the frontend
-    }
   }
 })
