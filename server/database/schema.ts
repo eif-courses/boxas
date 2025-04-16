@@ -115,6 +115,63 @@ export const videos = sqliteTable('videos', {
   studentRecordIndex: index('videos_student_record_idx').on(table.studentRecordId)
 }))
 
+// Main assignment table
+export const projectAssignments = sqliteTable('project_assignments', {
+  id: integer('id').primaryKey(),
+  studentRecordId: integer('student_record_id').references(() => studentRecords.id, { onDelete: 'cascade' }),
+
+  // Status of the assignment workflow
+  status: text('status').notNull().default('draft'), // 'draft', 'submitted', 'revision_requested', 'approved'
+
+  // Approval status (for signed documents)
+  isSigned: integer('is_signed').notNull().default(0),
+
+  // Timestamps
+  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`),
+  lastUpdated: integer('last_updated').notNull().default(sql`(strftime('%s', 'now'))`)
+}, table => ({
+  studentRecordIdx: index('project_assignments_student_record_idx').on(table.studentRecordId)
+}))
+
+// Assignment versions table
+export const projectAssignmentVersions = sqliteTable('project_assignment_versions', {
+  id: integer('id').primaryKey(),
+  assignmentId: integer('assignment_id').references(() => projectAssignments.id, { onDelete: 'cascade' }),
+
+  // Version data
+  createdBy: text('created_by').notNull(), // 'student' or 'supervisor'
+  comment: text('comment').notNull(), // Comment about this version
+  versionData: text('version_data').notNull(), // JSON string of all form fields
+
+  // Timestamp
+  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`)
+}, table => ({
+  assignmentIdIdx: index('project_assignment_versions_assignment_id_idx').on(table.assignmentId)
+}))
+
+// Assignment comments table
+export const assignmentComments = sqliteTable('assignment_comments', {
+  id: integer('id').primaryKey(),
+  assignmentId: integer('assignment_id').references(() => projectAssignments.id, { onDelete: 'cascade' }),
+  versionId: integer('version_id').references(() => projectAssignmentVersions.id, { onDelete: 'cascade' }),
+
+  // For reply threading
+  parentId: integer('parent_id'), // null for top-level comments, otherwise references another comment
+
+  // Comment data
+  fieldName: text('field_name'), // Which field this comment is about (null for general comments)
+  text: text('text').notNull(),
+  role: text('role').notNull(), // 'student' or 'supervisor'
+  authorName: text('author_name').notNull(),
+
+  // Timestamp
+  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`)
+}, table => ({
+  assignmentIdIdx: index('assignment_comments_assignment_id_idx').on(table.assignmentId),
+  versionIdIdx: index('assignment_comments_version_id_idx').on(table.versionId),
+  parentIdIdx: index('assignment_comments_parent_id_idx').on(table.parentId)
+}))
+
 // Define relationships
 export const departmentHeadsRelations = relations(departmentHeads, ({ many }) => ({
   // A department head can oversee multiple students in their department

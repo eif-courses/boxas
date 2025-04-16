@@ -50,6 +50,20 @@
       "when": 1743539189261,
       "tag": "0006_dear_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1744639579869,
+      "tag": "0007_complete_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1744794370462,
+      "tag": "0008_opposite_kingpin",
+      "breakpoints": true
     }
   ]
 }

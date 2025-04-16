@@ -1,5 +1,3 @@
-import { hubKV } from '@nuxthub/core/dist/runtime/kv/server/utils/kv'
-
 export default defineEventHandler(async (event) => {
   // Check authorization (implement your own auth logic)
   const { user } = await requireUserSession(event)

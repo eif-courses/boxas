@@ -44,7 +44,7 @@ export const useAuthStore = defineStore('auth', {
       else if (email.includes('@eif.viko.lt') || email.includes('@viko.lt')) {
         role = 'teacher'
       }
-      else if ((email.includes('baigiamieji.onmicrosoft.com') && !email.includes('admin@baigiamieji.onmicrosoft.com')) || email.includes('m.gzegozevskis@eif.viko.lt')) {
+      else if ((email.includes('baigiamieji.onmicrosoft.com') && !email.includes('admin@baigiamieji.onmicrosoft.com'))) {
         role = 'reviewer'
       }
       else if (email.includes('admin@baigiamieji.onmicrosoft.com')) {
@@ -80,7 +80,7 @@ export const useAuthStore = defineStore('auth', {
         isDepartmentHead: isDepartmentHead,
         isCommission: role === 'commission',
         isStudent: role === 'student',
-        isReviewer: true, // role === 'reviewer'
+        isReviewer: role === 'reviewer',
         isAdmin: role === 'admin'
       }
     },

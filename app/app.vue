@@ -17,31 +17,31 @@ const redirectBasedOnRole = async () => {
   })
 
   // Redirect based on role hierarchy
-  if (authStore.hasAdminAccess()) {
-    console.log('Redirecting to admin dashboard')
-    return navigateTo(`/${locale.value}/dashboard/admin`)
-  }
-  else if (authStore.hasDepartmentHeadAccess()) {
-    console.log('Redirecting to department dashboard')
-    return navigateTo(`/${locale.value}/dashboard/department`)
-  }
-  else if (authStore.hasTeacherAccess()) {
-    console.log('Redirecting to supervisor dashboard')
-    return navigateTo(`/${locale.value}/dashboard/supervisor`)
-  }
-  else if (authStore.hasReviewerAccess()) {
-    console.log('Redirecting to reviewer dashboard')
-    return navigateTo(`/${locale.value}/dashboard/reviewer`)
-  }
-  else if (authStore.hasStudentAccess()) {
-    console.log('Redirecting to student dashboard')
-    return navigateTo(`/${locale.value}/dashboard/student`)
-  }
-  // Default fallback if no specific role is detected
-  else {
-    console.log('No specific role found, redirecting to general dashboard')
-    return navigateTo(`/${locale.value}/dashboard`)
-  }
+  // if (authStore.hasAdminAccess()) {
+  //   console.log('Redirecting to admin dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard/admin`)
+  // }
+  // else if (authStore.hasDepartmentHeadAccess()) {
+  //   console.log('Redirecting to department dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard/department`)
+  // }
+  // else if (authStore.hasTeacherAccess()) {
+  //   console.log('Redirecting to supervisor dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard/supervisor`)
+  // }
+  // else if (authStore.hasReviewerAccess()) {
+  //   console.log('Redirecting to reviewer dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard/reviewer`)
+  // }
+  // else if (authStore.hasStudentAccess()) {
+  //   console.log('Redirecting to student dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard/student`)
+  // }
+  // // Default fallback if no specific role is detected
+  // else {
+  //   console.log('No specific role found, redirecting to general dashboard')
+  //   return navigateTo(`/${locale.value}/dashboard`)
+  // }
 }
 
 onMounted(async () => {
@@ -52,9 +52,9 @@ onMounted(async () => {
       await authStore.setUser(user.value)
       console.log('User set in authStore, checking for redirect')
 
-      // Modified condition to check if we're not already on a dashboard page
-      if (!route.path.includes('/dashboard')) {
-        console.log('Not on dashboard, redirecting based on role')
+      // Updated condition to also check for project-assignments path
+      if (!route.path.includes('/dashboard') && !route.path.includes('/project-assignments')) {
+        console.log('Not on dashboard or project assignments, redirecting based on role')
         await redirectBasedOnRole()
       }
     }
@@ -76,8 +76,11 @@ watch(loggedIn, async (newValue, oldValue) => {
       console.log('User logged in, setting user in authStore')
       await authStore.setUser(user.value)
 
-      console.log('Redirecting after login')
-      await redirectBasedOnRole()
+      // Don't redirect if already on project-assignments path
+      if (!route.path.includes('/project-assignments')) {
+        console.log('Redirecting after login')
+        await redirectBasedOnRole()
+      }
     }
     catch (error) {
       console.error('Error in loggedIn watcher:', error)
