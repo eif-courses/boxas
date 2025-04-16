@@ -34,8 +34,6 @@ export default {
   nav_commission: 'Komisijai',
   nav_admin: 'Administratoriui',
   enter_title: 'Įveskite pavadinimą...',
-  success: 'Pavadinimas sėkmingai atnaujintas',
-  error: 'Nepavyko atnaujinti pavadinimo',
   favorites: 'Pažymėti žvaigždute',
   source_code: 'Išeities kodas',
   final_project: 'Baigiamojo darbo PDF',
@@ -72,5 +70,52 @@ export default {
   supervisor_workplace: '(darbovietė)',
   supervisor_position: '(pareigos)',
   supervisor_date: ' (data)',
-  modal_close: 'Uždaryti'
+  modal_close: 'Uždaryti',
+  versions: {
+    title: 'Versijų istorija',
+    empty: 'Ankstesnių versijų nerasta.',
+    noComment: 'Nepateiktas komentaras',
+    viewThisVersion: 'Peržiūrėti šią versiją',
+    compareWithCurrent: 'Palyginti su dabartine',
+    comparing: 'Versijų palyginimas',
+    previous: 'Ankstesnė',
+    current: 'Dabartinė',
+    noChanges: 'Nėra pakeitimų',
+    close: 'Uždaryti',
+    loadThisVersion: 'Įkelti šią versiją',
+    versionLoaded: 'Versija sėkmingai įkelta',
+    versionNumber: 'Versija',
+    date: 'Data',
+    comment: 'Komentaras',
+    actions: 'Veiksmai',
+    versionInfo: 'Versijos informacija',
+    versionDate: 'Sukurta',
+    createdBy: 'Sukūrė',
+    versionComment: 'Komentaras'
+  },
+  role: {
+    student: 'Studentas',
+    supervisor: 'Vadovas'
+  },
+  success: {
+    title: 'Sėkmingai',
+    saved: 'Forma sėkmingai išsaugota',
+    submitted: 'Forma sėkmingai pateikta',
+    approved: 'Užduotis sėkmingai patvirtinta',
+    revisionRequested: 'Pataisymų prašymas sėkmingai išsiųstas'
+  },
+  error: {
+    title: 'Klaida',
+    fetchAssignment: 'Nepavyko įkelti užduoties duomenų',
+    save: 'Nepavyko išsaugoti formos',
+    submit: 'Nepavyko pateikti formos',
+    approve: 'Nepavyko patvirtinti užduoties',
+    requestRevision: 'Nepavyko paprašyti pataisymų',
+    parseVersion: 'Nepavyko apdoroti versijos duomenų',
+    compareVersions: 'Nepavyko palyginti versijų'
+  },
+  info: {
+    title: 'Informacija',
+    versionLoaded: 'Versija sėkmingai įkelta'
+  }
 }

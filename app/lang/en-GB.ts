@@ -34,8 +34,6 @@ export default {
   nav_commission: 'Commission View',
   nav_admin: 'Admin View',
   enter_title: 'Enter Title...',
-  success: 'Successfully Updated Title',
-  error: 'Title Update failed',
   favorites: 'Mark with a star',
   source_code: 'Source Code',
   final_project: 'Final Thesis PDF',
@@ -72,5 +70,94 @@ export default {
   supervisor_workplace: '(workplace)',
   supervisor_position: '(position)',
   supervisor_date: '(date)',
-  modal_close: 'Close'
+  modal_close: 'Close',
+  assignment: {
+    title: 'Final Project Assignment',
+    studentGroup: 'Student Group',
+    finalProjectTitle: 'Final Project Title',
+    objective: 'Objective',
+    tasks: 'Tasks',
+    tools: 'Tools for Implementation',
+    save: 'Save',
+    submit: 'Submit',
+    approve: 'Approve',
+    requestRevision: 'Request Revision',
+    status: {
+      draft: 'Draft',
+      submitted: 'Submitted',
+      revision_requested: 'Revision Requested',
+      approved: 'Approved'
+    },
+    statusDescription: {
+      draft: 'Complete the form and submit it for supervisor review.',
+      submitted: 'Form submitted for supervisor review.',
+      revision_requested: 'Supervisor has requested revisions. Please check the comments.',
+      approved: 'Supervisor has approved the assignment. Form is complete.'
+    },
+    tabs: {
+      form: 'Form',
+      comments: 'Comments',
+      versions: 'Versions'
+    }
+  },
+  comments: {
+    title: 'Comments',
+    newComment: 'New Comment',
+    selectField: 'Select field (optional)',
+    placeholder: 'Add your comments here...',
+    post: 'Post Comment',
+    reply: 'Reply',
+    yourReply: 'Your Reply',
+    replyPlaceholder: 'Write your reply...',
+    cancel: 'Cancel',
+    postReply: 'Post Reply',
+    empty: 'No comments yet. Start the conversation!'
+  },
+  versions: {
+    title: 'Version History',
+    empty: 'No previous versions found.',
+    noComment: 'No comment provided',
+    viewThisVersion: 'View this version',
+    compareWithCurrent: 'Compare with current',
+    comparing: 'Comparing Versions',
+    previous: 'Previous',
+    current: 'Current',
+    noChanges: 'No changes',
+    close: 'Close',
+    loadThisVersion: 'Load This Version',
+    versionLoaded: 'Version loaded successfully',
+    versionNumber: 'Version',
+    date: 'Date',
+    comment: 'Comment',
+    actions: 'Actions',
+    versionInfo: 'Version Information',
+    versionDate: 'Created on',
+    createdBy: 'Created by',
+    versionComment: 'Comment'
+  },
+  role: {
+    student: 'Student',
+    supervisor: 'Supervisor'
+  },
+  success: {
+    title: 'Success',
+    saved: 'Form saved successfully',
+    submitted: 'Form submitted successfully',
+    approved: 'Assignment approved successfully',
+    revisionRequested: 'Revision request sent successfully'
+  },
+  error: {
+    title: 'Error',
+    fetchAssignment: 'Failed to load assignment data',
+    save: 'Failed to save form',
+    submit: 'Failed to submit form',
+    approve: 'Failed to approve assignment',
+    requestRevision: 'Failed to request revision',
+    parseVersion: 'Failed to parse version data',
+    compareVersions: 'Failed to compare versions'
+  },
+  info: {
+    title: 'Information',
+    versionLoaded: 'Version loaded successfully'
+  }
 }

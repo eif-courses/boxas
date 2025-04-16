@@ -380,9 +380,8 @@ const switchToEnglish = () => language.value = 'en'
 const switchToLithuanian = () => language.value = 'lt'
 
 // Force student role for now - You can remove this hardcoding once roles work correctly
-//const userRole = ref('student')
-const userRole = ref('supervisor')
-
+const userRole = ref('student')
+//const userRole = ref('supervisor')
 
 // Create simplified role checks to avoid complex computed property issues
 const isStudentRole = computed(() => userRole.value === 'student')
