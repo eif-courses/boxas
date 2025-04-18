@@ -98,7 +98,10 @@ export default {
       form: 'Form',
       comments: 'Comments',
       versions: 'Versions'
-    }
+    },
+    selectVersion: 'Select Version',
+    latestVersion: 'Latest Version',
+    noVersions: 'No versions available'
   },
   comments: {
     title: 'Comments',
@@ -111,7 +114,11 @@ export default {
     replyPlaceholder: 'Write your reply...',
     cancel: 'Cancel',
     postReply: 'Post Reply',
-    empty: 'No comments yet. Start the conversation!'
+    empty: 'No comments yet. Start the conversation!',
+    show: 'Show Comments',
+    hide: 'Hide Comments',
+    expand: 'Show Comments',
+    collapse: 'Hide Comments'
   },
   versions: {
     title: 'Version History',
@@ -154,7 +161,9 @@ export default {
     approve: 'Failed to approve assignment',
     requestRevision: 'Failed to request revision',
     parseVersion: 'Failed to parse version data',
-    compareVersions: 'Failed to compare versions'
+    compareVersions: 'Failed to compare versions',
+    postComment: 'Failed to post comment',
+    postReply: 'Failed to post reply'
   },
   info: {
     title: 'Information',

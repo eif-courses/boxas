@@ -54,14 +54,6 @@
 
       <!-- Assignment Section -->
       <div class="mb-6">
-        <UButton
-          icon="i-heroicons-document-plus"
-          color="primary"
-          @click="startNewAssignment"
-        >
-          Create Assignment
-        </UButton>
-
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
             {{ $t('assignment') || 'Baigiamojo darbo užduotis' }}
@@ -612,8 +604,8 @@ const route = useRoute()
 
 // User role state
 const userStore = useAuthStore()
-const isStudent = computed(() => userStore.isStudent)
-const isSupervisor = computed(() => userStore.isReviewer)
+const isStudent = ref(false) // computed(() => userStore.isStudent)
+const isSupervisor = ref(true) // = computed(() => userStore.isTeacher)
 
 // UI state
 const openDocumentUploader = ref(false)
@@ -647,21 +639,7 @@ interface StudentRecordsResponse {
     assignmentDate: number
   }
 }
-const startNewAssignment = async () => {
-  const newId = await createProjectAssignment()
-  if (newId) {
-    projectAssignmentId.value = newId
-    showProjectAssignmentModal.value = true
-  }
-  else {
-    // Handle error - couldn't create assignment
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to create new assignment',
-      color: 'red'
-    })
-  }
-}
+
 const { data: records, error, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')
 
 // Assignment data
@@ -671,6 +649,8 @@ const assignmentData = ref(null)
 const fetchAssignmentData = async () => {
   try {
     if (!records.value?.student?.id) return
+
+    console.log(records.value)
 
     const response = await fetch(`/api/assignments/${records.value.student.id}/summary`)
     if (response.ok) {
@@ -816,76 +796,6 @@ const startCreateAssignment = () => {
   }
 }
 
-// Helper methods for the form button
-const getFormButtonColor = () => {
-  if (!assignmentData.value) return 'primary'
-  if (assignmentData.value.status === 'revision_requested') return 'warning'
-  if (assignmentData.value.status === 'submitted' && isSupervisor.value) return 'warning'
-  return 'white'
-}
-
-const getFormButtonIcon = () => {
-  if (!assignmentData.value) return 'i-heroicons-document-plus'
-  if (assignmentData.value.status === 'revision_requested') return 'i-heroicons-pencil'
-  if (assignmentData.value.status === 'submitted' && isSupervisor.value) return 'i-heroicons-clipboard-document-check'
-  return 'i-heroicons-document-text'
-}
-
-const getFormButtonLabel = () => {
-  if (!assignmentData.value) return isStudent.value
-    ? (t('create_assignment') || 'Sukurti užduotį')
-    : (t('view_assignment') || 'Peržiūrėti užduotį')
-
-  if (assignmentData.value.status === 'revision_requested')
-    return t('update_assignment') || 'Atnaujinti užduotį'
-
-  if (assignmentData.value.status === 'submitted' && isSupervisor.value)
-    return t('review_assignment') || 'Peržiūrėti užduotį'
-
-  return t('view_assignment') || 'Peržiūrėti užduotį'
-}
-
-// Assignment UI helpers
-const getAssignmentButtonLabel = () => {
-  if (!assignmentData.value) {
-    return isStudent.value ? (t('create_assignment') || 'Sukurti užduotį') : (t('view_assignment') || 'Peržiūrėti užduotį')
-  }
-
-  return t('view_assignment') || 'Peržiūrėti užduotį'
-}
-
-const getAssignmentButtonColor = () => {
-  if (!assignmentData.value && isStudent.value) {
-    return 'primary'
-  }
-
-  if (assignmentData.value?.status === 'submitted' && isSupervisor.value) {
-    return 'warning'
-  }
-
-  if (assignmentData.value?.status === 'revision_requested' && isStudent.value) {
-    return 'warning'
-  }
-
-  return 'white'
-}
-
-const getAssignmentButtonIcon = () => {
-  if (!assignmentData.value && isStudent.value) {
-    return 'i-heroicons-plus'
-  }
-
-  if (assignmentData.value?.status === 'submitted' && isSupervisor.value) {
-    return 'i-heroicons-clipboard-document-check'
-  }
-
-  if (assignmentData.value?.status === 'revision_requested' && isStudent.value) {
-    return 'i-heroicons-pencil'
-  }
-
-  return 'i-heroicons-document-text'
-}
-
 const getStatusColor = (status) => {
   switch (status) {
     case 'draft': return 'gray'
@@ -938,11 +848,6 @@ const getSupervisorReportData = (report: SupervisorReport) => {
     POS: report.supervisorPosition || 'N/A Position',
     DATE: formatUnixDate(report.createdDate)
   }
-}
-
-// Event handlers
-const handleAssignmentSave = (data) => {
-  console.log('Assignment form data:', data)
 }
 
 const handleDocumentUpload = async () => {
@@ -1030,75 +935,6 @@ const createProjectAssignment = async () => {
     console.error('Error creating project assignment:', error)
     return null
   }
-}
-
-// Handle the case where the project assignment form is closed
-const handleProjectAssignmentClose = () => {
-  showProjectAssignmentModal.value = false
-
-  // Refresh data after closing
-  fetchAssignmentData()
-  refresh()
-}
-
-// Handle the case where a version is loaded in the project assignment
-const handleVersionLoaded = (version) => {
-  console.log('Project assignment version loaded:', version)
-  // Additional handling if needed
-}
-
-// Handle project assignment deletion if supported
-const handleProjectAssignmentDelete = async () => {
-  if (!projectAssignmentId.value) return
-
-  if (!confirm(t('confirm_delete_assignment') || 'Ar tikrai norite ištrinti užduotį?')) {
-    return
-  }
-
-  try {
-    const response = await fetch(`/api/projectAssignments/${projectAssignmentId.value}`, {
-      method: 'DELETE'
-    })
-
-    if (response.ok) {
-      useToast().add({
-        title: t('success') || 'Sėkmingai',
-        description: t('project_assignment_deleted') || 'Užduotis sėkmingai ištrinta',
-        color: 'green'
-      })
-
-      projectAssignmentId.value = null
-      hasProjectAssignment.value = false
-      showProjectAssignmentModal.value = false
-
-      // Refresh data
-      await fetchAssignmentData()
-      await refresh()
-    }
-    else {
-      useToast().add({
-        title: t('error') || 'Klaida',
-        description: t('delete_assignment_error') || 'Nepavyko ištrinti užduoties',
-        color: 'red'
-      })
-    }
-  }
-  catch (error) {
-    console.error('Error deleting project assignment:', error)
-    useToast().add({
-      title: t('error') || 'Klaida',
-      description: t('delete_assignment_error') || 'Nepavyko ištrinti užduoties',
-      color: 'red'
-    })
-  }
-}
-
-// Navigate directly to the project assignment page if needed
-const navigateToProjectAssignment = () => {
-  if (!projectAssignmentId.value) return
-
-  const { locale } = useI18n()
-  navigateTo(`/${locale.value}/project-assignments/${projectAssignmentId.value}`)
 }
 
 // Fetch assignment data when component mounts

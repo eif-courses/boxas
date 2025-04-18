@@ -71,6 +71,55 @@ export default {
   supervisor_position: '(pareigos)',
   supervisor_date: ' (data)',
   modal_close: 'Uždaryti',
+  assignment: {
+    title: 'Baigiamojo Darbo Užduotis',
+    studentGroup: 'Studentų grupė',
+    finalProjectTitle: 'Baigiamojo darbo tema',
+    objective: 'Baigiamojo darbo tikslas',
+    tasks: 'Baigiamojo darbo uždaviniai',
+    tools: 'Baigiamojo darbo realizavimo priemonės',
+    save: 'Išsaugoti',
+    submit: 'Pateikti',
+    approve: 'Patvirtinti',
+    requestRevision: 'Prašyti pataisymų',
+    status: {
+      draft: 'Juodraštis',
+      submitted: 'Pateiktas',
+      revision_requested: 'Reikia pataisymų',
+      approved: 'Patvirtintas'
+    },
+    statusDescription: {
+      draft: 'Užpildykite formą ir pateikite vadovui peržiūrėti.',
+      submitted: 'Forma pateikta vadovui peržiūrėti.',
+      revision_requested: 'Vadovas paprašė atlikti pataisymus. Peržiūrėkite komentarus.',
+      approved: 'Vadovas patvirtino užduotį. Forma užbaigta.'
+    },
+    tabs: {
+      form: 'Forma',
+      comments: 'Komentarai',
+      versions: 'Versijos'
+    },
+    selectVersion: 'Pasirinkti versiją',
+    latestVersion: 'Naujausia versija',
+    noVersions: 'Nėra versijų'
+  },
+  comments: {
+    title: 'Komentarai',
+    newComment: 'Naujas komentaras',
+    selectField: 'Pasirinkite lauką (neprivaloma)',
+    placeholder: 'Pridėkite savo komentarą čia...',
+    post: 'Skelbti komentarą',
+    reply: 'Atsakyti',
+    yourReply: 'Jūsų atsakymas',
+    replyPlaceholder: 'Parašykite savo atsakymą...',
+    cancel: 'Atšaukti',
+    postReply: 'Paskelbti atsakymą',
+    empty: 'Dar nėra komentarų. Pradėkite pokalbį!',
+    show: 'Rodyti komentarus',
+    hide: 'Slėpti komentarus',
+    expand: 'Rodyti komentarus',
+    collapse: 'Slėpti komentarus'
+  },
   versions: {
     title: 'Versijų istorija',
     empty: 'Ankstesnių versijų nerasta.',
@@ -112,7 +161,9 @@ export default {
     approve: 'Nepavyko patvirtinti užduoties',
     requestRevision: 'Nepavyko paprašyti pataisymų',
     parseVersion: 'Nepavyko apdoroti versijos duomenų',
-    compareVersions: 'Nepavyko palyginti versijų'
+    compareVersions: 'Nepavyko palyginti versijų',
+    postComment: 'Nepavyko paskelbti komentaro',
+    postReply: 'Nepavyko paskelbti atsakymo'
   },
   info: {
     title: 'Informacija',

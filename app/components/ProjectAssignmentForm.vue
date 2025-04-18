@@ -1,3 +1,4 @@
+<!-- components/ProjectAssignmentForm.vue -->
 <template>
   <div class="px-2 py-4">
     <!-- Loading state -->
@@ -5,16 +6,39 @@
       v-if="isLoading"
       class="flex justify-center items-center py-16"
     >
-      <USkeleton class="h-32 w-full" />
+      <div class="text-center">
+        <UIcon
+          name="i-heroicons-arrow-path"
+          class="animate-spin h-8 w-8 mx-auto text-gray-400 dark:text-gray-500"
+        />
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Loading assignment data...
+        </p>
+      </div>
+      <!-- Optional: Use multiple skeletons if preferred -->
+      <!-- <USkeleton class="h-32 w-full" /> -->
     </div>
 
     <!-- Error state -->
     <UAlert
       v-else-if="hasError"
       color="red"
-      title="Error"
-      :description="errorMessage"
-    />
+      variant="soft"
+      title="Error Loading Data"
+    >
+      <template #description>
+        {{ errorMessage || (language === 'lt' ? 'Įvyko klaida gaunant užduoties duomenis.' : 'An error occurred fetching assignment data.') }}
+        <UButton
+          color="red"
+          variant="link"
+          size="xs"
+          class="ml-2"
+          @click="fetchAssignment"
+        >
+          Retry
+        </UButton>
+      </template>
+    </UAlert>
 
     <!-- Form Content -->
     <div
@@ -37,17 +61,40 @@
         </div>
       </UAlert>
 
-      <!-- Debug info - remove in production -->
-      <div class="text-xs text-gray-500 p-2 bg-gray-50 rounded mb-2">
-        User Role: {{ userRole }}, Can Edit: {{ canEdit }}, Status: {{ formData.status }}
-      </div>
+      <!-- Version selector and language controls -->
+      <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div
+          v-if="versions.length > 0"
+          class="flex items-center gap-2"
+        >
+          <UIcon
+            name="i-heroicons-clock"
+            class="text-gray-500"
+          />
+          <USelect
+            v-model="selectedVersionId"
+            :options="versionOptions"
+            :placeholder="language === 'lt' ? 'Pasirinkti versiją' : 'Select version'"
+            value-attribute="value"
+            option-attribute="label"
+            size="sm"
+            class="w-60"
+            @update:model-value="handleVersionChange"
+          />
+        </div>
+        <div
+          v-else
+          class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+        >
+          <UIcon name="i-heroicons-no-symbol" />
+          <span>{{ language === 'lt' ? 'Versijų nėra' : 'No versions available' }}</span>
+        </div>
 
-      <!-- Action Buttons -->
-      <div class="flex justify-between items-center">
-        <div class="flex gap-2">
+        <div>
           <UButton
             v-if="language === 'lt'"
             variant="outline"
+            size="sm"
             @click="switchToEnglish"
           >
             Switch to English
@@ -55,56 +102,50 @@
           <UButton
             v-else
             variant="outline"
+            size="sm"
             @click="switchToLithuanian"
           >
             Perjungti į lietuvių k.
           </UButton>
         </div>
+      </div>
 
-        <div class="flex gap-2">
-          <!-- Student buttons -->
-          <div v-if="isStudentRole">
-            <UButton
-              v-if="canSubmit"
-              color="primary"
-              icon="i-heroicons-paper-airplane"
-              :loading="isSubmitting"
-              @click="submitAssignment"
-            >
-              {{ language === 'lt' ? 'Pateikti' : 'Submit' }}
-            </UButton>
-            <UButton
-              v-if="canSave"
-              color="primary"
-              icon="i-heroicons-document-check"
-              :loading="isSaving"
-              @click="saveAssignment"
-            >
-              {{ language === 'lt' ? 'Išsaugoti' : 'Save' }}
-            </UButton>
-          </div>
-
-          <!-- Supervisor buttons -->
-          <div v-if="isSupervisorRole">
-            <UButton
-              v-if="canApprove"
-              color="success"
-              icon="i-heroicons-check"
-              :loading="isApproving"
-              @click="approveAssignment"
-            >
-              {{ language === 'lt' ? 'Patvirtinti' : 'Approve' }}
-            </UButton>
-            <UButton
-              v-if="canRequestRevision"
-              color="warning"
-              icon="i-heroicons-arrow-path"
-              :loading="isRequestingRevision"
-              @click="requestRevision"
-            >
-              {{ language === 'lt' ? 'Prašyti pataisymų' : 'Request revision' }}
-            </UButton>
-          </div>
+      <!-- Action Buttons -->
+      <div class="flex justify-end gap-2 mb-4">
+        <div v-if="isStudentRole">
+          <UButton
+            v-if="canSubmit"
+            color="primary"
+            icon="i-heroicons-paper-airplane"
+            :loading="isSubmitting"
+            @click="submitAssignment"
+          >
+            {{ language === 'lt' ? 'Pateikti' : 'Submit' }}
+          </UButton>
+          <!-- Save button moved inside UForm -->
+        </div>
+        <div
+          v-if="isSupervisorRole"
+          class="flex gap-2"
+        >
+          <UButton
+            v-if="canApprove"
+            color="green"
+            icon="i-heroicons-check"
+            :loading="isApproving"
+            @click="approveAssignment"
+          >
+            {{ language === 'lt' ? 'Patvirtinti' : 'Approve' }}
+          </UButton>
+          <UButton
+            v-if="canRequestRevision"
+            color="amber"
+            icon="i-heroicons-arrow-path"
+            :loading="isRequestingRevision"
+            @click="requestRevision"
+          >
+            {{ language === 'lt' ? 'Prašyti pataisymų' : 'Request revision' }}
+          </UButton>
         </div>
       </div>
 
@@ -112,138 +153,258 @@
         :state="formData"
         @submit.prevent="saveAssignment"
       >
-        <!-- Student Group -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <!-- Student Group (Display Only) -->
+        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
           <UFormGroup :label="language === 'lt' ? 'Grupė' : 'Group'">
             <UInput
-              v-model="formData.studentGroup"
+              :model-value="formData.studentGroup"
               disabled
             />
           </UFormGroup>
         </div>
 
         <!-- Title Section with Comments -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
           <UFormGroup :label="language === 'lt' ? 'Baigiamojo darbo tema' : 'Final Project Title'">
             <UInput
               v-if="language === 'lt'"
               v-model="formData.finalProjectTitle"
               :placeholder="language === 'lt' ? 'Baigiamojo darbo temos pavadinimas' : 'Final Project Title'"
-              :disabled="!isStudentRole"
+              :disabled="!isStudentInputEnabled"
             />
             <UInput
               v-else
               v-model="formData.finalProjectTitleEn"
               placeholder="Final Project Title"
-              :disabled="!isStudentRole"
+              :disabled="!isStudentInputEnabled"
             />
           </UFormGroup>
 
-          <!-- Comments for this section -->
-          <SectionComments
-            v-if="showComments"
-            :field-name="language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn'"
-            :comments="getCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn')"
-            :user-role="userRole"
-            :assignment-id="assignmentId"
-            @comment-added="fetchComments"
-          />
+          <CollapsibleSection
+            v-if="showComments && hasCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn')"
+            class="mt-3"
+          >
+            <template #header>
+              <span class="text-sm font-medium">{{ language === 'lt' ? 'Komentarai' : 'Comments' }}</span>
+              <div class="flex items-center gap-2">
+                <UBadge
+                  size="xs"
+                  color="gray"
+                >
+                  {{ getCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn').length }}
+                </UBadge>
+              </div>
+            </template>
+            <SectionComments
+              :field-name="language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn'"
+              :comments="getCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn')"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              @comment-added="fetchComments"
+            />
+          </CollapsibleSection>
+
+          <div
+            v-else-if="showComments && !hasCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn')"
+            class="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3"
+          >
+            <h4 class="text-xs font-medium mb-2">
+              {{ language === 'lt' ? 'Pridėti komentarą:' : 'Add Comment:' }}
+            </h4>
+            <SectionComments
+              :field-name="language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn'"
+              :comments="[]"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              :show-only-form="true"
+              @comment-added="fetchComments"
+            />
+          </div>
         </div>
 
         <!-- Objective Section with Comments -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
           <UFormGroup :label="language === 'lt' ? 'Baigiamojo darbo tikslas' : 'Final Project Objective'">
             <UTextarea
               v-if="language === 'lt'"
               v-model="formData.objective"
-              :placeholder="language === 'lt' ? 'Trumpas, aiškus, nusakomas vienu sakiniu, orientuotas į kuriamą programinę įrangą' : 'Brief, clear objective described in one sentence'"
-              :disabled="!isStudentRole"
+              :placeholder="language === 'lt' ? 'Trumpas, aiškus...' : 'Brief, clear objective...'"
+              :disabled="!isStudentInputEnabled"
               :rows="3"
             />
             <UTextarea
               v-else
               v-model="formData.objectiveEn"
-              placeholder="A brief, clear, one-sentence description focused on the software being developed"
-              :disabled="!isStudentRole"
+              placeholder="A brief, clear, one-sentence description..."
+              :disabled="!isStudentInputEnabled"
               :rows="3"
             />
           </UFormGroup>
 
-          <!-- Comments for this section -->
-          <SectionComments
-            v-if="showComments"
-            :field-name="language === 'lt' ? 'objective' : 'objectiveEn'"
-            :comments="getCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn')"
-            :user-role="userRole"
-            :assignment-id="assignmentId"
-            @comment-added="fetchComments"
-          />
+          <CollapsibleSection
+            v-if="showComments && hasCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn')"
+            class="mt-3"
+          >
+            <template #header>
+              <span class="text-sm font-medium">{{ language === 'lt' ? 'Komentarai' : 'Comments' }}</span>
+              <div class="flex items-center gap-2">
+                <UBadge
+                  size="xs"
+                  color="gray"
+                >
+                  {{ getCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn').length }}
+                </UBadge>
+              </div>
+            </template>
+            <SectionComments
+              :field-name="language === 'lt' ? 'objective' : 'objectiveEn'"
+              :comments="getCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn')"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              @comment-added="fetchComments"
+            />
+          </CollapsibleSection>
+
+          <div
+            v-else-if="showComments && !hasCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn')"
+            class="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3"
+          >
+            <h4 class="text-xs font-medium mb-2">
+              {{ language === 'lt' ? 'Pridėti komentarą:' : 'Add Comment:' }}
+            </h4>
+            <SectionComments
+              :field-name="language === 'lt' ? 'objective' : 'objectiveEn'"
+              :comments="[]"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              :show-only-form="true"
+              @comment-added="fetchComments"
+            />
+          </div>
         </div>
 
         <!-- Tasks Section with Comments -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
           <UFormGroup :label="language === 'lt' ? 'Baigiamojo darbo uždaviniai' : 'Final Project Tasks'">
             <UTextarea
               v-if="language === 'lt'"
               v-model="formData.tasks"
-              :placeholder="language === 'lt' ? 'Išvardinti preliminarius uždavinius, kurie padės pasiekti tikslą' : 'List the preliminary tasks that will help achieve the objective'"
-              :disabled="!isStudentRole"
+              :placeholder="language === 'lt' ? 'Išvardinti preliminarius uždavinius...' : 'List the preliminary tasks...'"
+              :disabled="!isStudentInputEnabled"
               :rows="5"
             />
             <UTextarea
               v-else
               v-model="formData.tasksEn"
               placeholder="List preliminary tasks that will help achieve the objective"
-              :disabled="!isStudentRole"
+              :disabled="!isStudentInputEnabled"
               :rows="5"
             />
           </UFormGroup>
-
-          <!-- Comments for this section -->
-          <SectionComments
-            v-if="showComments"
-            :field-name="language === 'lt' ? 'tasks' : 'tasksEn'"
-            :comments="getCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn')"
-            :user-role="userRole"
-            :assignment-id="assignmentId"
-            @comment-added="fetchComments"
-          />
+          <CollapsibleSection
+            v-if="showComments && hasCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn')"
+            class="mt-3"
+          >
+            <template #header>
+              <span class="text-sm font-medium">{{ language === 'lt' ? 'Komentarai' : 'Comments' }}</span>
+              <div class="flex items-center gap-2">
+                <UBadge
+                  size="xs"
+                  color="gray"
+                >
+                  {{ getCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn').length }}
+                </UBadge>
+              </div>
+            </template>
+            <SectionComments
+              :field-name="language === 'lt' ? 'tasks' : 'tasksEn'"
+              :comments="getCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn')"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              @comment-added="fetchComments"
+            />
+          </CollapsibleSection>
+          <div
+            v-else-if="showComments && !hasCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn')"
+            class="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3"
+          >
+            <h4 class="text-xs font-medium mb-2">
+              {{ language === 'lt' ? 'Pridėti komentarą:' : 'Add Comment:' }}
+            </h4>
+            <SectionComments
+              :field-name="language === 'lt' ? 'tasks' : 'tasksEn'"
+              :comments="[]"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              :show-only-form="true"
+              @comment-added="fetchComments"
+            />
+          </div>
         </div>
 
         <!-- Tools Section with Comments -->
-        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
           <UFormGroup :label="language === 'lt' ? 'Baigiamojo darbo realizavimo priemonės' : 'Tools for Final Project Implementation'">
             <UTextarea
               v-if="language === 'lt'"
               v-model="formData.tools"
-              :placeholder="language === 'lt' ? 'Išvardyti įrankius ir technologijas, kurie bus naudojami kuriant programinę įrangą' : 'List the tools and technologies that will be used in development'"
-              :disabled="!isStudentRole"
+              :placeholder="language === 'lt' ? 'Išvardyti įrankius...' : 'List the tools...'"
+              :disabled="!isStudentInputEnabled"
               :rows="3"
             />
             <UTextarea
               v-else
               v-model="formData.toolsEn"
-              placeholder="List the tools and technologies that will be used in the development of the software"
-              :disabled="!isStudentRole"
+              placeholder="List the tools and technologies..."
+              :disabled="!isStudentInputEnabled"
               :rows="3"
             />
           </UFormGroup>
-
-          <!-- Comments for this section -->
-          <SectionComments
-            v-if="showComments"
-            :field-name="language === 'lt' ? 'tools' : 'toolsEn'"
-            :comments="getCommentsForField(language === 'lt' ? 'tools' : 'toolsEn')"
-            :user-role="userRole"
-            :assignment-id="assignmentId"
-            @comment-added="fetchComments"
-          />
+          <CollapsibleSection
+            v-if="showComments && hasCommentsForField(language === 'lt' ? 'tools' : 'toolsEn')"
+            class="mt-3"
+          >
+            <template #header>
+              <span class="text-sm font-medium">{{ language === 'lt' ? 'Komentarai' : 'Comments' }}</span>
+              <div class="flex items-center gap-2">
+                <UBadge
+                  size="xs"
+                  color="gray"
+                >
+                  {{ getCommentsForField(language === 'lt' ? 'tools' : 'toolsEn').length }}
+                </UBadge>
+              </div>
+            </template>
+            <SectionComments
+              :field-name="language === 'lt' ? 'tools' : 'toolsEn'"
+              :comments="getCommentsForField(language === 'lt' ? 'tools' : 'toolsEn')"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              @comment-added="fetchComments"
+            />
+          </CollapsibleSection>
+          <div
+            v-else-if="showComments && !hasCommentsForField(language === 'lt' ? 'tools' : 'toolsEn')"
+            class="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3"
+          >
+            <h4 class="text-xs font-medium mb-2">
+              {{ language === 'lt' ? 'Pridėti komentarą:' : 'Add Comment:' }}
+            </h4>
+            <SectionComments
+              :field-name="language === 'lt' ? 'tools' : 'toolsEn'"
+              :comments="[]"
+              :user-role="userRole"
+              :assignment-id="Number(assignmentId)"
+              :show-only-form="true"
+              @comment-added="fetchComments"
+            />
+          </div>
         </div>
 
         <!-- General Comments Section -->
         <div
           v-if="showComments"
-          class="bg-gray-50 p-4 rounded-lg mb-6"
+          class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6"
         >
           <h3 class="font-medium mb-3">
             {{ language === 'lt' ? 'Bendri komentarai' : 'General Comments' }}
@@ -252,14 +413,14 @@
             :field-name="null"
             :comments="getCommentsForField(null)"
             :user-role="userRole"
-            :assignment-id="assignmentId"
+            :assignment-id="Number(assignmentId)"
             @comment-added="fetchComments"
           />
         </div>
 
-        <!-- Form save button (for students in editable states) -->
+        <!-- Form save button (Moved outside specific role check, controlled by canSave) -->
         <div
-          v-if="isStudentRole"
+          v-if="canSave"
           class="flex justify-end mt-4"
         >
           <UButton
@@ -271,123 +432,76 @@
           </UButton>
         </div>
       </UForm>
-
-      <!-- Version History Drawer -->
-      <UButton
-        v-if="versions.length > 1"
-        variant="ghost"
-        color="gray"
-        icon="i-heroicons-clock"
-        @click="showVersionHistory = true"
-      >
-        {{ language === 'lt' ? 'Versijų istorija' : 'Version History' }}
-      </UButton>
-
-      <USlideover v-model="showVersionHistory">
-        <UCard>
-          <template #header>
-            <h3 class="text-xl font-semibold">
-              {{ language === 'lt' ? 'Versijų istorija' : 'Version History' }}
-            </h3>
-          </template>
-
-          <div class="p-4">
-            <UTable
-              :rows="versions"
-              :columns="versionColumns"
-              hover
-              @select="onVersionSelect"
-            >
-              <template #version-cell="{ row }">
-                <div class="flex items-center gap-2">
-                  <UBadge
-                    v-if="row.createdBy === 'student'"
-                    color="green"
-                  >
-                    {{ language === 'lt' ? 'Studentas' : 'Student' }}
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    color="blue"
-                  >
-                    {{ language === 'lt' ? 'Vadovas' : 'Supervisor' }}
-                  </UBadge>
-                  <span class="font-semibold">#{{ row.id }}</span>
-                </div>
-              </template>
-
-              <template #date-cell="{ row }">
-                <div>
-                  {{ formatDate(row.createdDate) }}
-                </div>
-              </template>
-
-              <template #comment-cell="{ row }">
-                <div class="max-w-md truncate">
-                  {{ row.comment || (language === 'lt' ? 'Nėra komentaro' : 'No comment') }}
-                </div>
-              </template>
-
-              <template #actions-cell="{ row }">
-                <UTooltip :text="language === 'lt' ? 'Peržiūrėti šią versiją' : 'View this version'">
-                  <UButton
-                    color="primary"
-                    variant="ghost"
-                    icon="i-heroicons-eye"
-                    size="sm"
-                    @click="loadVersion(row)"
-                  />
-                </UTooltip>
-              </template>
-            </UTable>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end">
-              <UButton
-                color="gray"
-                @click="showVersionHistory = false"
-              >
-                {{ language === 'lt' ? 'Uždaryti' : 'Close' }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </USlideover>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// <<< --- Ensure lang="ts" is present --- <<<
 import { ref, computed, onMounted, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+// Import types if needed by SectionComments or other parts
 import SectionComments from './SectionComments.vue'
-import { useAuthStore } from '~/stores/auth'
+import CollapsibleSection from './CollapsibleSection.vue' // <<< IMPORTED
+import type { Comment } from '~/types' // Example type import - Define this type based on your comment structure
+import { useAuthStore } from '~/stores/auth' // Assuming auth store exists
+import { useToast } from '#imports' // Correct import for useToast
 
+// --- Define Interfaces ---
+interface FormData {
+  id: number | null
+  studentRecordId: number | null
+  status: string // e.g., 'draft', 'submitted', 'revision_requested', 'approved', 'error'
+  isSigned: number // 0 or 1
+  studentGroup: string
+  finalProjectTitle: string
+  finalProjectTitleEn: string
+  objective: string
+  objectiveEn: string
+  tasks: string
+  tasksEn: string
+  tools: string
+  toolsEn: string
+  createdDate: number | null // Unix timestamp (seconds)
+  lastUpdated: number | null // Unix timestamp (seconds)
+}
+
+interface Version {
+  id: number
+  assignmentId: number
+  versionData: string // JSON string representation of FormData subset
+  comment: string | null
+  // createdBy?: 'student' | 'supervisor'; // Add if your API provides this
+  createdDate: number // Unix timestamp (seconds)
+}
+
+// --- Props ---
 const props = defineProps({
   assignmentId: {
-    type: [String, Number],
+    type: [String, Number], // Allow string 'new' or number ID
     required: true
   }
 })
 
-const emit = defineEmits(['saved', 'submitted'])
+// --- Emits ---
+const emit = defineEmits(['saved', 'submitted', 'approved', 'revisionRequested', 'created'])
 
-// User and language state
-const { t } = useI18n()
-const language = ref('lt')
+// --- Composables ---
+const toast = useToast()
+const authStore = useAuthStore()
+
+// --- Language handling ---
+// TODO: Consider deriving initial language from user profile or browser settings
+const language = ref<'lt' | 'en'>('lt')
 const switchToEnglish = () => language.value = 'en'
 const switchToLithuanian = () => language.value = 'lt'
 
-// Force student role for now - You can remove this hardcoding once roles work correctly
-const userRole = ref('student')
-//const userRole = ref('supervisor')
+// --- User Role ---
+// Ensure your authStore correctly provides 'student', 'teacher', 'department-head', etc.
+const userRole = 'supervisor' // computed<'student' | 'supervisor' | string>(() => authStore.userRole) // Using string as fallback
+const isStudentRole = ref(false) // = computed(() => userRole.value === 'student')
+const isSupervisorRole = ref(true) // = computed(() => ['teacher', 'department-head', 'supervisor'].includes(userRole.value))
 
-// Create simplified role checks to avoid complex computed property issues
-const isStudentRole = computed(() => userRole.value === 'student')
-const isSupervisorRole = computed(() => userRole.value === 'supervisor')
-
-// UI state
+// --- UI State ---
 const isLoading = ref(true)
 const isSaving = ref(false)
 const isSubmitting = ref(false)
@@ -395,10 +509,10 @@ const isApproving = ref(false)
 const isRequestingRevision = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
-const showVersionHistory = ref(false)
+const selectedVersionId = ref<number | null>(null)
 
-// Data
-const formData = ref({
+// --- Data ---
+const initialFormData: FormData = {
   id: null,
   studentRecordId: null,
   status: 'draft',
@@ -414,444 +528,399 @@ const formData = ref({
   toolsEn: '',
   createdDate: null,
   lastUpdated: null
+}
+const formData = ref<FormData>({ ...initialFormData })
+const comments = ref<Comment[]>([]) // Use your actual Comment type
+const versions = ref<Version[]>([])
+
+// --- Version Options ---
+const versionOptions = computed(() => {
+  if (!Array.isArray(versions.value)) return []
+  return versions.value.map(version => ({
+    value: version.id,
+    label: `${formatDate(version.createdDate)} - ${version.comment || (language.value === 'lt' ? 'Nėra komentaro' : 'No comment')}`
+    // createdBy: version.createdBy // Optionally add creator if available
+  }))
 })
 
-const comments = ref([])
-const versions = ref([])
-
-// Computed properties - simplified
-const canEdit = computed(() => {
-  // Always allow students to edit in most cases
-  // We're now controlling this directly in the template inputs
-  return true
+// --- Computed Properties for Button/Input Logic ---
+const isStudentInputEnabled = computed(() => {
+  // Student can edit if it's their role AND the status allows it
+  return isStudentRole.value && ['draft', 'revision_requested'].includes(formData.value.status)
 })
+const canSave = computed(() => isStudentInputEnabled.value) // Can save if inputs are enabled
+const canSubmit = computed(() => isStudentInputEnabled.value) // Can submit if inputs are enabled
+const canApprove = computed(() => isSupervisorRole.value && formData.value.status === 'submitted')
+const canRequestRevision = computed(() => isSupervisorRole.value && formData.value.status === 'submitted')
 
-const canSave = computed(() => {
-  return isStudentRole.value
-})
-
-const canSubmit = computed(() => {
-  if (isStudentRole.value) {
-    return ['draft', 'revision_requested'].includes(formData.value.status)
-  }
-  return false
-})
-
-const canApprove = computed(() => {
-  if (isSupervisorRole.value) {
-    return formData.value.status === 'submitted'
-  }
-  return false
-})
-
-const canRequestRevision = computed(() => {
-  if (isSupervisorRole.value) {
-    return formData.value.status === 'submitted'
-  }
-  return false
-})
-
+// --- Show Comments Logic ---
 const showComments = computed(() => {
-  // Show comments if there are any, or if supervisor is viewing a submitted form
-  return comments.value.length > 0
-    || (isSupervisorRole.value && formData.value.status === 'submitted')
+  // Always show comment sections if supervisor (they can always add)
+  if (isSupervisorRole.value) return true
+  // Show for student if revision requested or if comments exist
+  const hasAnyComments = Array.isArray(comments.value) && comments.value.length > 0
+  const viewingRevisionRequested = formData.value.status === 'revision_requested'
+  return hasAnyComments || viewingRevisionRequested
 })
 
-// Version history columns
-const versionColumns = computed(() => [
-  {
-    key: 'version',
-    label: language.value === 'lt' ? 'Versija' : 'Version'
-  },
-  {
-    key: 'date',
-    label: language.value === 'lt' ? 'Data' : 'Date'
-  },
-  {
-    key: 'comment',
-    label: language.value === 'lt' ? 'Komentaras' : 'Comment'
-  },
-  {
-    key: 'actions',
-    label: language.value === 'lt' ? 'Veiksmai' : 'Actions'
-  }
-])
+// Check if a specific field has comments
+const hasCommentsForField = (fieldName: string | null): boolean => {
+  return getCommentsForField(fieldName).length > 0
+}
 
-// Fetch assignment data
+// Get comments for a specific field
+const getCommentsForField = (fieldName: string | null): Comment[] => {
+  return Array.isArray(comments.value)
+    ? comments.value.filter(comment => comment.fieldName === fieldName)
+    : []
+}
+
+// --- API Fetching ---
 const fetchAssignment = async () => {
   isLoading.value = true
   hasError.value = false
-
+  errorMessage.value = ''
+  console.log(`Fetching assignment for ID: ${props.assignmentId}`)
   try {
-    // Check if this is a new assignment (no data exists yet)
-    const isNewAssignment = props.assignmentId === 'new'
+    const isNew = props.assignmentId === 'new'
+    const currentId = isNew ? null : Number(props.assignmentId)
 
-    if (isNewAssignment) {
-      console.log('This is a new assignment - using defaults')
-
-      // For new assignments, we don't need to fetch anything
-      // Just use the default form data values
+    if (isNew || isNaN(currentId as number)) {
+      console.log('New assignment or invalid ID, using defaults.')
+      formData.value = { ...initialFormData, status: 'draft' }
+      comments.value = []
+      versions.value = []
+      selectedVersionId.value = null
       isLoading.value = false
       return
     }
 
-    // For existing assignments, fetch the data
-    const { data } = await useFetch(`/api/projectAssignments/${props.assignmentId}/summary`)
+    // Fetch summary which includes latest version data merged
+    const response = await $fetch(`/api/projectAssignments/${currentId}/summary`)
+    console.log('Fetched assignment summary:', response)
 
-    console.log('Fetched assignment data:', data.value)
-
-    if (data.value) {
-      // Update form data with values from the server
-      formData.value = {
-        ...formData.value, // Preserve defaults
-        ...data.value // Override with server data
+    if (response && typeof response === 'object') {
+      // Ensure essential IDs are preserved from the base response before merging potentially older version data
+      const baseData = {
+        id: response.id ?? null,
+        studentRecordId: response.studentRecordId ?? null,
+        status: response.status ?? 'draft',
+        createdDate: response.createdDate ?? null,
+        lastUpdated: response.lastUpdated ?? null,
+        isSigned: response.isSigned ?? 0,
+        studentGroup: response.studentGroup ?? ''
       }
+      // Merge response into a clean initial state, then merge base data back
+      formData.value = { ...initialFormData, ...response, ...baseData }
+      // Ensure status has a valid default if fetch somehow returns null status
+      if (!formData.value.status) formData.value.status = 'draft'
     }
-
-    await fetchComments()
-    await fetchVersions()
+    else {
+      throw new Error('Invalid data returned from summary endpoint.')
+    }
+    // Fetch related data in parallel
+    await Promise.all([fetchComments(), fetchVersions()])
   }
-  catch (error) {
-    console.error('Error fetching assignment:', error)
+  catch (error: any) {
+    console.error('Error fetching assignment summary:', error)
     hasError.value = true
-    errorMessage.value = language.value === 'lt'
-      ? 'Nepavyko įkelti užduoties duomenų'
-      : 'Failed to load assignment data'
+    errorMessage.value = error?.data?.message || (language.value === 'lt'
+      ? 'Nepavyko įkelti užduoties duomenų.'
+      : 'Failed to load assignment data.')
+    formData.value.status = 'error' // Indicate error state
   }
   finally {
     isLoading.value = false
   }
 }
 
-// Fetch comments
 const fetchComments = async () => {
+  const currentId = Number(props.assignmentId)
+  if (props.assignmentId === 'new' || isNaN(currentId)) { comments.value = []; return }
   try {
-    const { data } = await useFetch(`/api/projectAssignments/${props.assignmentId}/comments`)
-
-    if (data.value) {
-      comments.value = data.value
-    }
+    comments.value = await $fetch(`/api/projectAssignments/${currentId}/comments`)
+    console.log('Fetched comments:', comments.value?.length)
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error fetching comments:', error)
+    comments.value = [] // Reset on error
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko įkelti komentarų.', color: 'red' })
   }
 }
 
-// Fetch versions
 const fetchVersions = async () => {
+  const currentId = Number(props.assignmentId)
+  if (props.assignmentId === 'new' || isNaN(currentId)) { versions.value = []; selectedVersionId.value = null; return }
   try {
-    const { data } = await useFetch(`/api/projectAssignments/${props.assignmentId}/versions`)
+    versions.value = await $fetch(`/api/projectAssignments/${currentId}/versions`)
+    console.log('Fetched versions:', versions.value?.length)
 
-    if (data.value) {
-      versions.value = data.value
+    if (versions.value?.length > 0) {
+      const selectedExists = versions.value.some(v => v.id === selectedVersionId.value)
+      // Default to latest ONLY if nothing selected OR selected doesn't exist anymore
+      if (selectedVersionId.value === null || !selectedExists) {
+        selectedVersionId.value = versions.value[0].id
+        console.log('Defaulting selectedVersionId to latest:', selectedVersionId.value)
+        // Don't automatically load data here, fetchAssignment already loaded latest initially
+      }
+      else {
+        console.log(`Keeping selected version: ${selectedVersionId.value}`)
+      }
+    }
+    else {
+      selectedVersionId.value = null // No versions available
     }
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error fetching versions:', error)
+    versions.value = []
+    selectedVersionId.value = null
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko įkelti versijų istorijos.', color: 'red' })
   }
 }
 
-// Get comments for a specific field
-const getCommentsForField = (fieldName) => {
-  return comments.value.filter(comment => comment.fieldName === fieldName)
+// --- Version Loading ---
+const handleVersionChange = (versionIdValue: number | string | null) => {
+  const versionId = Number(versionIdValue) // Ensure number
+  if (isNaN(versionId) || !versions.value) return
+  const version = versions.value.find(v => v.id === versionId)
+  if (version) {
+    loadVersion(version)
+  }
 }
 
-// Save the assignment
-const saveAssignment = async () => {
-  if (!canSave.value) return
-
-  isSaving.value = true
-
+const loadVersion = (version: Version) => {
+  console.log('Loading version:', version.id)
   try {
-    const response = await fetch('/api/projectAssignments/save', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        assignmentId: props.assignmentId,
-        versionData: formData.value,
-        comment: language.value === 'lt' ? 'Išsaugota' : 'Saved'
-      })
-    })
+    if (!version.versionData) {
+      console.warn('Selected version has no versionData.')
+      toast.add({ title: 'Info', description: 'Pasirinkta versija neturi išsaugotų duomenų.', color: 'blue' })
+      return
+    }
+    const versionData = JSON.parse(version.versionData)
+    console.log('Parsed version data:', versionData)
 
-    if (!response.ok) {
-      throw new Error(await response.text())
+    // Preserve essential state from the current formData
+    const preservedState = {
+      id: formData.value.id,
+      studentRecordId: formData.value.studentRecordId,
+      status: formData.value.status,
+      createdDate: formData.value.createdDate,
+      isSigned: formData.value.isSigned,
+      studentGroup: formData.value.studentGroup,
+      lastUpdated: formData.value.lastUpdated // Preserve lastUpdated too maybe?
     }
 
-    // Notify parent about save
-    emit('saved')
+    // Reconstruct: start with defaults, add version data, add preserved state
+    formData.value = {
+      ...initialFormData, // Start clean
+      ...versionData, // Add historical data
+      ...preservedState // Ensure current state essentials override history
+    }
 
-    // Show notification
-    useToast().add({
-      title: language.value === 'lt' ? 'Sėkmingai išsaugota' : 'Successfully saved',
-      description: language.value === 'lt' ? 'Užduotis sėkmingai išsaugota' : 'Assignment successfully saved',
-      color: 'green'
+    console.log('Form data after loading version:', formData.value)
+
+    toast.add({
+      title: language.value === 'lt' ? 'Versija įkelta' : 'Version loaded',
+      description: `${language.value === 'lt' ? 'Versija' : 'Version'} (${formatDate(version.createdDate)}) ${language.value === 'lt' ? 'sėkmingai įkelta' : 'loaded successfully'}`,
+      color: 'blue'
     })
-
-    // Refresh versions
-    await fetchVersions()
   }
-  catch (error) {
-    console.error('Error saving assignment:', error)
+  catch (error: any) {
+    console.error('Error parsing or loading version:', error)
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko įkelti versijos duomenų.', color: 'red' })
+  }
+}
 
-    useToast().add({
-      title: language.value === 'lt' ? 'Klaida' : 'Error',
-      description: language.value === 'lt' ? 'Nepavyko išsaugoti užduoties' : 'Failed to save assignment',
-      color: 'red'
+// --- Status Helpers ---
+const getStatusText = (status: string): string => {
+  switch (status) {
+    case 'draft': return language.value === 'lt' ? 'Juodraštis' : 'Draft'
+    case 'submitted': return language.value === 'lt' ? 'Pateikta' : 'Submitted'
+    case 'revision_requested': return language.value === 'lt' ? 'Reikia pataisymų' : 'Revision Requested'
+    case 'approved': return language.value === 'lt' ? 'Patvirtinta' : 'Approved'
+    case 'error': return language.value === 'lt' ? 'Klaida įkeliant' : 'Loading Error'
+    default: return language.value === 'lt' ? 'Nežinoma' : 'Unknown'
+  }
+}
+const getStatusDescription = (status: string): string => {
+  switch (status) {
+    case 'draft': return language.value === 'lt' ? 'Užpildykite formą ir pateikite vadovui.' : 'Complete the form and submit.'
+    case 'submitted': return language.value === 'lt' ? 'Pateikta vadovui peržiūrėti.' : 'Submitted for supervisor review.'
+    case 'revision_requested': return language.value === 'lt' ? 'Vadovas paprašė pataisymų. Žr. komentarus.' : 'Supervisor requested revisions. See comments.'
+    case 'approved': return language.value === 'lt' ? 'Vadovas patvirtino užduotį.' : 'Supervisor approved the assignment.'
+    case 'error': return language.value === 'lt' ? 'Nepavyko įkelti duomenų.' : 'Failed to load data.'
+    default: return ''
+  }
+}
+const getStatusColor = (status: string): string => {
+  // Ensure you have 'cool' or your configured gray in app.config.ts
+  const grayColor = useAppConfig().ui?.gray || 'cool'
+  switch (status) {
+    case 'draft': return grayColor
+    case 'submitted': return 'primary'
+    case 'revision_requested': return 'amber'
+    case 'approved': return 'green'
+    case 'error': return 'red'
+    default: return grayColor
+  }
+}
+
+// --- Date Formatting ---
+const formatDate = (timestamp: number | undefined | null): string => {
+  if (timestamp === undefined || timestamp === null) return 'N/A'
+  try {
+    return new Date(timestamp * 1000).toLocaleString(language.value === 'lt' ? 'lt-LT' : 'en-US', {
+      dateStyle: 'short', timeStyle: 'short'
     })
+  }
+  catch (e) { return 'Invalid Date' }
+}
+
+// --- Actions ---
+const saveAssignment = async () => {
+  if (!canSave.value) { console.warn('Save denied.'); return }
+  isSaving.value = true
+  console.log('Saving assignment data:', formData.value)
+  try {
+    // Extract only the fields that constitute the version data
+    const versionDataToSave = {
+      finalProjectTitle: formData.value.finalProjectTitle,
+      finalProjectTitleEn: formData.value.finalProjectTitleEn,
+      objective: formData.value.objective,
+      objectiveEn: formData.value.objectiveEn,
+      tasks: formData.value.tasks,
+      tasksEn: formData.value.tasksEn,
+      tools: formData.value.tools,
+      toolsEn: formData.value.toolsEn
+      // DO NOT include status, id, studentRecordId etc. here
+    }
+
+    const payload = {
+      assignmentId: props.assignmentId === 'new' ? null : Number(props.assignmentId),
+      versionData: versionDataToSave, // Send only the editable form fields
+      comment: language.value === 'lt' ? 'Pakeitimai išsaugoti' : 'Changes saved'
+    }
+    console.log('Save Payload:', payload)
+
+    const response: { assignmentId?: number, newVersionId?: number } = await $fetch('/api/projectAssignments/save', {
+      method: 'POST',
+      body: payload
+    })
+    console.log('Save response:', response)
+
+    if (props.assignmentId === 'new' && response?.assignmentId) {
+      console.log('New assignment created with ID:', response.assignmentId)
+      emit('created', response.assignmentId) // Notify parent about creation
+    }
+    else {
+      emit('saved') // Notify parent of save for existing
+    }
+
+    toast.add({ title: 'Išsaugota', description: 'Pakeitimai sėkmingai išsaugoti.', color: 'green' })
+
+    // Refresh versions AND select the newly created version
+    await fetchVersions()
+    if (response?.newVersionId && versions.value.some(v => v.id === response.newVersionId)) {
+      selectedVersionId.value = response.newVersionId // Select the version just saved
+      console.log('Selected newly saved version:', selectedVersionId.value)
+    }
+    else if (versions.value.length > 0) {
+      // Fallback to latest if newVersionId wasn't returned or found
+      selectedVersionId.value = versions.value[0].id
+    }
+  }
+  catch (error: any) {
+    console.error('Error saving assignment:', error)
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko išsaugoti.', color: 'red' })
   }
   finally {
     isSaving.value = false
   }
 }
 
-// Submit the assignment
 const submitAssignment = async () => {
-  if (!canSubmit.value) return
-
-  // First save the changes
-  await saveAssignment()
-
+  if (!canSubmit.value) { console.warn('Submit denied.'); return }
   isSubmitting.value = true
-
+  console.log('Submitting assignment:', props.assignmentId)
   try {
-    const response = await fetch('/api/projectAssignments/update-status', {
+    // OPTIONAL: Consider saving latest changes before submitting
+    // await saveAssignment();
+    // if (isSaving.value) { isSubmitting.value = false; return; } // Bail if save failed
+
+    await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        assignmentId: props.assignmentId,
-        status: 'submitted'
-      })
+      body: { assignmentId: Number(props.assignmentId), status: 'submitted' }
     })
-
-    if (!response.ok) {
-      throw new Error(await response.text())
-    }
-
-    // Update local status
-    formData.value.status = 'submitted'
-
-    // Notify parent
+    formData.value.status = 'submitted' // Update local state immediately
     emit('submitted')
-
-    // Show notification
-    useToast().add({
-      title: language.value === 'lt' ? 'Sėkmingai pateikta' : 'Successfully submitted',
-      description: language.value === 'lt' ? 'Užduotis sėkmingai pateikta vadovui' : 'Assignment successfully submitted to supervisor',
-      color: 'green'
-    })
+    toast.add({ title: 'Pateikta', description: 'Užduotis sėkmingai pateikta.', color: 'green' })
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error submitting assignment:', error)
-
-    useToast().add({
-      title: language.value === 'lt' ? 'Klaida' : 'Error',
-      description: language.value === 'lt' ? 'Nepavyko pateikti užduoties' : 'Failed to submit assignment',
-      color: 'red'
-    })
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko pateikti.', color: 'red' })
   }
   finally {
     isSubmitting.value = false
   }
 }
 
-// Approve the assignment (for supervisors)
 const approveAssignment = async () => {
-  if (!canApprove.value) return
-
+  if (!canApprove.value) { console.warn('Approve denied.'); return }
   isApproving.value = true
-
+  console.log('Approving assignment:', props.assignmentId)
   try {
-    const response = await fetch('/api/projectAssignments/update-status', {
+    await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        assignmentId: props.assignmentId,
-        status: 'approved'
-      })
+      body: { assignmentId: Number(props.assignmentId), status: 'approved' }
     })
-
-    if (!response.ok) {
-      throw new Error(await response.text())
-    }
-
-    // Update local status
     formData.value.status = 'approved'
-
-    // Show notification
-    useToast().add({
-      title: language.value === 'lt' ? 'Sėkmingai patvirtinta' : 'Successfully approved',
-      description: language.value === 'lt' ? 'Užduotis sėkmingai patvirtinta' : 'Assignment successfully approved',
-      color: 'green'
-    })
+    emit('approved')
+    toast.add({ title: 'Patvirtinta', description: 'Užduotis sėkmingai patvirtinta.', color: 'green' })
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error approving assignment:', error)
-
-    useToast().add({
-      title: language.value === 'lt' ? 'Klaida' : 'Error',
-      description: language.value === 'lt' ? 'Nepavyko patvirtinti užduoties' : 'Failed to approve assignment',
-      color: 'red'
-    })
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko patvirtinti.', color: 'red' })
   }
   finally {
     isApproving.value = false
   }
 }
 
-// Request revision (for supervisors)
 const requestRevision = async () => {
-  if (!canRequestRevision.value) return
-
+  if (!canRequestRevision.value) { console.warn('Request revision denied.'); return }
   isRequestingRevision.value = true
-
+  console.log('Requesting revision for assignment:', props.assignmentId)
   try {
-    const response = await fetch('/api/projectAssignments/update-status', {
+    await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        assignmentId: props.assignmentId,
-        status: 'revision_requested'
-      })
+      body: { assignmentId: Number(props.assignmentId), status: 'revision_requested' }
     })
-
-    if (!response.ok) {
-      throw new Error(await response.text())
-    }
-
-    // Update local status
     formData.value.status = 'revision_requested'
-
-    // Show notification
-    useToast().add({
-      title: language.value === 'lt' ? 'Prašymas atnaujinti' : 'Revision requested',
-      description: language.value === 'lt' ? 'Prašymas atlikti pataisymus sėkmingai išsiųstas' : 'Revision request sent successfully',
-      color: 'yellow'
-    })
+    emit('revisionRequested')
+    toast.add({ title: 'Paprašyta taisyti', description: 'Prašymas pataisyti išsiųstas.', color: 'yellow' })
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error requesting revision:', error)
-
-    useToast().add({
-      title: language.value === 'lt' ? 'Klaida' : 'Error',
-      description: language.value === 'lt' ? 'Nepavyko paprašyti pataisymų' : 'Failed to request revision',
-      color: 'red'
-    })
+    toast.add({ title: 'Klaida', description: error.data?.message || 'Nepavyko paprašyti taisyti.', color: 'red' })
   }
   finally {
     isRequestingRevision.value = false
   }
 }
 
-// Version history functions
-const formatDate = (timestamp) => {
-  return new Date(timestamp * 1000).toLocaleString()
-}
-
-const onVersionSelect = (row) => {
-  loadVersion(row)
-}
-
-const loadVersion = (version) => {
-  try {
-    const versionData = JSON.parse(version.versionData)
-
-    // Update form data with the version data
-    // but keep the current status
-    const currentStatus = formData.value.status
-
-    formData.value = {
-      ...versionData,
-      status: currentStatus // Keep the current status
-    }
-
-    // Close the slideover
-    showVersionHistory.value = false
-
-    // Show notification
-    useToast().add({
-      title: language.value === 'lt' ? 'Versija įkelta' : 'Version loaded',
-      description: language.value === 'lt' ? 'Pasirinkta versija sėkmingai įkelta' : 'Selected version loaded successfully',
-      color: 'blue'
-    })
-  }
-  catch (error) {
-    console.error('Error loading version:', error)
-
-    useToast().add({
-      title: language.value === 'lt' ? 'Klaida' : 'Error',
-      description: language.value === 'lt' ? 'Nepavyko įkelti versijos' : 'Failed to load version',
-      color: 'red'
-    })
-  }
-}
-
-// Status helpers
-const getStatusText = (status) => {
-  switch (status) {
-    case 'draft':
-      return language.value === 'lt' ? 'Juodraštis' : 'Draft'
-    case 'submitted':
-      return language.value === 'lt' ? 'Pateikta' : 'Submitted'
-    case 'revision_requested':
-      return language.value === 'lt' ? 'Reikia pataisymų' : 'Revision Requested'
-    case 'approved':
-      return language.value === 'lt' ? 'Patvirtinta' : 'Approved'
-    default:
-      return language.value === 'lt' ? 'Nežinoma būsena' : 'Unknown Status'
-  }
-}
-
-const getStatusDescription = (status) => {
-  switch (status) {
-    case 'draft':
-      return language.value === 'lt'
-        ? 'Užpildykite formą ir pateikite vadovui peržiūrėti'
-        : 'Complete the form and submit it for supervisor review'
-    case 'submitted':
-      return language.value === 'lt'
-        ? 'Forma pateikta vadovui peržiūrėti'
-        : 'Form submitted for supervisor review'
-    case 'revision_requested':
-      return language.value === 'lt'
-        ? 'Vadovas paprašė atlikti pataisymus. Peržiūrėkite komentarus'
-        : 'Supervisor has requested revisions. Please check the comments'
-    case 'approved':
-      return language.value === 'lt'
-        ? 'Vadovas patvirtino užduotį. Forma užbaigta'
-        : 'Supervisor has approved the assignment. Form is complete'
-    default:
-      return ''
-  }
-}
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'draft': return 'gray'
-    case 'submitted': return 'primary'
-    case 'revision_requested': return 'warning'
-    case 'approved': return 'success'
-    default: return 'gray'
-  }
-}
-
-// Log initial state for debugging
+// --- Lifecycle & Watchers ---
 onMounted(() => {
-  console.log('Component mounted - Assignment ID:', props.assignmentId)
-  console.log('Current user role:', userRole.value)
-  console.log('Initial form state:', formData.value)
+  console.log('Assignment Form Mounted. Assignment ID:', props.assignmentId)
   fetchAssignment()
 })
 
-// Watch for language changes to update computed props
-watch(language, () => {
-  // Force update of computed properties that depend on language
-})
+watch(() => props.assignmentId, (newId, oldId) => {
+  // Prevent refetch if ID hasn't actually changed (e.g., during HMR)
+  if (newId !== oldId && newId !== undefined && newId !== null) {
+    console.log(`Assignment ID prop changed from ${oldId} to ${newId}. Refetching...`)
+    selectedVersionId.value = null // Reset version selection
+    fetchAssignment() // Refetch all data for the new assignment
+  }
+}, { immediate: false }) // Don't run immediately
 </script>

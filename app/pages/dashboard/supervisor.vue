@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { StudentRecord } from '~~/server/utils/db'
 import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
-import {useFormUtilities} from "~/composables/useFormUtilities";
+import { useFormUtilities } from '~/composables/useFormUtilities'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -16,6 +16,12 @@ const statusError = ref(false)
 const isLoading = ref(false)
 
 const { t } = useI18n()
+
+// Project Assignment Modal
+const showProjectAssignmentModal = ref(false)
+const projectAssignmentId = ref(null)
+const currentStudentId = ref(null)
+const hasProjectAssignment = ref(false)
 
 const columns = [
   {
@@ -75,6 +81,51 @@ const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   isOpen.value = true
   videoObject.value = mVideo
   studentObject.value = mStudent
+}
+
+// Project Assignment functions
+const openProjectAssignment = async (student) => {
+  currentStudentId.value = student.id
+
+  // Check if the student already has a project assignment
+  try {
+    const { data } = await useFetch(`/api/project-assignments/${student.id}`)
+    if (data.value && data.value.id) {
+      projectAssignmentId.value = data.value.id
+      hasProjectAssignment.value = true
+    }
+    else {
+      projectAssignmentId.value = student.id // Pass student ID when creating new
+      hasProjectAssignment.value = false
+    }
+    showProjectAssignmentModal.value = true
+  }
+  catch (error) {
+    console.error('Error checking project assignment:', error)
+    toast.add({
+      title: 'Klaida',
+      description: 'Nepavyko patikrinti projekto užduoties būsenos.',
+      color: 'red'
+    })
+  }
+}
+
+const handleProjectAssignmentSaved = () => {
+  toast.add({
+    title: 'Pavyko',
+    description: 'Projekto užduotis išsaugota.',
+    color: 'green'
+  })
+}
+
+const handleProjectAssignmentSubmitted = () => {
+  toast.add({
+    title: 'Pavyko',
+    description: 'Projekto užduotis pateikta.',
+    color: 'green'
+  })
+  showProjectAssignmentModal.value = false
+  refreshNuxtData('allStudents') // Refresh data
 }
 
 async function getFile(fileName) {
@@ -488,6 +539,42 @@ const { determineFormVariant } = useFormUtilities()
       </UCard>
     </UModal>
 
+    <!-- New Project Assignment Modal -->
+    <UModal
+      v-model="showProjectAssignmentModal"
+      size="xl"
+    >
+      <UCard>
+        <template #header>
+          <h3 class="text-lg font-semibold">
+            {{ hasProjectAssignment ? ($t('edit_project_assignment') || 'Redaguoti užduotį') : ($t('create_project_assignment') || 'Sukurti užduotį') }}
+          </h3>
+        </template>
+
+        <div class="p-0">
+          <!-- Embed the Project Assignment Form component here -->
+          <ProjectAssignmentForm
+            v-if="projectAssignmentId"
+            :assignment-id="projectAssignmentId"
+            @saved="handleProjectAssignmentSaved"
+            @submitted="handleProjectAssignmentSubmitted"
+          />
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end">
+            <UButton
+              color="gray"
+              variant="ghost"
+              @click="showProjectAssignmentModal = false"
+            >
+              {{ $t('close') || 'Uždaryti' }}
+            </UButton>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
+
     <div
       v-if="status === 'pending'"
       class="p-6 text-center"
@@ -555,6 +642,18 @@ const { determineFormVariant } = useFormUtilities()
 
       <template #actions-data="{ row }">
         <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
+          <!-- Project Assignment Button -->
+          <UButton
+            icon="i-heroicons-clipboard-document-list"
+            size="xs"
+            color="white"
+            variant="solid"
+            label="Užduotis"
+            :trailing="false"
+            class="p-1 text-xs"
+            @click="openProjectAssignment(row.student)"
+          />
+
           <UButton
             v-if="row.videos && row.videos[0]"
             icon="i-heroicons-video-camera"

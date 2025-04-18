@@ -1,151 +1,82 @@
 <template>
-  <div class="mt-4 border-t border-gray-200 pt-4">
-    <h4 class="font-medium text-sm mb-3">
-      {{ fieldName ? $t('comments.fieldComments') : $t('comments.generalComments') }}
-    </h4>
-
-    <!-- Comments list -->
+  <div class="space-y-4">
+    <!-- Comment List -->
     <div
-      v-if="comments.length"
-      class="space-y-3 mb-4"
+      v-if="comments.length > 0 && !showOnlyForm"
+      class="space-y-3"
     >
       <div
-        v-for="comment in comments"
+        v-for="comment in sortedComments"
         :key="comment.id"
-        class="p-3 bg-white rounded-md shadow-sm"
+        class="bg-gray-100 dark:bg-gray-700 p-3 rounded-md"
       >
-        <div class="flex justify-between items-start">
-          <div>
-            <p class="font-semibold text-sm">
-              {{ comment.authorName }}
-              <UBadge
-                v-if="comment.role === 'supervisor'"
-                size="xs"
-                color="blue"
-              >
-                {{ $t('role.supervisor') }}
-              </UBadge>
-              <UBadge
-                v-else
-                size="xs"
-                color="green"
-              >
-                {{ $t('role.student') }}
-              </UBadge>
-            </p>
-            <p class="text-xs text-gray-500">
-              {{ formatDate(comment.createdDate) }}
-            </p>
+        <div class="flex justify-between items-start mb-2">
+          <div class="flex items-center gap-2">
+            <UAvatar
+              :alt="comment.authorName"
+              size="sm"
+            />
+            <div>
+              <p class="font-medium text-sm">
+                {{ comment.authorName }}
+                <UBadge
+                  v-if="comment.role === 'supervisor'"
+                  color="blue"
+                  size="xs"
+                  class="ml-1"
+                >
+                  {{ language === 'lt' ? 'Vadovas' : 'Supervisor' }}
+                </UBadge>
+                <UBadge
+                  v-else-if="comment.role === 'student'"
+                  color="green"
+                  size="xs"
+                  class="ml-1"
+                >
+                  {{ language === 'lt' ? 'Studentas' : 'Student' }}
+                </UBadge>
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ formatDate(comment.createdDate) }}
+              </p>
+            </div>
           </div>
-          <UButton
-            v-if="shouldShowReplyButton(comment)"
-            size="xs"
-            color="gray"
-            variant="ghost"
-            @click="startReply(comment.id)"
-          >
-            {{ $t('comments.reply') }}
-          </UButton>
         </div>
-
-        <p class="mt-2 text-sm whitespace-pre-wrap">
+        <p class="text-sm whitespace-pre-wrap">
           {{ comment.text }}
         </p>
-
-        <!-- Reply form -->
-        <div
-          v-if="replyingTo === comment.id"
-          class="mt-4 pl-4 border-l-2 border-gray-200"
-        >
-          <UFormGroup :label="$t('comments.yourReply')">
-            <UTextarea
-              v-model="replyText"
-              :placeholder="$t('comments.replyPlaceholder')"
-              :rows="2"
-              autofocus
-            />
-          </UFormGroup>
-          <div class="flex justify-end gap-2 mt-2">
-            <UButton
-              size="sm"
-              color="gray"
-              @click="cancelReply"
-            >
-              {{ $t('comments.cancel') }}
-            </UButton>
-            <UButton
-              type="submit"
-              size="sm"
-              color="primary"
-              :loading="replying"
-              @click="postReply(comment.id)"
-            >
-              {{ $t('comments.postReply') }}
-            </UButton>
-          </div>
-        </div>
-
-        <!-- Replies -->
-        <div
-          v-if="comment.replies && comment.replies.length"
-          class="mt-4 pl-4 border-l-2 border-gray-200 space-y-3"
-        >
-          <div
-            v-for="reply in comment.replies"
-            :key="reply.id"
-            class="p-2 bg-gray-50 rounded-md"
-          >
-            <div class="flex justify-between items-start">
-              <div>
-                <p class="font-semibold text-sm">
-                  {{ reply.authorName }}
-                  <UBadge
-                    v-if="reply.role === 'supervisor'"
-                    size="xs"
-                    color="blue"
-                  >
-                    {{ $t('role.supervisor') }}
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    size="xs"
-                    color="green"
-                  >
-                    {{ $t('role.student') }}
-                  </UBadge>
-                </p>
-                <p class="text-xs text-gray-500">
-                  {{ formatDate(reply.createdDate) }}
-                </p>
-              </div>
-            </div>
-            <p class="mt-1 text-sm whitespace-pre-wrap">
-              {{ reply.text }}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- Add new comment -->
-    <div>
-      <UFormGroup :label="$t('comments.newComment')">
-        <UTextarea
-          v-model="commentText"
-          :placeholder="$t('comments.placeholder')"
-          :rows="2"
-        />
-      </UFormGroup>
-      <div class="flex justify-end mt-2">
+    <!-- Comment Form -->
+    <div v-if="canAddComments">
+      <UTextarea
+        v-model="newComment"
+        :placeholder="language === 'lt' ? 'Rašyti komentarą...' : 'Write a comment...'"
+        rows="2"
+        class="mb-2"
+      />
+      <div class="flex justify-end">
         <UButton
+          size="sm"
           color="primary"
-          :loading="submitting"
-          :disabled="!commentText.trim()"
-          @click="postComment"
+          :loading="isSubmitting"
+          :disabled="!newComment.trim()"
+          @click="submitComment"
         >
-          {{ $t('comments.post') }}
+          {{ language === 'lt' ? 'Komentuoti' : 'Comment' }}
         </UButton>
       </div>
+    </div>
+
+    <!-- No Comments Message -->
+    <div
+      v-else-if="!showOnlyForm"
+      class="text-center text-gray-500 py-2"
+    >
+      <p class="text-sm">
+        {{ language === 'lt' ? 'Komentarų nėra' : 'No comments' }}
+      </p>
     </div>
   </div>
 </template>
@@ -157,7 +88,7 @@ import { useI18n } from 'vue-i18n'
 const props = defineProps({
   fieldName: {
     type: String,
-    default: null // null means general comments, otherwise field-specific
+    default: null
   },
   comments: {
     type: Array,
@@ -165,132 +96,90 @@ const props = defineProps({
   },
   userRole: {
     type: String,
-    default: 'student' // 'student' or 'supervisor'
+    required: true
   },
   assignmentId: {
     type: [String, Number],
     required: true
+  },
+  showOnlyForm: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['comment-added'])
 
+// Language state
 const { t } = useI18n()
+const language = ref('lt')
 
-// State
-const commentText = ref('')
-const replyText = ref('')
-const submitting = ref(false)
-const replying = ref(false)
-const replyingTo = ref(null)
+// Form state
+const newComment = ref('')
+const isSubmitting = ref(false)
 
-// Format date function
+// Computed
+const canAddComments = computed(() => {
+  return props.userRole === 'student' || props.userRole === 'supervisor'
+})
+
+const sortedComments = computed(() => {
+  return [...props.comments].sort((a, b) => b.createdDate - a.createdDate)
+})
+
+// Format date
 const formatDate = (timestamp) => {
-  if (!timestamp) return ''
-
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleString()
+  return new Date(timestamp * 1000).toLocaleString()
 }
 
-// Should show reply button (don't show reply to your own comment)
-const shouldShowReplyButton = (comment) => {
-  // If you're a supervisor, you can reply to student comments
-  if (props.userRole === 'supervisor' && comment.role === 'student') {
-    return true
-  }
+// Submit comment
+const submitComment = async () => {
+  if (!newComment.value.trim()) return
 
-  // If you're a student, you can reply to supervisor comments
-  if (props.userRole === 'student' && comment.role === 'supervisor') {
-    return true
-  }
-
-  return false
-}
-
-// Start replying to a comment
-const startReply = (commentId) => {
-  replyingTo.value = commentId
-  replyText.value = ''
-}
-
-// Cancel reply
-const cancelReply = () => {
-  replyingTo.value = null
-  replyText.value = ''
-}
-
-// Post a new comment
-const postComment = async () => {
-  if (!commentText.value.trim()) return
-
-  submitting.value = true
+  isSubmitting.value = true
 
   try {
-    await useFetch('/api/projectAssignments/comments', {
+    const response = await fetch('/api/projectAssignments/comments', {
       method: 'POST',
-      body: {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         assignmentId: props.assignmentId,
         fieldName: props.fieldName,
-        text: commentText.value,
-        role: props.userRole
-      }
+        text: newComment.value.trim(),
+        role: props.userRole // Pass the role from props
+      })
     })
 
-    // Reset form
-    commentText.value = ''
+    if (!response.ok) {
+      throw new Error(await response.text())
+    }
 
-    // Notify parent to refresh comments
+    // Clear the form
+    newComment.value = ''
+
+    // Notify parent
     emit('comment-added')
+
+    // Show notification
+    useToast().add({
+      title: language.value === 'lt' ? 'Komentaras pridėtas' : 'Comment added',
+      description: language.value === 'lt' ? 'Jūsų komentaras sėkmingai pridėtas' : 'Your comment was successfully added',
+      color: 'green'
+    })
   }
   catch (error) {
-    console.error('Error posting comment:', error)
+    console.error('Error adding comment:', error)
 
     useToast().add({
-      title: t('error.title'),
-      description: t('error.postComment'),
+      title: language.value === 'lt' ? 'Klaida' : 'Error',
+      description: language.value === 'lt' ? 'Nepavyko pridėti komentaro' : 'Failed to add comment',
       color: 'red'
     })
   }
   finally {
-    submitting.value = false
-  }
-}
-
-// Post a reply to a comment
-const postReply = async (parentId) => {
-  if (!replyText.value.trim()) return
-
-  replying.value = true
-
-  try {
-    await useFetch('/api/projectAssignments/comment-replies', {
-      method: 'POST',
-      body: {
-        assignmentId: props.assignmentId,
-        parentId: parentId,
-        text: replyText.value,
-        role: props.userRole
-      }
-    })
-
-    // Reset form
-    replyText.value = ''
-    replyingTo.value = null
-
-    // Notify parent to refresh comments
-    emit('comment-added')
-  }
-  catch (error) {
-    console.error('Error posting reply:', error)
-
-    useToast().add({
-      title: t('error.title'),
-      description: t('error.postReply'),
-      color: 'red'
-    })
-  }
-  finally {
-    replying.value = false
+    isSubmitting.value = false
   }
 }
 </script>

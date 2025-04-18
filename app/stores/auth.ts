@@ -38,7 +38,7 @@ export const useAuthStore = defineStore('auth', {
       const email = userData.mail || userData.email || ''
 
       // Determine base role from email domain
-      if (email.includes('@stud.viko.lt') || email.includes('m.gzegozevskis@eif.viko.lt')) {
+      if (email.includes('@stud.viko.lt') || email.includes('penworld@eif.viko.lt')) {
         role = 'student'
       }
       else if (email.includes('@eif.viko.lt') || email.includes('@viko.lt')) {
