@@ -1,5 +1,5 @@
 import { eq, desc, and } from 'drizzle-orm' // <<< Import desc and and
-import { defineEventHandler, readBody, createError, getRouterParam } from 'h3' // <<< Added getRouterParam just in case, though not used here as ID comes from body
+import { defineEventHandler, readBody, createError } from 'h3' // <<< Added getRouterParam just in case, though not used here as ID comes from body
 import {
   assignmentComments,
   projectAssignments,

@@ -13,7 +13,7 @@
         <span>{{ title }}</span>
         <div class="flex items-center gap-2">
           <UBadge
-            v-if="badgeCount !== undefined && badgeCount > 0"
+            v-if="badgeCount !== undefined && Number(badgeCount) > 0"
             size="xs"
             color="gray"
           >

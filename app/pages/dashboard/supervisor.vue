@@ -87,9 +87,11 @@ const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
 const openProjectAssignment = async (student) => {
   currentStudentId.value = student.id
 
+  console.log(student.id)
+
   // Check if the student already has a project assignment
   try {
-    const { data } = await useFetch(`/api/project-assignments/${student.id}`)
+    const { data } = await useFetch(`/api/projectAssignments/check/${student.id}`)
     if (data.value && data.value.id) {
       projectAssignmentId.value = data.value.id
       hasProjectAssignment.value = true

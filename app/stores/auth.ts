@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', {
       if (email.includes('@stud.viko.lt') || email.includes('penworld@eif.viko.lt')) {
         role = 'student'
       }
-      else if (email.includes('@eif.viko.lt') || email.includes('@viko.lt')) {
+      else if ((email.includes('@eif.viko.lt') || email.includes('@viko.lt')) && !email.includes('penworld@eif.viko.lt')) {
         role = 'teacher'
       }
       else if ((email.includes('baigiamieji.onmicrosoft.com') && !email.includes('admin@baigiamieji.onmicrosoft.com'))) {

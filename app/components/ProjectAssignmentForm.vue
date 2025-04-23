@@ -200,6 +200,7 @@
               :comments="getCommentsForField(language === 'lt' ? 'finalProjectTitle' : 'finalProjectTitleEn')"
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </CollapsibleSection>
@@ -217,6 +218,7 @@
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
               :show-only-form="true"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </div>
@@ -261,6 +263,7 @@
               :comments="getCommentsForField(language === 'lt' ? 'objective' : 'objectiveEn')"
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </CollapsibleSection>
@@ -278,6 +281,7 @@
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
               :show-only-form="true"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </div>
@@ -321,6 +325,7 @@
               :comments="getCommentsForField(language === 'lt' ? 'tasks' : 'tasksEn')"
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </CollapsibleSection>
@@ -337,6 +342,7 @@
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
               :show-only-form="true"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </div>
@@ -380,6 +386,7 @@
               :comments="getCommentsForField(language === 'lt' ? 'tools' : 'toolsEn')"
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </CollapsibleSection>
@@ -396,6 +403,7 @@
               :user-role="userRole"
               :assignment-id="Number(assignmentId)"
               :show-only-form="true"
+              :student-record-id="formData.studentRecordId ?? undefined"
               @comment-added="fetchComments"
             />
           </div>
@@ -414,6 +422,7 @@
             :comments="getCommentsForField(null)"
             :user-role="userRole"
             :assignment-id="Number(assignmentId)"
+            :student-record-id="formData.studentRecordId ?? undefined"
             @comment-added="fetchComments"
           />
         </div>
@@ -442,7 +451,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 // Import types if needed by SectionComments or other parts
 import SectionComments from './SectionComments.vue'
 import CollapsibleSection from './CollapsibleSection.vue' // <<< IMPORTED
-import type { Comment } from '~/types' // Example type import - Define this type based on your comment structure
 import { useAuthStore } from '~/stores/auth' // Assuming auth store exists
 import { useToast } from '#imports' // Correct import for useToast
 
@@ -497,9 +505,16 @@ const switchToLithuanian = () => language.value = 'lt'
 
 // --- User Role ---
 // Ensure your authStore correctly provides 'student', 'teacher', 'department-head', etc.
-const userRole = 'supervisor' // computed<'student' | 'supervisor' | string>(() => authStore.userRole) // Using string as fallback
-const isStudentRole = ref(false) // = computed(() => userRole.value === 'student')
-const isSupervisorRole = ref(true) // = computed(() => ['teacher', 'department-head', 'supervisor'].includes(userRole.value))
+// console.log('role: ' + authStore.userRole)
+
+const userRole = computed<'student' | 'supervisor' | string>(() => {
+  const role = authStore.userRole
+  return role === 'teacher' ? 'supervisor' : role
+})
+
+// const userRole = computed<'student' | 'teacher' | string>(() => authStore.userRole) // Using string as fallback
+const isStudentRole = computed(() => userRole.value === 'student')
+const isSupervisorRole = computed(() => ['teacher', 'department-head', 'supervisor'].includes(userRole.value))
 
 // --- UI State ---
 const isLoading = ref(true)
@@ -638,7 +653,8 @@ const fetchComments = async () => {
   const currentId = Number(props.assignmentId)
   if (props.assignmentId === 'new' || isNaN(currentId)) { comments.value = []; return }
   try {
-    comments.value = await $fetch(`/api/projectAssignments/${currentId}/comments`)
+    const { data } = await useFetch(`/api/projectAssignments/${currentId}/comments`)
+    comments.value = data.value
     console.log('Fetched comments:', comments.value?.length)
   }
   catch (error: any) {
@@ -652,7 +668,9 @@ const fetchVersions = async () => {
   const currentId = Number(props.assignmentId)
   if (props.assignmentId === 'new' || isNaN(currentId)) { versions.value = []; selectedVersionId.value = null; return }
   try {
-    versions.value = await $fetch(`/api/projectAssignments/${currentId}/versions`)
+    const { data } = await useFetch(`/api/projectAssignments/${currentId}/versions`)
+    versions.value = data.value
+
     console.log('Fetched versions:', versions.value?.length)
 
     if (versions.value?.length > 0) {
@@ -803,7 +821,7 @@ const saveAssignment = async () => {
     }
     console.log('Save Payload:', payload)
 
-    const response: { assignmentId?: number, newVersionId?: number } = await $fetch('/api/projectAssignments/save', {
+    const response = await $fetch<{ assignmentId?: number, newVersionId?: number }>('/api/projectAssignments/save', {
       method: 'POST',
       body: payload
     })
@@ -850,7 +868,7 @@ const submitAssignment = async () => {
 
     await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      body: { assignmentId: Number(props.assignmentId), status: 'submitted' }
+      body: { assignmentId: Number(props.assignmentId), status: 'submitted', currentRole: userRole }
     })
     formData.value.status = 'submitted' // Update local state immediately
     emit('submitted')
@@ -869,10 +887,17 @@ const approveAssignment = async () => {
   if (!canApprove.value) { console.warn('Approve denied.'); return }
   isApproving.value = true
   console.log('Approving assignment:', props.assignmentId)
+
+  const payload = {
+    assignmentId: Number(props.assignmentId),
+    status: 'approved',
+    currentRole: userRole.value ?? userRole
+  }
+
   try {
     await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      body: { assignmentId: Number(props.assignmentId), status: 'approved' }
+      body: payload
     })
     formData.value.status = 'approved'
     emit('approved')
@@ -894,7 +919,7 @@ const requestRevision = async () => {
   try {
     await $fetch('/api/projectAssignments/update-status', {
       method: 'POST',
-      body: { assignmentId: Number(props.assignmentId), status: 'revision_requested' }
+      body: { assignmentId: Number(props.assignmentId), status: 'revision_requested', currentRole: userRole }
     })
     formData.value.status = 'revision_requested'
     emit('revisionRequested')

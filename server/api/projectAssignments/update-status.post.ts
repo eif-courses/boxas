@@ -4,7 +4,7 @@ import { projectAssignments } from '~~/server/database/schema'
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const { assignmentId, status } = body
+    const { assignmentId, status, currentRole } = body
 
     if (!assignmentId) {
       throw createError({
@@ -12,7 +12,9 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Assignment ID is required'
       })
     }
+
     const db = useDB()
+
     if (!['draft', 'submitted', 'revision_requested', 'approved'].includes(status)) {
       throw createError({
         statusCode: 400,
@@ -21,7 +23,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Validate permissions based on role and current status
-    const userRole = event.context.auth?.role || 'student'
+    const userRole = currentRole || 'student'
 
     // Get current assignment data
     const [currentAssignment] = await db.select()
@@ -47,8 +49,17 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Check if the status transition is allowed
-    const allowedTransitions = validTransitions[userRole]?.[currentAssignment.status] || []
+    // Safe accessor function to avoid TypeScript issues with indexing
+    function getAllowedTransitions(
+      role: string,
+      currentStatus: string
+    ): string[] {
+      const roleTransitions = validTransitions[role as keyof typeof validTransitions]
+      return roleTransitions?.[currentStatus as keyof typeof roleTransitions] || []
+    }
+
+    const allowedTransitions = getAllowedTransitions(userRole, currentAssignment.status)
+
     if (!allowedTransitions.includes(status)) {
       throw createError({
         statusCode: 403,
