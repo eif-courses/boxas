@@ -1,4 +1,3 @@
-<!-- components/ProjectAssignmentForm.vue -->
 <template>
   <div class="px-2 py-4">
     <!-- Loading state -->
@@ -45,6 +44,12 @@
       v-else
       class="space-y-6"
     >
+      <!-- Debug Info - Remove in production -->
+      <!-- <div class="bg-yellow-50 p-2 text-xs border border-yellow-200 rounded mb-3">
+        <p>Debug: Title (LT): "{{ formData.finalProjectTitle }}"</p>
+        <p>Debug: Title (EN): "{{ formData.finalProjectTitleEn }}"</p>
+      </div> -->
+
       <!-- Status Banner -->
       <UAlert
         :color="getStatusColor(formData.status)"
@@ -482,6 +487,15 @@ interface Version {
   createdDate: number // Unix timestamp (seconds)
 }
 
+interface Comment {
+  id: number
+  assignmentId: number
+  fieldName: string | null
+  commentText: string
+  createdBy: string
+  createdDate: number
+}
+
 // --- Props ---
 const props = defineProps({
   assignmentId: {
@@ -615,20 +629,50 @@ const fetchAssignment = async () => {
     console.log('Fetched assignment summary:', response)
 
     if (response && typeof response === 'object') {
-      // Ensure essential IDs are preserved from the base response before merging potentially older version data
+      // Store original values for debugging
+      console.log('Original finalProjectTitle:', response.finalProjectTitle)
+      console.log('Original finalProjectTitleEn:', response.finalProjectTitleEn)
+
+      // Always ensure these critical fields are preserved with fallbacks
       const baseData = {
+        // Base assignment data
         id: response.id ?? null,
         studentRecordId: response.studentRecordId ?? null,
         status: response.status ?? 'draft',
         createdDate: response.createdDate ?? null,
         lastUpdated: response.lastUpdated ?? null,
         isSigned: response.isSigned ?? 0,
-        studentGroup: response.studentGroup ?? ''
+        studentGroup: response.studentGroup ?? '',
+
+        // Critical project title fields - ensure they are not lost
+        finalProjectTitle: response.finalProjectTitle ?? '',
+        finalProjectTitleEn: response.finalProjectTitleEn ?? '',
+
+        // Other fields that might be present in the form
+        objective: response.objective ?? '',
+        objectiveEn: response.objectiveEn ?? '',
+        tasks: response.tasks ?? '',
+        tasksEn: response.tasksEn ?? '',
+        tools: response.tools ?? '',
+        toolsEn: response.toolsEn ?? ''
       }
-      // Merge response into a clean initial state, then merge base data back
-      formData.value = { ...initialFormData, ...response, ...baseData }
+
+      // Merge in this specific order to ensure baseData takes precedence
+      formData.value = {
+        ...initialFormData, // Start with defaults
+        ...response, // Add all response data
+        ...baseData // Ensure critical fields are set correctly
+      }
+
       // Ensure status has a valid default if fetch somehow returns null status
       if (!formData.value.status) formData.value.status = 'draft'
+
+      // Debug final state
+      console.log('Final formData after merging:', formData.value)
+      console.log('Final title values:', {
+        title: formData.value.finalProjectTitle,
+        titleEn: formData.value.finalProjectTitleEn
+      })
     }
     else {
       throw new Error('Invalid data returned from summary endpoint.')
@@ -654,7 +698,7 @@ const fetchComments = async () => {
   if (props.assignmentId === 'new' || isNaN(currentId)) { comments.value = []; return }
   try {
     const { data } = await useFetch(`/api/projectAssignments/${currentId}/comments`)
-    comments.value = data.value
+    comments.value = data.value || []
     console.log('Fetched comments:', comments.value?.length)
   }
   catch (error: any) {
@@ -669,7 +713,7 @@ const fetchVersions = async () => {
   if (props.assignmentId === 'new' || isNaN(currentId)) { versions.value = []; selectedVersionId.value = null; return }
   try {
     const { data } = await useFetch(`/api/projectAssignments/${currentId}/versions`)
-    versions.value = data.value
+    versions.value = data.value || []
 
     console.log('Fetched versions:', versions.value?.length)
 
@@ -715,10 +759,20 @@ const loadVersion = (version: Version) => {
       toast.add({ title: 'Info', description: 'Pasirinkta versija neturi išsaugotų duomenų.', color: 'blue' })
       return
     }
+
+    // Parse the version data
     const versionData = JSON.parse(version.versionData)
     console.log('Parsed version data:', versionData)
 
+    // Store current title values for debugging
+    const currentTitles = {
+      lt: formData.value.finalProjectTitle,
+      en: formData.value.finalProjectTitleEn
+    }
+    console.log('Current title values before loading version:', currentTitles)
+
     // Preserve essential state from the current formData
+    // Include ALL fields that should not be overwritten by version data
     const preservedState = {
       id: formData.value.id,
       studentRecordId: formData.value.studentRecordId,
@@ -726,7 +780,12 @@ const loadVersion = (version: Version) => {
       createdDate: formData.value.createdDate,
       isSigned: formData.value.isSigned,
       studentGroup: formData.value.studentGroup,
-      lastUpdated: formData.value.lastUpdated // Preserve lastUpdated too maybe?
+      lastUpdated: formData.value.lastUpdated,
+
+      // Important: Keep these fields only if they are NOT in the version data
+      // This ensures titles from versions are used when available
+      ...(versionData.finalProjectTitle === undefined ? { finalProjectTitle: formData.value.finalProjectTitle } : {}),
+      ...(versionData.finalProjectTitleEn === undefined ? { finalProjectTitleEn: formData.value.finalProjectTitleEn } : {})
     }
 
     // Reconstruct: start with defaults, add version data, add preserved state
@@ -737,6 +796,10 @@ const loadVersion = (version: Version) => {
     }
 
     console.log('Form data after loading version:', formData.value)
+    console.log('Title values after loading version:', {
+      lt: formData.value.finalProjectTitle,
+      en: formData.value.finalProjectTitleEn
+    })
 
     toast.add({
       title: language.value === 'lt' ? 'Versija įkelta' : 'Version loaded',
@@ -940,6 +1003,15 @@ onMounted(() => {
   fetchAssignment()
 })
 
+// Add a debug watcher to track title values (for debugging)
+watch(() => formData.value.finalProjectTitle, (newValue, oldValue) => {
+  console.log(`Title (LT) changed from "${oldValue}" to "${newValue}"`)
+}, { immediate: true })
+
+watch(() => formData.value.finalProjectTitleEn, (newValue, oldValue) => {
+  console.log(`Title (EN) changed from "${oldValue}" to "${newValue}"`)
+}, { immediate: true })
+
 watch(() => props.assignmentId, (newId, oldId) => {
   // Prevent refetch if ID hasn't actually changed (e.g., during HMR)
   if (newId !== oldId && newId !== undefined && newId !== null) {
@@ -949,9 +1021,3 @@ watch(() => props.assignmentId, (newId, oldId) => {
   }
 }, { immediate: false }) // Don't run immediately
 </script>
-
-<style scoped>
-.pb-24 {
-  padding-bottom: 6rem; /* Space for sticky footer */
-}
-</style>

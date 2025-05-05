@@ -99,34 +99,42 @@ export default defineEventHandler(async (event) => {
 
     // --- Combine all data into a summary ---
     logger.debug('Combining data into summary object')
-    const summary = {
+
+    // Create base object from student record data first
+    const baseData = {
       // Assignment properties
       id: assignment.id,
-      status: assignment.status,
-      isSigned: assignment.isSigned,
-      createdDate: assignment.createdDate,
-      lastUpdated: assignment.lastUpdated,
+      status: assignment.status || 'draft',
+      isSigned: assignment.isSigned || 0,
+      createdDate: assignment.createdDate || Math.floor(Date.now() / 1000),
+      lastUpdated: assignment.lastUpdated || Math.floor(Date.now() / 1000),
 
-      // Student record properties
+      // Student record properties with proper fallbacks
       studentRecordId: studentRecord.id,
-      studentGroup: studentRecord.studentGroup,
-      studentName: studentRecord.studentName,
-      studentLastname: studentRecord.studentLastname,
-      studentEmail: studentRecord.studentEmail,
-      studentNumber: studentRecord.studentNumber,
-      supervisorEmail: studentRecord.supervisorEmail,
-      finalProjectTitle: studentRecord.finalProjectTitle,
-      finalProjectTitleEn: studentRecord.finalProjectTitleEn,
-      department: studentRecord.department,
-      studyProgram: studentRecord.studyProgram,
-      programCode: studentRecord.programCode,
-      currentYear: studentRecord.currentYear,
-
-      // Form data from the latest version
-      ...formData
+      studentGroup: studentRecord.studentGroup || '',
+      studentName: studentRecord.studentName || '',
+      studentLastname: studentRecord.studentLastname || '',
+      studentEmail: studentRecord.studentEmail || '',
+      studentNumber: studentRecord.studentNumber || '',
+      supervisorEmail: studentRecord.supervisorEmail || '',
+      finalProjectTitle: studentRecord.finalProjectTitle || '',
+      finalProjectTitleEn: studentRecord.finalProjectTitleEn || '',
+      department: studentRecord.department || '',
+      studyProgram: studentRecord.studyProgram || '',
+      programCode: studentRecord.programCode || '',
+      currentYear: studentRecord.currentYear || ''
     }
 
-    logger.info(`Assignment summary fetched successfully for ID: ${assignmentId}`)
+    // FIXED: Change merging order - formData first, then override with baseData
+    const summary = {
+      ...formData, // Version data (lower priority)
+      ...baseData // Student record data (higher priority)
+    }
+
+    // Log values for debugging
+    logger.debug('Student record finalProjectTitle from DB:', studentRecord.finalProjectTitle)
+    logger.debug('finalProjectTitle in summary:', summary.finalProjectTitle)
+
     return summary
   }
   catch (error: any) {
