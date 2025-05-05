@@ -9,14 +9,12 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@azure/msal-node": "^3.5.2",
     "@iconify-json/simple-icons": "^1.2.24",
     "@nuxt/ui": "^2.21.1",
     "@nuxthub/core": "^0.8.24",
     "@pinia/colada": "^0.13.6",
     "@pinia/colada-nuxt": "^0.0.3",
     "@pinia/nuxt": "^0.7.0",
-    "@sendgrid/mail": "^8.1.5",
     "aws4fetch": "^1.0.20",
     "drizzle-kit": "^0.28.1",
     "drizzle-orm": "0.36.4",
@@ -25,7 +23,6 @@
     "file-saver": "^2.0.5",
     "h3-zod": "^0.5.3",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^7.0.0",
     "nuxt": "^3.16.1",
     "nuxt-auth-utils": "^0.5.15",
     "pinia": "^2.3.1",
@@ -42,11 +39,10 @@
     "@types/adm-zip": "^0.5.7",
     "@types/file-saver": "^2.0.7",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/nodemailer": "^6.4.17",
     "@types/papaparse": "^5.3.15",
     "eslint": "^9.21.0",
     "typescript": "5.7.2",
-    "wrangler": "^4.4.0"
+    "wrangler": "^4.14.1"
   },
   "packageManager": "pnpm@10.5.2",
   "pnpm": {

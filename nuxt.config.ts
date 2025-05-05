@@ -22,7 +22,7 @@ export default defineNuxtConfig({
     }
   },
   future: { compatibilityVersion: 4 },
-  compatibilityDate: '2024-07-30',
+  compatibilityDate: '2025-04-10',
   nitro: {
     experimental: {
       openAPI: true
