@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
       logger.warn('Authentication failure', { email: 'unknown' })
       throw createError({ statusCode: 403, message: 'Access denied: User not authenticated' })
     }
+    const email = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
 
     // Log authenticated user
     logger.info('User authenticated', { email: user.mail })
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Find the latest student record
-    const email = user.mail
+
     logger.debug('Finding latest student record', { email })
 
     const latestRecord = await useDB()

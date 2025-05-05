@@ -1,0 +1,60 @@
+### GET request to example server
+# curl -X POST "https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token"
+#  -H "Content-Type: application/x-www-form-urlencoded"
+#  -d "client_id=YOUR_CLIENT_ID&client_secret=YOUR_CLIENT_SECRET&scope=https://graph.microsoft.com/.default&grant_type=client_credentials"
+POST https://login.microsoftonline.com/e168d7dc-807e-4503-8fec-c2d8d5e0daa5/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id = 7f76cc6f-7ece-4e4a-80ca-0c92973ffaf4 &
+client_secret = guw8Q~PKVqSI8CFhd44tEaKeGvnI08CzsVxOHaLo &
+scope = https://graph.microsoft.com/.default &
+grant_type = client_credentials
+
+###
+# curl -X POST "https://graph.microsoft.com/v1.0/users/ee273803-f006-407f-b992-93facb4ef9bd/sendMail"
+#  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJub25jZSI6IlZrZ0NUdW5sOEVDRnA5aDNRQ0ZNSEg1STFqNGVjTGR6U0s4LUtVRnVMLWciLCJhbGciOiJSUzI1NiIsIng1dCI6IkNOdjBPSTNSd3FsSEZFVm5hb01Bc2hDSDJYRSIsImtpZCI6IkNOdjBPSTNSd3FsSEZFVm5hb01Bc2hDSDJYRSJ9.eyJhdWQiOiJodHRwczovL2dyYXBoLm1pY3Jvc29mdC5jb20iLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9lMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUvIiwiaWF0IjoxNzQ2Mzc3MzQxLCJuYmYiOjE3NDYzNzczNDEsImV4cCI6MTc0NjM4MTI0MSwiYWlvIjoiazJSZ1lKQTROYWRoODBiUHV5ckZsZVdaN3R2YkFBPT0iLCJhcHBfZGlzcGxheW5hbWUiOiJCYWlnaWFtxbNqxbMgZGFyYsWzIHRhbHB5a2xhIiwiYXBwaWQiOiI3Zjc2Y2M2Zi03ZWNlLTRlNGEtODBjYS0wYzkyOTczZmZhZjQiLCJhcHBpZGFjciI6IjEiLCJpZHAiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9lMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUvIiwiaWR0eXAiOiJhcHAiLCJvaWQiOiIxNGM0MmVmZi1lMmEyLTQyYmYtYTU2Ny00MDY1MzkyYWNjYzAiLCJyaCI6IjEuQWJFQTNOZG80WDZBQTBXUDdNTFkxZURhcFFNQUFBQUFBQUFBd0FBQUFBQUFBQUJJQVFDeEFBLiIsInJvbGVzIjpbIlVzZXIuUmVhZFdyaXRlLkFsbCIsIk1haWwuU2VuZCJdLCJzdWIiOiIxNGM0MmVmZi1lMmEyLTQyYmYtYTU2Ny00MDY1MzkyYWNjYzAiLCJ0ZW5hbnRfcmVnaW9uX3Njb3BlIjoiRVUiLCJ0aWQiOiJlMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUiLCJ1dGkiOiJpUU9FT3VlckZVeXo4bTg4UGN0dkFBIiwidmVyIjoiMS4wIiwid2lkcyI6WyIwOTk3YTFkMC0wZDFkLTRhY2ItYjQwOC1kNWNhNzMxMjFlOTAiXSwieG1zX2lkcmVsIjoiNyAyNCIsInhtc190Y2R0IjoxNzM4NzExNTUwLCJ4bXNfdGRiciI6IkVVIn0.W-2Aq5YA8hyYTc2u2Nr28PWL8pHgiTXBH4r94hQisOWAVT_jUe4SfyBBpTj8nXmTWxDh7th3RkKdWfXClTaCRWaQ1U4eWG6iwCPQOsVTPb3yi6NHDnlYKS6rebmoZoI054Mz6g7zFd4yvMF0wWVAtkwmN8-OiyXD9Eges6zOmUoNBUQnSXYKkw30QWXWBXn1tkvwWqtKLhRYKMXD6iaPKgUQa_aDel9r2WlSxxBYAW0nswiroXZvTyyzrkyyBPf_Be7D3uLWYfYvVH5Zv8UYgzStOEv3pLzZnlBC4u8IBzDY0SYMVvxCE5QvZiZnw7CAAPS8a0trEhe3zlkSvgCf4A"
+#  -H "Content-Type: application/json"
+#  -d '{
+#    "message": {
+#      "subject": "Test Email from Curl",
+#      "body": {
+#        "contentType": "Text",
+#        "content": "This is a test email sent using curl."
+#      },
+#      "toRecipients": [
+#        {
+#          "emailAddress": {
+#            "address": "your-recipient@example.com"
+#          }
+#        }
+#      ]
+#    },
+#    "saveToSentItems": true
+#  }'
+POST https://graph.microsoft.com/v1.0/users/2c022af5-abb5-45c2-855e-8174827f5b14/sendMail
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJub25jZSI6Imw5YUR5T00zM3QyVHFqSG9iUXRTWWJPSkJIa1VXUmhzLUNwV0RpM0lFekEiLCJhbGciOiJSUzI1NiIsIng1dCI6IkNOdjBPSTNSd3FsSEZFVm5hb01Bc2hDSDJYRSIsImtpZCI6IkNOdjBPSTNSd3FsSEZFVm5hb01Bc2hDSDJYRSJ9.eyJhdWQiOiJodHRwczovL2dyYXBoLm1pY3Jvc29mdC5jb20iLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9lMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUvIiwiaWF0IjoxNzQ2MzkwNjA3LCJuYmYiOjE3NDYzOTA2MDcsImV4cCI6MTc0NjM5NDUwNywiYWlvIjoiazJSZ1lLaS9mdi9Xa2o2SEkzVmMvTHQ2YnZpMUFRQT0iLCJhcHBfZGlzcGxheW5hbWUiOiJCYWlnaWFtxbNqxbMgZGFyYsWzIHRhbHB5a2xhIiwiYXBwaWQiOiI3Zjc2Y2M2Zi03ZWNlLTRlNGEtODBjYS0wYzkyOTczZmZhZjQiLCJhcHBpZGFjciI6IjEiLCJpZHAiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9lMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUvIiwiaWR0eXAiOiJhcHAiLCJvaWQiOiIxNGM0MmVmZi1lMmEyLTQyYmYtYTU2Ny00MDY1MzkyYWNjYzAiLCJyaCI6IjEuQWJFQTNOZG80WDZBQTBXUDdNTFkxZURhcFFNQUFBQUFBQUFBd0FBQUFBQUFBQUJJQVFDeEFBLiIsInJvbGVzIjpbIlVzZXIuUmVhZFdyaXRlLkFsbCIsIk1haWwuU2VuZCJdLCJzdWIiOiIxNGM0MmVmZi1lMmEyLTQyYmYtYTU2Ny00MDY1MzkyYWNjYzAiLCJ0ZW5hbnRfcmVnaW9uX3Njb3BlIjoiRVUiLCJ0aWQiOiJlMTY4ZDdkYy04MDdlLTQ1MDMtOGZlYy1jMmQ4ZDVlMGRhYTUiLCJ1dGkiOiJ4WUpjREwtY21VRzF4MG1yQThKQ0FBIiwidmVyIjoiMS4wIiwid2lkcyI6WyIwOTk3YTFkMC0wZDFkLTRhY2ItYjQwOC1kNWNhNzMxMjFlOTAiXSwieG1zX2lkcmVsIjoiNyAxMCIsInhtc190Y2R0IjoxNzM4NzExNTUwLCJ4bXNfdGRiciI6IkVVIn0.Acy_9KIw43lmyaSfG3yZVwFGdDoZSKtiIC8dz16FNSnJhQOLZCChfRn_xTfhtJ0IegAAfLJlWCKiOck6VxAwg4MSKVW1AEiiIGcgxBi8OjTFY8MQatBPRjK8Ey8lDm5uP6eZyObUcsi0kZ8iSP1SLgATvGFipzsJvPYCywVqYp4nS5C41FwfIIjhNG9RZ5O-jtd0lOZDXm2OvHUT5FsCggEQyFaAz7vXoRHP6Cdh1CAbmjvCbF9Q1eMOq42ENi4C_B2fZyAO-NTKJj-SSxiV71ZbEOfSZDLfln5QEFHVHHvZlxRBBpqBn0MuM59EYb3o2_tXf02wAKuCdYO2g2S19A
+Content-Type: application/json
+
+{
+  "message": {
+    "subject": "Test Email from Curl",
+    "body": {
+      "contentType": "Text",
+      "content": "This is a test email sent using curl."
+    },
+    "toRecipients": [
+      {
+        "emailAddress": {
+          "address": "m.gzegozevskis@eif.viko.lt"
+        }
+      }
+    ]
+  },
+  "saveToSentItems": true
+}
+
+###
+
+
+
+###

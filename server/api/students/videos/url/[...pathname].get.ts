@@ -37,9 +37,10 @@ export default eventHandler(async (event) => {
       logger.warn('Missing pathname parameter')
       throw createError({ statusCode: 400, message: 'Pathname is required' })
     }
+    const email = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
 
     logger.info('User authenticated', {
-      email: user.mail,
+      email: email,
       pathname: pathname
     })
 

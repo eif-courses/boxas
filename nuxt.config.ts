@@ -12,6 +12,11 @@ export default defineNuxtConfig({
     enabled: true
   },
   runtimeConfig: {
+    azureAppClientId: process.env.AZURE_CLIENT_ID,
+    azureAppTenantId: process.env.AZURE_TENANT_ID,
+    azureAppClientSecret: process.env.AZURE_CLIENT_SECRET,
+    azureAppMailUserId: process.env.FROM_EMAIL,
+    teamsWebhookUrl: process.env.NUXT_TEAMS_WEBHOOK_URL,
     public: {
       appUrl: process.env.APP_URL || 'https://boxas.nuxt.dev'
     }

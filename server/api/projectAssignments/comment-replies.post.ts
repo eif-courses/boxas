@@ -6,37 +6,53 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const { assignmentId, parentId, text, role } = body
 
+    // Validate required fields
     if (!assignmentId || !parentId || !text) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Assignment ID, parent comment ID, and reply text are required'
       })
     }
+
     const db = useDB()
+
     // Verify the parent comment exists
-    const [parentComment] = await db.select()
+    const parentCommentResult = await db.select()
       .from(assignmentComments)
       .where(eq(assignmentComments.id, parentId))
       .limit(1)
 
-    if (!parentComment) {
+    if (!parentCommentResult || parentCommentResult.length === 0) {
       throw createError({
         statusCode: 404,
         statusMessage: 'Parent comment not found'
       })
     }
 
-    // Get user info from auth context
+    const parent = parentCommentResult[0]
+
+    // Get user info
     const userRole = role || event.context.auth?.role || 'student'
     const authorName = event.context.auth?.name || 'Anonymous User'
 
-    // Insert the reply comment
+    // Log payload for debugging
+    console.log('Creating reply comment with:', {
+      assignmentId,
+      versionId: parent.versionId,
+      parentId,
+      fieldName: parent.fieldName,
+      text,
+      role: userRole,
+      authorName
+    })
+
+    // Insert the reply
     const newReply = await db.insert(assignmentComments)
       .values({
         assignmentId,
-        versionId: parentComment.versionId,
-        parentId, // Link to parent comment
-        fieldName: parentComment.fieldName, // Inherit field name from parent
+        versionId: parent.versionId,
+        parentId,
+        fieldName: parent.fieldName,
         text,
         role: userRole,
         authorName,
@@ -44,7 +60,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning()
 
-    // Update the assignment's last updated timestamp
+    // Update the assignment's lastUpdated timestamp
     await db.update(projectAssignments)
       .set({ lastUpdated: Math.floor(Date.now() / 1000) })
       .where(eq(projectAssignments.id, assignmentId))
@@ -54,11 +70,11 @@ export default defineEventHandler(async (event) => {
       reply: newReply[0]
     }
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Error posting reply:', error)
 
     if (error.statusCode) {
-      throw error // Re-throw custom errors
+      throw error
     }
 
     throw createError({

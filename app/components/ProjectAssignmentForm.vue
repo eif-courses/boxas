@@ -949,3 +949,9 @@ watch(() => props.assignmentId, (newId, oldId) => {
   }
 }, { immediate: false }) // Don't run immediately
 </script>
+
+<style scoped>
+.pb-24 {
+  padding-bottom: 6rem; /* Space for sticky footer */
+}
+</style>

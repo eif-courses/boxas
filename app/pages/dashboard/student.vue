@@ -166,7 +166,7 @@
       </div>
       <UDivider />
 
-      <!-- Documents Section -->
+      <!-- Documents Section - UPDATED for better UX -->
       <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
@@ -174,15 +174,29 @@
           </h3>
 
           <!-- Document Upload Button (for students only) -->
-          <UButton
-            v-if="isStudent && !hasFinalDocument"
-            icon="i-heroicons-arrow-up-tray"
-            size="sm"
-            color="primary"
-            @click="openDocumentUploader = true"
-          >
-            {{ $t('upload_document') || 'Įkelti dokumentą' }}
-          </UButton>
+          <div class="flex gap-2">
+            <UButton
+              v-if="isStudent && !hasFinalDocument"
+              icon="i-heroicons-document-text"
+              size="sm"
+              color="primary"
+              @click="openDocumentUploader = true"
+            >
+              {{ $t('upload_document') || 'Įkelti dokumentą' }}
+            </UButton>
+
+            <!-- Source Code Upload Button - ALWAYS VISIBLE for students -->
+            <UButton
+              v-if="isStudent"
+              icon="i-heroicons-code-bracket-square"
+              size="sm"
+              :color="getSourceCodeDocument() ? 'indigo' : 'primary'"
+              :variant="getSourceCodeDocument() ? 'outline' : 'solid'"
+              @click="openSourceCodeUploader = true"
+            >
+              {{ getSourceCodeDocument() ? ($t('update_source_code') || 'Atnaujinti kodą') : ($t('upload_source_code') || 'Įkelti kodą') }}
+            </UButton>
+          </div>
         </div>
 
         <!-- Document List -->
@@ -234,40 +248,32 @@
                   {{ formatDate(getSourceCodeDocument().createdDate) }}
                 </p>
               </div>
-              <UButton
-                :loading="isFetchingDocument"
-                icon="i-heroicons-arrow-down-tray"
-                size="xs"
-                color="indigo"
-                variant="ghost"
-                @click="openDocument(getSourceCodeDocument())"
-              />
-            </div>
-          </UCard>
-
-          <!-- Source Code Upload Card -->
-          <UCard
-            v-if="isStudent && !getSourceCodeDocument()"
-            class="bg-gray-50 border border-dashed border-gray-300"
-          >
-            <div class="text-center py-4">
-              <UIcon
-                name="i-heroicons-code-bracket-square"
-                class="h-8 w-8 text-gray-400 mx-auto mb-2"
-              />
-              <p class="text-sm text-gray-600">
-                {{ $t('upload_source_code_prompt') || 'Įkelkite išeities kodą' }}
-              </p>
-              <ZipUploader
-                class="mt-3"
-                @zip-uploaded="handleZipUpload"
-              />
+              <div class="flex gap-2">
+                <UButton
+                  :loading="isFetchingDocument"
+                  icon="i-heroicons-arrow-down-tray"
+                  size="xs"
+                  color="indigo"
+                  variant="ghost"
+                  :title="$t('download_source_code') || 'Atsisiųsti išeities kodą'"
+                  @click="openDocument(getSourceCodeDocument())"
+                />
+                <UButton
+                  v-if="isStudent"
+                  icon="i-heroicons-pencil"
+                  size="xs"
+                  color="indigo"
+                  variant="ghost"
+                  :title="$t('update_source_code') || 'Atnaujinti išeities kodą'"
+                  @click="openSourceCodeUploader = true"
+                />
+              </div>
             </div>
           </UCard>
 
           <!-- No Documents Message -->
           <UCard
-            v-if="!getFinalDocument() && !getSourceCodeDocument()"
+            v-if="!getFinalDocument() && !getSourceCodeDocument() && !isStudent"
             class="bg-gray-50 border border-dashed border-gray-300"
           >
             <div class="text-center py-4">
@@ -407,22 +413,23 @@
 
       <UDivider />
 
-      <!-- Video Section -->
+      <!-- Video Section - UPDATED for better UX -->
       <div>
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
             {{ $t('video_presentation') || 'Vaizdo pristatymas' }}
           </h3>
 
-          <!-- Video Upload Button (for students only) -->
+          <!-- Video Upload Button - ALWAYS VISIBLE for students -->
           <UButton
-            v-if="isStudent && records.videos.length === 0"
+            v-if="isStudent"
             icon="i-heroicons-video-camera"
             size="sm"
-            color="primary"
+            :color="records.videos.length > 0 ? 'orange' : 'primary'"
+            :variant="records.videos.length > 0 ? 'outline' : 'solid'"
             @click="openVideoUploader = true"
           >
-            {{ $t('upload_video') || 'Įkelti vaizdo įrašą' }}
+            {{ records.videos.length > 0 ? ($t('update_video') || 'Atnaujinti vaizdo įrašą') : ($t('upload_video') || 'Įkelti vaizdo įrašą') }}
           </UButton>
         </div>
 
@@ -436,13 +443,26 @@
             :content-type="records.videos[0].contentType"
             class="w-full aspect-video"
           />
-          <div class="p-3">
-            <h4 class="font-medium">
-              {{ records.videos[0].filename }}
-            </h4>
-            <p class="text-xs text-gray-500">
-              {{ formatDate(records.videos[0].createdAt) }}
-            </p>
+          <div class="p-3 flex justify-between items-center">
+            <div>
+              <h4 class="font-medium">
+                {{ records.videos[0].filename }}
+              </h4>
+              <p class="text-xs text-gray-500">
+                {{ formatDate(records.videos[0].createdAt) }}
+              </p>
+            </div>
+            <UButton
+              v-if="isStudent"
+              icon="i-heroicons-pencil"
+              size="sm"
+              color="orange"
+              variant="ghost"
+              :title="$t('replace_video') || 'Pakeisti įrašą'"
+              @click="openVideoUploader = true"
+            >
+              {{ $t('replace_video') || 'Pakeisti įrašą' }}
+            </UButton>
           </div>
         </div>
 
@@ -458,7 +478,10 @@
           <p class="text-gray-600">
             {{ $t('no_video_uploaded') || 'Nėra įkelto vaizdo įrašo' }}
           </p>
-          <p class="text-sm text-gray-500 mt-2">
+          <p
+            v-if="isStudent"
+            class="text-sm text-gray-500 mt-2"
+          >
             {{ $t('upload_video_prompt') || 'Įkelkite vaizdo įrašą, kuriame pristatomas jūsų darbas' }}
           </p>
 
@@ -505,22 +528,55 @@
         </UCard>
       </UModal>
 
-      <!-- Video Upload Modal -->
-      <UModal v-model="openVideoUploader">
+      <!-- Source Code Upload Modal - NEW -->
+      <UModal v-model="openSourceCodeUploader">
         <UCard>
           <template #header>
             <h3 class="text-lg font-semibold">
-              {{ $t('upload_video_presentation') || 'Įkelti vaizdo pristatymą' }}
+              {{ getSourceCodeDocument() ? ($t('update_source_code') || 'Atnaujinti išeities kodą') : ($t('upload_source_code') || 'Įkelti išeities kodą') }}
             </h3>
           </template>
 
           <div class="p-4">
             <p class="mb-4 text-sm text-gray-600">
-              {{ $t('upload_video_instructions') || 'Pasirinkite vaizdo įrašą su jūsų darbo pristatymu' }}
+              {{ $t('upload_source_code_instructions') || 'Pasirinkite ZIP failą su jūsų programos išeities kodu' }}
+            </p>
+
+            <ZipUploader @zip-uploaded="handleZipUpload" />
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end">
+              <UButton
+                color="gray"
+                variant="ghost"
+                @click="openSourceCodeUploader = false"
+              >
+                {{ $t('cancel') || 'Atšaukti' }}
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </UModal>
+
+      <!-- Video Upload Modal -->
+      <UModal v-model="openVideoUploader">
+        <UCard>
+          <template #header>
+            <h3 class="text-lg font-semibold">
+              {{ records.videos.length > 0 ? ($t('update_video_presentation') || 'Atnaujinti vaizdo pristatymą') : ($t('upload_video_presentation') || 'Įkelti vaizdo pristatymą') }}
+            </h3>
+          </template>
+
+          <div class="p-4">
+            <p class="mb-4 text-sm text-gray-600">
+              {{ records.videos.length > 0
+                ? ($t('update_video_instructions') || 'Pasirinkite naują vaizdo įrašą, kuris pakeis dabartinį pristatymą')
+                : ($t('upload_video_instructions') || 'Pasirinkite vaizdo įrašą su jūsų darbo pristatymu') }}
             </p>
 
             <VideoUploader
-              title=""
+              :title="records.videos.length > 0 ? 'Atnaujinti vaizdo įrašą' : ''"
               @video-uploaded="handleVideoUploadSuccess"
             />
           </div>
@@ -604,12 +660,13 @@ const route = useRoute()
 
 // User role state
 const userStore = useAuthStore()
-const isStudent = ref(false) // computed(() => userStore.isStudent)
-const isSupervisor = ref(true) // = computed(() => userStore.isTeacher)
+const isStudent = ref(true) // For production, use: computed(() => userStore.isStudent)
+const isSupervisor = ref(false) // For production, use: computed(() => userStore.isTeacher)
 
 // UI state
 const openDocumentUploader = ref(false)
 const openVideoUploader = ref(false)
+const openSourceCodeUploader = ref(false) // New ref for source code uploader
 const isFetchingDocument = ref(false)
 
 // Project Assignment state
@@ -637,6 +694,8 @@ interface StudentRecordsResponse {
     supervisor: string
     isSigned: number
     assignmentDate: number
+    lastUpdated: number
+    status: string
   }
 }
 
@@ -649,8 +708,6 @@ const assignmentData = ref(null)
 const fetchAssignmentData = async () => {
   try {
     if (!records.value?.student?.id) return
-
-    console.log(records.value)
 
     const response = await fetch(`/api/assignments/${records.value.student.id}/summary`)
     if (response.ok) {
@@ -854,17 +911,43 @@ const handleDocumentUpload = async () => {
   console.log('Document uploaded successfully')
   openDocumentUploader.value = false
   await refresh()
+
+  // Show success notification
+  useToast().add({
+    title: t('success') || 'Sėkmingai',
+    description: t('document_uploaded_success') || 'Dokumentas sėkmingai įkeltas',
+    color: 'green'
+  })
 }
 
 const handleZipUpload = async () => {
   console.log('ZIP file uploaded successfully')
+  openSourceCodeUploader.value = false
   await refresh()
+
+  // Show success notification
+  useToast().add({
+    title: t('success') || 'Sėkmingai',
+    description: getSourceCodeDocument()
+      ? (t('source_code_updated_success') || 'Išeities kodas sėkmingai atnaujintas')
+      : (t('source_code_uploaded_success') || 'Išeities kodas sėkmingai įkeltas'),
+    color: 'green'
+  })
 }
 
 const handleVideoUploadSuccess = async (result) => {
   console.log('Video uploaded successfully:', result)
   openVideoUploader.value = false
   await refresh()
+
+  // Show success notification
+  useToast().add({
+    title: t('success') || 'Sėkmingai',
+    description: records.videos.length > 0
+      ? (t('video_updated_success') || 'Vaizdo įrašas sėkmingai atnaujintas')
+      : (t('video_uploaded_success') || 'Vaizdo įrašas sėkmingai įkeltas'),
+    color: 'green'
+  })
 }
 
 // File handling
@@ -939,6 +1022,10 @@ const createProjectAssignment = async () => {
 
 // Fetch assignment data when component mounts
 onMounted(async () => {
+  // For production use, uncomment these lines:
+  // isStudent.value = userStore.isStudent
+  // isSupervisor.value = userStore.isTeacher
+
   if (records.value?.student) {
     await fetchAssignmentData()
   }

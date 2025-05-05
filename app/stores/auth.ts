@@ -17,11 +17,9 @@ export const useAuthStore = defineStore('auth', {
     },
     temporaryCommissionInfo: null as null | {
       department: string
-      // Add other info returned by your /api/commission/check endpoint if needed
     }
   }),
   actions: {
-    // Initialize from session
     initFromSession() {
       const { user } = useUserSession()
       if (user.value) {
@@ -32,96 +30,67 @@ export const useAuthStore = defineStore('auth', {
     async setUser(userData) {
       this.temporaryCommissionInfo = null
 
-      let role = 'teacher' // Default role
+      const email = userData.mail || userData.email || userData.userPrincipalName || userData.preferred_username || ''
 
-      // Use mail or email property (whichever is available)
-      const email = userData.mail || userData.email || ''
+      console.log('Resolved email:', email)
 
-      // Determine base role from email domain
-      if (email.includes('@stud.viko.lt') || email.includes('penworld@eif.viko.lt')) {
-        role = 'student'
-      }
-      else if ((email.includes('@eif.viko.lt') || email.includes('@viko.lt')) && !email.includes('penworld@eif.viko.lt')) {
-        role = 'teacher'
-      }
-      else if ((email.includes('baigiamieji.onmicrosoft.com') && !email.includes('admin@baigiamieji.onmicrosoft.com'))) {
-        role = 'reviewer'
-      }
-      else if (email.includes('admin@baigiamieji.onmicrosoft.com')) {
-        role = 'admin'
-      }
 
-      // Check if user is a department head by querying the API
+
+      const role = mapEmailToRole(email)
+
+      console.log('Resolved role:', role, 'for email:', email)
+
+
+
+      // Check if user is department head via API
       let isDepartmentHead = false
-
       try {
-        // Call the department head check API
-        const response = await $fetch('/api/users/is-department-head', {
-          method: 'GET'
-        })
-
-        // Update the department head status from the response
+        const response = await $fetch('/api/users/is-department-head')
         isDepartmentHead = response.isDepartmentHead === true
       }
       catch (error) {
         console.error('Error checking department head status:', error)
-        // Default to false if there's an error
-        isDepartmentHead = false
       }
 
-      // Create the user object with all needed properties
       this.user = {
         displayName: userData.displayName,
-        email: email,
-        mail: email, // Ensure mail property is always set
-        role: role,
+        email,
+        mail: email,
+        role,
         jobTitle: userData.jobTitle || null,
         isTeacher: role === 'teacher' || userData.jobTitle === 'Dėstytojas' || isDepartmentHead,
-        isDepartmentHead: isDepartmentHead,
+        isDepartmentHead,
         isCommission: role === 'commission',
         isStudent: role === 'student',
         isReviewer: role === 'reviewer',
         isAdmin: role === 'admin'
       }
     },
-    // --- ADDED: Action to attempt setting temporary access via token ---
+
     async setTemporaryCommissionAccess(code: string): Promise<boolean> {
-      // Clear existing user/temp access first
       this.user = null
       this.temporaryCommissionInfo = null
 
-      if (!code) {
-        console.warn('Attempted to set temporary access with empty token.')
-        return false
-      }
+      if (!code) return false
 
-      console.log('Attempting to validate commission token...')
       try {
-        // Call your token validation endpoint
-        const response = await $fetch('/api/users/is-commission-member', { // Use your GET endpoint
+        const response = await $fetch('/api/users/is-commission-member', {
           method: 'GET',
-          query: { code } // Pass token as query parameter
+          query: { code }
         })
 
-        if (response && response.isValid && response.memberInfo) {
-          console.log('Token is valid. Setting temporary commission access.', response.memberInfo)
-          // Store the relevant info returned by the API
+        if (response?.isValid && response.memberInfo) {
           this.temporaryCommissionInfo = {
             department: response.memberInfo.department
-            // Store other relevant info if needed
           }
-          return true // Indicate success
+          return true
         }
-        else {
-          console.log('Token is invalid or inactive.')
-          this.temporaryCommissionInfo = null // Ensure it's cleared
-          return false // Indicate failure
-        }
+
+        return false
       }
       catch (error) {
         console.error('Error validating commission token:', error)
-        this.temporaryCommissionInfo = null // Clear on error
-        return false // Indicate failure
+        return false
       }
     },
 
@@ -132,7 +101,6 @@ export const useAuthStore = defineStore('auth', {
       return this.user?.isDepartmentHead === true
     },
     hasCommissionAccess() {
-      // User has access if they are logged in as commission OR have temporary access set
       return this.user?.isCommission === true || !!this.temporaryCommissionInfo
     },
     hasStudentAccess() {
@@ -145,35 +113,49 @@ export const useAuthStore = defineStore('auth', {
       return this.user?.isAdmin === true
     },
 
-    // Clear user data on logout
     clearUser() {
       this.user = null
-      this.temporaryCommissionInfo = null // <<< Also clear temporary access
+      this.temporaryCommissionInfo = null
       const { clear } = useUserSession()
       try { clear() }
       catch (e) { console.warn('Error clearing session', e) }
     }
   },
   getters: {
-    // Get current user
-    // getUser: state => state.user,
-    //
-    // // Check if user is authenticated
-    // isAuthenticated: state => !!state.user,
-    //
-    // // Get user's primary role
-    // userRole: state => state.user?.role || 'guest'
     getUser: state => state.user,
-    isAuthenticated: state => !!state.user, // Based on logged-in user only
-    // --- ADDED: Getter to check if *any* commission access exists ---
+    isAuthenticated: state => !!state.user,
     isCommissionMemberOrHasTokenAccess: state => !!state.user?.isCommission || !!state.temporaryCommissionInfo,
-    // --- ADDED: Getter for temporary info ---
     getTemporaryCommissionInfo: state => state.temporaryCommissionInfo,
-    userRole: (state) => { // Role prioritizes logged-in user
+    userRole: (state) => {
       if (state.user) return state.user.role || 'guest'
-      if (state.temporaryCommissionInfo) return 'commission' // Assign a role for token access
+      if (state.temporaryCommissionInfo) return 'commission'
       return 'guest'
     }
-
   }
 })
+
+// ✅ Centralized role mapping logic
+function mapEmailToRole(email: string): string {
+  const normalized = email.toLowerCase()
+
+  if (normalized.includes('admin@')) return 'admin'
+  if (normalized.includes('super@')) return 'admin'
+  if (normalized.includes('head@')) return 'department-head'
+  if (normalized.includes('teacher@')) return 'teacher'
+  if (normalized.includes('student@')) return 'student'
+
+  if (normalized.endsWith('@eif.viko.lt') && !normalized.includes('penworld')) return 'teacher'
+  if (normalized.endsWith('@viko.lt')) return 'teacher'
+
+  // Fallback for unknown Microsoft accounts in your org
+  if (normalized.endsWith('@baigiamieji.onmicrosoft.com')) return 'reviewer'
+
+  if (
+    normalized === 'student@baigiamieji.onmicrosoft.com'
+    || normalized.endsWith('@stud.viko.lt')
+    || normalized.includes('penworld@eif.viko.lt')
+  ) return 'student'
+
+  // Fallback
+  return 'reviewer'
+}

@@ -22,7 +22,8 @@ export default eventHandler(async (event) => {
     const decodedPathname = decodeURIComponent(pathname)
 
     // Get student record (same as your existing code)
-    const email = user.mail
+    const email = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
+
     const latestRecord = await useDB()
       .select()
       .from(studentRecords)
