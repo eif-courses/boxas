@@ -83,34 +83,53 @@ const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   studentObject.value = mStudent
 }
 
-// Project Assignment functions
 const openProjectAssignment = async (student) => {
   currentStudentId.value = student.id
 
-  console.log(student.id)
+  // Find the assignment from the data we already have
+  const studentData = filteredStudents.value.students.find(s => s.student.id === student.id)
+  const assignment = studentData?.projectAssignments[0]
 
-  // Check if the student already has a project assignment
-  try {
-    const { data } = await useFetch(`/api/projectAssignments/check/${student.id}`)
-    if (data.value && data.value.id) {
-      projectAssignmentId.value = data.value.id
-      hasProjectAssignment.value = true
-    }
-    else {
-      projectAssignmentId.value = student.id // Pass student ID when creating new
-      hasProjectAssignment.value = false
-    }
-    showProjectAssignmentModal.value = true
+  if (assignment) {
+    projectAssignmentId.value = assignment.id
+    hasProjectAssignment.value = true
   }
-  catch (error) {
-    console.error('Error checking project assignment:', error)
-    toast.add({
-      title: 'Klaida',
-      description: 'Nepavyko patikrinti projekto užduoties būsenos.',
-      color: 'red'
-    })
+  else {
+    projectAssignmentId.value = student.id
+    hasProjectAssignment.value = false
   }
+
+  showProjectAssignmentModal.value = true
 }
+
+// Project Assignment functions
+// const openProjectAssignment = async (student) => {
+//   currentStudentId.value = student.id
+//
+//   console.log(student.id)
+//
+//   // Check if the student already has a project assignment
+//   try {
+//     const { data } = await useFetch(`/api/projectAssignments/check/${student.id}`)
+//     if (data.value && data.value.id) {
+//       projectAssignmentId.value = data.value.id
+//       hasProjectAssignment.value = true
+//     }
+//     else {
+//       projectAssignmentId.value = student.id // Pass student ID when creating new
+//       hasProjectAssignment.value = false
+//     }
+//     showProjectAssignmentModal.value = true
+//   }
+//   catch (error) {
+//     console.error('Error checking project assignment:', error)
+//     toast.add({
+//       title: 'Klaida',
+//       description: 'Nepavyko patikrinti projekto užduoties būsenos.',
+//       color: 'red'
+//     })
+//   }
+// }
 
 const handleProjectAssignmentSaved = () => {
   toast.add({
@@ -645,12 +664,35 @@ const { determineFormVariant } = useFormUtilities()
       <template #actions-data="{ row }">
         <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
           <!-- Project Assignment Button -->
+          <!--          <UButton -->
+          <!--            icon="i-heroicons-clipboard-document-list" -->
+          <!--            size="xs" -->
+          <!--            color="white" -->
+          <!--            variant="solid" -->
+          <!--            label="Užduotis" -->
+          <!--            :trailing="false" -->
+          <!--            class="p-1 text-xs" -->
+          <!--            @click="openProjectAssignment(row.student)" -->
+          <!--          /> -->
+          <!--          <UButton -->
+          <!--            v-if="row.projectAssignments && row.projectAssignments.length > 0" -->
+          <!--            icon="i-heroicons-clipboard-document-list" -->
+          <!--            size="xs" -->
+          <!--            color="white" -->
+          <!--            variant="solid" -->
+          <!--            label="Užduotis" -->
+          <!--            :trailing="false" -->
+          <!--            class="p-1 text-xs" -->
+          <!--            @click="openProjectAssignment(row.student)" -->
+          <!--          /> -->
+
           <UButton
-            icon="i-heroicons-clipboard-document-list"
+            v-if="row.projectAssignments && row.projectAssignments.length > 0 && row.projectAssignments[0].status === 'submitted'"
+            icon="i-heroicons-clipboard-document-check"
             size="xs"
-            color="white"
+            color="success"
             variant="solid"
-            label="Užduotis"
+            label="Peržiūrėti"
             :trailing="false"
             class="p-1 text-xs"
             @click="openProjectAssignment(row.student)"

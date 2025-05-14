@@ -60,6 +60,16 @@
           </h3>
           <div class="flex items-center gap-2">
             <!-- New Project Assignment Button -->
+
+            <EditAssignmentReportForm
+              :initial-data="studentTopicData"
+              button-label="Registruoti temą"
+              modal-title="Baigiamojo Darbo Temos Registravimas"
+              form-variant="lt"
+              @save="handleSave"
+              @success="handleSuccess"
+            />
+
             <UButton
               icon="i-heroicons-document-text"
               :color="hasProjectAssignment ? 'primary' : 'gray'"
@@ -67,27 +77,6 @@
             >
               {{ hasProjectAssignment ? ($t('edit_project_assignment') || 'Redaguoti užduotį') : ($t('create_project_assignment') || 'Sukurti užduotį') }}
             </UButton>
-
-            <StudentProjectForm
-              ref="projectForm"
-              :student-record-id="records.student.id"
-              :form-variant="determineFormVariant(records.student?.studentGroup)"
-              :student-name="records.student?.studentName + ' ' + records.student?.studentLastname"
-              :student-group="records.student?.studentGroup"
-              :button-color="assignmentData?.status === 'revision_requested' ? 'warning'
-                : assignmentData?.status === 'submitted' && isSupervisor ? 'warning'
-                  : !assignmentData ? 'primary' : 'white'"
-              :button-icon="!assignmentData ? 'i-heroicons-document-plus'
-                : assignmentData?.status === 'revision_requested' ? 'i-heroicons-pencil'
-                  : assignmentData?.status === 'submitted' && isSupervisor ? 'i-heroicons-clipboard-document-check'
-                    : 'i-heroicons-document-text'"
-              :button-label="!assignmentData ? (isStudent ? $t('create_assignment') || 'Sukurti užduotį' : $t('view_assignment') || 'Peržiūrėti užduotį')
-                : assignmentData?.status === 'revision_requested' ? $t('update_assignment') || 'Atnaujinti užduotį'
-                  : assignmentData?.status === 'submitted' && isSupervisor ? $t('review_assignment') || 'Peržiūrėti užduotį'
-                    : $t('view_assignment') || 'Peržiūrėti užduotį'"
-              @updated="handleAssignmentUpdated"
-              @approved="handleAssignmentApproved"
-            />
           </div>
         </div>
 
@@ -609,12 +598,25 @@
 
           <div class="p-0">
             <!-- Embed the Project Assignment Form component here -->
-            <ProjectAssignmentForm
-              v-if="projectAssignmentId"
-              :assignment-id="projectAssignmentId"
-              @saved="handleProjectAssignmentSaved"
-              @submitted="handleProjectAssignmentSubmitted"
-            />
+
+            <!--            const props = defineProps({ -->
+            <!--            initialData: { -->
+            <!--            type: Object as PropType<ProjectTopicRegistrationData>, -->
+            <!--            required: true -->
+            <!--            }, -->
+            <!--            buttonLabel: { -->
+            <!--            type: String, -->
+            <!--            default: 'Registruoti / Redaguoti Temą' -->
+            <!--            }, -->
+            <!--            modalTitle: { -->
+            <!--            type: String, -->
+            <!--            default: 'Baigiamojo Darbo Temos Registravimas' -->
+            <!--            }, -->
+            <!--            formVariant: { -->
+            <!--            type: String as PropType<'lt' | 'en'>, // Define possible variants -->
+            <!--            required: true -->
+            <!--            } -->
+            <!--            }) -->
           </div>
 
           <template #footer>
@@ -639,7 +641,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import ZipUploader from '~/components/ZipUploader.vue'
-import ProjectAssignmentForm from '~/components/ProjectAssignmentForm.vue'
 import PreviewSupervisorReport from '~/components/PreviewSupervisorReport.vue'
 import PreviewReviewerReport from '~/components/PreviewReviewerReport.vue'
 import VideoUploader from '~/components/VideoUploader.vue'
@@ -649,10 +650,37 @@ import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 import { useReviewerReports } from '~/composables/useReviewerReports'
 import { useAuthStore } from '~/stores/auth'
+import type { ProjectTopicRegistrationFormData } from '~/components/EditAssignmentReportForm.vue'
 
 definePageMeta({
   middleware: ['student-access']
 })
+
+const studentTopicData = ref({
+  studentRecordId: 12345,
+  GROUP: 'PI23E',
+  NAME: 'Jonas Jonaitis',
+  TITLE: 'Prekybos platformos kūrimas su Vue.js ir Node.js',
+  TITLE_EN: 'Development of E-commerce Platform Using Vue.js and Node.js',
+  PROBLEM: 'Dabartinės elektroninės prekybos platformos neužtikrina...',
+  OBJECTIVE: 'Sukurti greitai veikiančią elektroninės prekybos platformą...',
+  TASKS: '1. Išanalizuoti esamus elektroninės prekybos sprendimus...',
+  COMPLETION_DATE: '2025-05-30',
+  SUPERVISOR: 'Dr. Petras Petraitis',
+  IS_REGISTERED: 0
+})
+
+// Event handlers
+const handleSave = (formData: ProjectTopicRegistrationFormData) => {
+  console.log('Form data saved:', formData)
+  // Here you can add additional logic before the API call
+  // The component will handle the actual API call internally
+}
+
+const handleSuccess = () => {
+  console.log('Form submitted successfully')
+  // Update UI after successful save (show notification, refresh data, etc.)
+}
 
 const { t } = useI18n()
 const router = useRouter()

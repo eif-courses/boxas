@@ -1,5 +1,5 @@
 import { eq, and, inArray, desc } from 'drizzle-orm'
-import { studentRecords, documents, videos, supervisorReports } from '~~/server/database/schema'
+import { studentRecords, documents, videos, supervisorReports, projectAssignments } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   // Get logger from event context
@@ -17,8 +17,11 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     }
 
+    const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
+
+
     logger.info('User authenticated', {
-      email: user.mail
+      email: userEmail
     })
 
     const query = getQuery(event)
@@ -34,9 +37,9 @@ export default defineEventHandler(async (event) => {
     // Create conditions array
     const conditions = []
 
-    conditions.push(eq(studentRecords.supervisorEmail, user.mail))
+    conditions.push(eq(studentRecords.supervisorEmail, userEmail))
     logger.debug('Filtering by supervisor email', {
-      supervisorEmail: user.mail
+      supervisorEmail: userEmail
     })
 
     // First, if no year is specified, determine the latest year from the database
@@ -75,7 +78,7 @@ export default defineEventHandler(async (event) => {
     if (!studentRecordsResult?.length) {
       logger.info('No students found', {
         year: latestYear,
-        supervisorEmail: user.mail
+        supervisorEmail: userEmail
       })
 
       return {
@@ -101,7 +104,7 @@ export default defineEventHandler(async (event) => {
     try {
       logger.debug('Attempting bulk data fetch with inArray')
 
-      const [documentsResult, videosResult, supervisorReportsResult]
+      const [documentsResult, videosResult, supervisorReportsResult, projectAssignmentsResult]
           = await Promise.all([
             // Try to use inArray for bulk fetching, which should be much faster
             db.select().from(documents)
@@ -151,13 +154,31 @@ export default defineEventHandler(async (event) => {
                       .execute()
                   )
                 ).then(results => results.flat())
+              }),
+
+            // New query for project assignments
+            db.select().from(projectAssignments)
+              .where(inArray(projectAssignments.studentRecordId, studentRecordIds))
+              .execute()
+              .catch((err) => {
+                logger.warn('Bulk project assignments fetch failed, falling back to individual queries', {
+                  error: err.message
+                })
+                return Promise.all(
+                  studentRecordIds.map(id =>
+                    db.select().from(projectAssignments)
+                      .where(eq(projectAssignments.studentRecordId, id))
+                      .execute()
+                  )
+                ).then(results => results.flat())
               })
           ])
 
       logger.info('Related data fetched successfully', {
         documentsCount: documentsResult.length,
         videosCount: videosResult.length,
-        reportsCount: supervisorReportsResult.length
+        reportsCount: supervisorReportsResult.length,
+        assignmentsCount: projectAssignmentsResult.length
       })
 
       // Group data by student with an optimized approach
@@ -166,6 +187,7 @@ export default defineEventHandler(async (event) => {
       const documentsMap = new Map()
       const videosMap = new Map()
       const supervisorReportsMap = new Map()
+      const projectAssignmentsMap = new Map()
 
       // Create lookup maps for faster access
       documentsResult.forEach((doc) => {
@@ -189,20 +211,29 @@ export default defineEventHandler(async (event) => {
         supervisorReportsMap.get(report.studentRecordId).push(report)
       })
 
+      // Map project assignments
+      projectAssignmentsResult.forEach((assignment) => {
+        if (!projectAssignmentsMap.has(assignment.studentRecordId)) {
+          projectAssignmentsMap.set(assignment.studentRecordId, [])
+        }
+        projectAssignmentsMap.get(assignment.studentRecordId).push(assignment)
+      })
+
       // Map the data using the lookup maps
       const studentsData = studentRecordsResult.map((student) => {
         return {
           student,
           documents: documentsMap.get(student.id) || [],
           videos: videosMap.get(student.id) || [],
-          supervisorReports: supervisorReportsMap.get(student.id) || []
+          supervisorReports: supervisorReportsMap.get(student.id) || [],
+          projectAssignments: projectAssignmentsMap.get(student.id) || []
         }
       })
 
       logger.info('Response prepared successfully', {
         studentCount: studentsData.length,
         year: latestYear,
-        supervisorEmail: user.mail
+        supervisorEmail: userEmail
       })
 
       return {
