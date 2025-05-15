@@ -41,15 +41,7 @@
               ({{ records.student.currentYear }})
             </p>
           </div>
-          <UBadge
-            v-if="assignmentData?.status"
-            :color="getStatusColor(assignmentData.status)"
-            variant="soft"
-            class="text-xs"
-          >
-            {{ getStatusLabel(assignmentData.status) }}
-          </UBadge>
-        </div>
+        </div>`
       </template>
 
       <!-- Assignment Section -->
@@ -59,105 +51,25 @@
             {{ $t('assignment') || 'Baigiamojo darbo užduotis' }}
           </h3>
           <div class="flex items-center gap-2">
-            <!-- New Project Assignment Button -->
-
+            <!-- Topic Registration Button -->
             <ProjectTopicRegistration
-              :initial-data="newTopicData"
+              :initial-data="topicData"
               user-role="student"
-              user-name="Kosmonautas Studentaitis"
+              :user-name="getUserFullName"
               form-variant="lt"
-              button-label="Registruoti temą"
-              @comment="handleNewComment"
-              @status-change="handleStatusChange"
+              :button-label="getTopicButtonLabel"
               @save="handleSaveRegistration"
+              @comment="handleComment"
+              @status-change="handleStatusChange"
+              @mark-read="handleMarkAsRead"
+              @success="handleSuccess"
             />
-
-            <UButton
-              icon="i-heroicons-document-text"
-              :color="hasProjectAssignment ? 'primary' : 'gray'"
-              @click="openProjectAssignment"
-            >
-              {{ hasProjectAssignment ? ($t('edit_project_assignment') || 'Redaguoti užduotį') : ($t('create_project_assignment') || 'Sukurti užduotį') }}
-            </UButton>
-          </div>
-        </div>
-
-        <!-- Assignment Summary Card (if available) -->
-        <div
-          v-if="assignmentData"
-          class="bg-gray-50 p-4 rounded-md border border-gray-200"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-gray-600">
-                {{ $t('project_title') || 'Baigiamojo darbo tema' }}:
-              </p>
-              <p class="font-medium">
-                {{ assignmentData.title || 'N/A' }}
-              </p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">
-                {{ $t('supervisor') || 'Vadovas' }}:
-              </p>
-              <p class="font-medium">
-                {{ assignmentData.supervisor || 'N/A' }}
-              </p>
-            </div>
-          </div>
-
-          <div class="mt-3">
-            <p class="text-sm text-gray-600">
-              {{ $t('project_objective') || 'Darbo tikslas' }}:
-            </p>
-            <p class="text-sm mt-1">
-              {{ truncateText(assignmentData.objective, 150) }}
-            </p>
-          </div>
-
-          <div class="mt-3 text-xs text-gray-500 flex justify-between">
-            <span>{{ $t('last_updated') || 'Paskutinį kartą atnaujinta' }}: {{ formatDate(assignmentData.lastUpdated) }}</span>
-            <span
-              v-if="assignmentData.status === 'approved'"
-              class="flex items-center text-green-600"
-            >
-              <UIcon
-                name="i-heroicons-check-circle"
-                class="w-4 h-4 mr-1"
-              />
-              {{ $t('approved') || 'Patvirtinta' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- No Assignment Message with Direct Create Button -->
-        <div
-          v-else
-          class="bg-gray-50 p-4 rounded-md border border-gray-200 text-center"
-        >
-          <p class="text-gray-600">
-            {{ $t('no_assignment_yet') || 'Užduotis dar nesukurta' }}
-          </p>
-          <div
-            v-if="isStudent"
-            class="mt-4"
-          >
-            <p class="text-sm text-gray-500 mb-3">
-              {{ $t('create_assignment_prompt') || 'Sukurkite užduotį paspausdami mygtuką žemiau' }}
-            </p>
-            <UButton
-              color="primary"
-              icon="i-heroicons-document-plus"
-              @click="startCreateAssignment"
-            >
-              {{ $t('create_assignment') || 'Sukurti užduotį' }}
-            </UButton>
           </div>
         </div>
       </div>
       <UDivider />
 
-      <!-- Documents Section - UPDATED for better UX -->
+      <!-- Documents Section -->
       <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
@@ -404,14 +316,14 @@
 
       <UDivider />
 
-      <!-- Video Section - UPDATED for better UX -->
+      <!-- Video Section -->
       <div>
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
             {{ $t('video_presentation') || 'Vaizdo pristatymas' }}
           </h3>
 
-          <!-- Video Upload Button - ALWAYS VISIBLE for students -->
+          <!-- Video Upload Button -->
           <UButton
             v-if="isStudent"
             icon="i-heroicons-video-camera"
@@ -519,7 +431,7 @@
         </UCard>
       </UModal>
 
-      <!-- Source Code Upload Modal - NEW -->
+      <!-- Source Code Upload Modal -->
       <UModal v-model="openSourceCodeUploader">
         <UCard>
           <template #header>
@@ -585,55 +497,6 @@
           </template>
         </UCard>
       </UModal>
-
-      <!-- Project Assignment Modal -->
-      <UModal
-        v-model="showProjectAssignmentModal"
-        size="xl"
-      >
-        <UCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">
-              {{ hasProjectAssignment ? ($t('edit_project_assignment') || 'Redaguoti užduotį') : ($t('create_project_assignment') || 'Sukurti užduotį') }}
-            </h3>
-          </template>
-
-          <div class="p-0">
-            <!-- Embed the Project Assignment Form component here -->
-
-            <!--            const props = defineProps({ -->
-            <!--            initialData: { -->
-            <!--            type: Object as PropType<ProjectTopicRegistrationData>, -->
-            <!--            required: true -->
-            <!--            }, -->
-            <!--            buttonLabel: { -->
-            <!--            type: String, -->
-            <!--            default: 'Registruoti / Redaguoti Temą' -->
-            <!--            }, -->
-            <!--            modalTitle: { -->
-            <!--            type: String, -->
-            <!--            default: 'Baigiamojo Darbo Temos Registravimas' -->
-            <!--            }, -->
-            <!--            formVariant: { -->
-            <!--            type: String as PropType<'lt' | 'en'>, // Define possible variants -->
-            <!--            required: true -->
-            <!--            } -->
-            <!--            }) -->
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end">
-              <UButton
-                color="gray"
-                variant="ghost"
-                @click="showProjectAssignmentModal = false"
-              >
-                {{ $t('close') || 'Uždaryti' }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </UModal>
     </UCard>
   </div>
 </template>
@@ -641,7 +504,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter, useRoute } from 'vue-router'
 import ZipUploader from '~/components/ZipUploader.vue'
 import PreviewSupervisorReport from '~/components/PreviewSupervisorReport.vue'
 import PreviewReviewerReport from '~/components/PreviewReviewerReport.vue'
@@ -652,64 +514,32 @@ import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 import { useReviewerReports } from '~/composables/useReviewerReports'
 import { useAuthStore } from '~/stores/auth'
-import type { ProjectTopicRegistrationFormData, ProjectTopicRegistrationData } from '~/components/ProjectTopicRegistration.vue'
+import { useProjectTopic } from '~/composables/useProjectTopic'
+import type {
+  ProjectTopicRegistrationFormData,
+  ProjectTopicRegistrationData,
+  TopicComment
+} from '~/components/ProjectTopicRegistration.vue'
 
 definePageMeta({
   middleware: ['student-access']
 })
 
-// Initial topic data for a new student that matches the expected types
-const newTopicData = ref<ProjectTopicRegistrationData>({
-  studentRecordId: 123, // Replace with actual student ID
-  GROUP: 'PI21A', // Replace with actual group
-  NAME: 'Kosmonautas Studentaitis', // Replace with actual name
-
-  // Empty initial fields (for a new topic)
-  TITLE: '',
-  TITLE_EN: '',
-  PROBLEM: '',
-  OBJECTIVE: '',
-  TASKS: '',
-  COMPLETION_DATE: null,
-  SUPERVISOR: '',
-  IS_REGISTERED: 0,
-
-  // Initial status and empty comments array
-  status: 'draft',
-  comments: []
-})
-
-// Event handlers
-const handleSave = (formData: ProjectTopicRegistrationFormData) => {
-  console.log('Form data saved:', formData)
-  // Here you can add additional logic before the API call
-  // The component will handle the actual API call internally
-}
-
-const handleSuccess = () => {
-  console.log('Form submitted successfully')
-  // Update UI after successful save (show notification, refresh data, etc.)
-}
+// UI state
+const openDocumentUploader = ref(false)
+const openVideoUploader = ref(false)
+const openSourceCodeUploader = ref(false)
+const isFetchingDocument = ref(false)
+const isSubmitting = ref(false)
+const notificationMessage = ref('')
+const showNotification = ref(false)
 
 const { t } = useI18n()
-const router = useRouter()
-const route = useRoute()
 
 // User role state
 const userStore = useAuthStore()
 const isStudent = ref(true) // For production, use: computed(() => userStore.isStudent)
 const isSupervisor = ref(false) // For production, use: computed(() => userStore.isTeacher)
-
-// UI state
-const openDocumentUploader = ref(false)
-const openVideoUploader = ref(false)
-const openSourceCodeUploader = ref(false) // New ref for source code uploader
-const isFetchingDocument = ref(false)
-
-// Project Assignment state
-const showProjectAssignmentModal = ref(false)
-const projectAssignmentId = ref(null)
-const hasProjectAssignment = ref(false)
 
 // Utility composables
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
@@ -736,96 +566,172 @@ interface StudentRecordsResponse {
   }
 }
 
-const handleNewComment = () => {
+const { data: records, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')
 
+// Get user's full name from records
+const getUserFullName = computed(() => {
+  if (!records.value?.student) return 'Student'
+  return `${records.value.student.studentName} ${records.value.student.studentLastname}`
+})
+
+// Get button label based on topic status
+const getTopicButtonLabel = computed(() => {
+  if (!topicData.value || !topicData.value.status || topicData.value.status === 'draft') {
+    return t('register_topic') || 'Registruoti temą'
+  }
+  return t('edit_topic') || 'Redaguoti temą'
+})
+
+// Topic data for student
+const {
+  isLoading,
+  error,
+  topicData,
+  fetchTopicRegistration,
+  saveTopicRegistration,
+  addComment,
+  changeStatus,
+  markCommentAsRead
+} = useProjectTopic()
+
+// Initialize topic data for student
+const initializeTopicData = () => {
+  if (!records.value?.student) return
+
+  const student = records.value.student
+
+  if (!topicData.value) {
+    // Create initial topic data object with student information
+    topicData.value = {
+      studentRecordId: student.id,
+      GROUP: student.studentGroup || '',
+      NAME: `${student.studentName} ${student.studentLastname}`,
+      TITLE: '',
+      TITLE_EN: '',
+      PROBLEM: '',
+      OBJECTIVE: '',
+      TASKS: '',
+      COMPLETION_DATE: null,
+      SUPERVISOR: '',
+      IS_REGISTERED: 0,
+      status: 'draft',
+      comments: []
+    }
+  }
 }
 
-const handleStatusChange = () => {
+// Handler for saving topic registration
+const handleSaveRegistration = async (data: ProjectTopicRegistrationFormData) => {
+  isSubmitting.value = true
 
-}
-
-const handleSaveRegistration = () => {
-
-}
-
-const { data: records, error, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')
-
-// Assignment data
-const assignmentData = ref(null)
-
-// Fetch assignment data
-const fetchAssignmentData = async () => {
   try {
-    if (!records.value?.student?.id) return
-
-    const response = await fetch(`/api/assignments/${records.value.student.id}/summary`)
-    if (response.ok) {
-      const data = await response.json()
-      assignmentData.value = data.assignment || null
-
-      // Check if we have a project assignment
-      await checkProjectAssignment()
+    // Make sure we have the studentRecordId
+    if (!records.value?.student) {
+      throw new Error('Student record not found')
     }
+
+    // Create or update topic based on whether we have an id
+    await saveTopicRegistration({
+      ...data,
+      // Merge with student ID
+      studentRecordId: records.value.student.id
+    })
+
+    // Refresh topic data after save
+    await fetchTopicRegistration(records.value.student.id)
+
+    // Show success message
+    useToast().add({
+      title: t('success') || 'Sėkmingai',
+      description: t('topic_saved_success') || 'Tema sėkmingai išsaugota',
+      color: 'green'
+    })
   }
-  catch (error) {
-    console.error('Error fetching assignment data:', error)
+  catch (err: any) {
+    console.error('Error saving topic:', err)
+
+    // Show error message
+    useToast().add({
+      title: t('error') || 'Klaida',
+      description: err.message || (t('topic_save_error') || 'Nepavyko išsaugoti temos'),
+      color: 'red'
+    })
+  }
+  finally {
+    isSubmitting.value = false
   }
 }
 
-// Check if we have a project assignment
-const checkProjectAssignment = async () => {
+// Handler for comments
+const handleComment = async (comment: TopicComment) => {
   try {
-    if (!records.value?.student?.id) return
+    await addComment(comment)
 
-    // This would be your endpoint to check for project assignment
-    const response = await fetch(`/api/projectAssignments/check/${records.value.student.id}`)
-    if (response.ok) {
-      const data = await response.json()
-      if (data && data.exists) {
-        hasProjectAssignment.value = true
-        projectAssignmentId.value = data.id
-      }
-      else {
-        hasProjectAssignment.value = false
-        projectAssignmentId.value = null
-      }
-    }
+    // Refresh data
+    await fetchTopicRegistration(records.value?.student.id)
+
+    // Show success message
+    useToast().add({
+      title: t('success') || 'Sėkmingai',
+      description: t('comment_added') || 'Komentaras pridėtas',
+      color: 'green'
+    })
   }
-  catch (error) {
-    console.error('Error checking project assignment:', error)
-    hasProjectAssignment.value = false
+  catch (err: any) {
+    console.error('Error adding comment:', err)
+
+    // Show error message
+    useToast().add({
+      title: t('error') || 'Klaida',
+      description: err.message || (t('comment_error') || 'Nepavyko pridėti komentaro'),
+      color: 'red'
+    })
   }
 }
 
-// Open project assignment modal
-const openProjectAssignment = async () => {
-  if (!hasProjectAssignment.value) {
-    // Create a new assignment
-    try {
-      const response = await fetch('/api/projectAssignments/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          studentRecordId: records.value?.student?.id,
-          studentGroup: records.value?.student?.studentGroup
-        })
-      })
+// Handler for status changes
+const handleStatusChange = async (status: string) => {
+  try {
+    await changeStatus(status)
 
-      if (response.ok) {
-        const data = await response.json()
-        projectAssignmentId.value = data.id
-        hasProjectAssignment.value = true
-      }
-    }
-    catch (error) {
-      console.error('Error creating project assignment:', error)
-      return
-    }
+    // Refresh data
+    await fetchTopicRegistration(records.value?.student.id)
+
+    // Show success message
+    useToast().add({
+      title: t('success') || 'Sėkmingai',
+      description: t('status_updated') || 'Būsena atnaujinta',
+      color: 'green'
+    })
   }
+  catch (err: any) {
+    console.error('Error changing status:', err)
 
-  showProjectAssignmentModal.value = true
+    // Show error message
+    useToast().add({
+      title: t('error') || 'Klaida',
+      description: err.message || (t('status_update_error') || 'Nepavyko atnaujinti būsenos'),
+      color: 'red'
+    })
+  }
+}
+
+// Handler for marking comments as read
+const handleMarkAsRead = async (commentId: number) => {
+  try {
+    await markCommentAsRead(commentId)
+  }
+  catch (err: any) {
+    console.error('Error marking comment as read:', err)
+  }
+}
+
+// Handler for success
+const handleSuccess = async () => {
+  // Refresh data after any success
+  if (records.value?.student) {
+    await fetchTopicRegistration(records.value.student.id)
+  }
 }
 
 // Document helpers
@@ -846,85 +752,6 @@ const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A'
   const date = new Date(timestamp * 1000)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
-}
-
-const truncateText = (text, maxLength) => {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength) + '...'
-}
-
-// Assignment event handlers
-const handleAssignmentUpdated = async () => {
-  await fetchAssignmentData()
-  await refresh() // Refresh the main data
-}
-
-const handleAssignmentApproved = async () => {
-  await fetchAssignmentData()
-  await refresh() // Refresh the main data
-
-  // Show success notification if available
-  useToast().add({
-    title: t('success') || 'Sėkmingai',
-    description: t('assignment_approved_success') || 'Užduotis sėkmingai patvirtinta',
-    color: 'green'
-  })
-}
-
-// Project Assignment event handlers
-const handleProjectAssignmentSaved = async () => {
-  useToast().add({
-    title: t('success') || 'Sėkmingai',
-    description: t('project_assignment_saved') || 'Užduotis sėkmingai išsaugota',
-    color: 'green'
-  })
-  await fetchAssignmentData()
-}
-
-const handleProjectAssignmentSubmitted = async () => {
-  useToast().add({
-    title: t('success') || 'Sėkmingai',
-    description: t('project_assignment_submitted') || 'Užduotis sėkmingai pateikta vadovui',
-    color: 'green'
-  })
-  showProjectAssignmentModal.value = false
-  await fetchAssignmentData()
-}
-
-const projectForm = ref(null)
-
-// Method to programmatically start assignment creation
-const startCreateAssignment = () => {
-  if (projectForm.value) {
-    projectForm.value.openModal()
-    projectForm.value.createNewAssignment()
-  }
-}
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'draft': return 'gray'
-    case 'submitted': return 'blue'
-    case 'revision_requested': return 'yellow'
-    case 'approved': return 'green'
-    default: return 'gray'
-  }
-}
-
-const getStatusLabel = (status) => {
-  switch (status) {
-    case 'draft':
-      return t('draft') || 'Juodraštis'
-    case 'submitted':
-      return t('submitted') || 'Pateikta'
-    case 'revision_requested':
-      return t('revision_requested') || 'Reikia taisyti'
-    case 'approved':
-      return t('approved') || 'Patvirtinta'
-    default:
-      return ''
-  }
 }
 
 // Get supervisor report data for preview component
@@ -992,7 +819,7 @@ const handleVideoUploadSuccess = async (result) => {
   // Show success notification
   useToast().add({
     title: t('success') || 'Sėkmingai',
-    description: records.videos.length > 0
+    description: records.value?.videos.length > 0
       ? (t('video_updated_success') || 'Vaizdo įrašas sėkmingai atnaujintas')
       : (t('video_uploaded_success') || 'Vaizdo įrašas sėkmingai įkeltas'),
     color: 'green'
@@ -1038,52 +865,48 @@ const openDocument = async (doc: DocumentRecord) => {
   }
 }
 
-// Function to create a new project assignment if needed
-const createProjectAssignment = async () => {
-  if (!records.value?.student?.id) return null
-
-  try {
-    const response = await fetch('/api/projectAssignments/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        studentRecordId: records.value.student.id,
-        studentGroup: records.value.student.studentGroup
-      })
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      return data.id
-    }
-    else {
-      console.error('Failed to create project assignment')
-      return null
-    }
-  }
-  catch (error) {
-    console.error('Error creating project assignment:', error)
-    return null
-  }
-}
-
-// Fetch assignment data when component mounts
+// Initialization and lifecycle hooks
 onMounted(async () => {
   // For production use, uncomment these lines:
   // isStudent.value = userStore.isStudent
   // isSupervisor.value = userStore.isTeacher
 
+  // Wait for records to be loaded
   if (records.value?.student) {
-    await fetchAssignmentData()
+    try {
+      // Try to fetch the existing topic registration
+      await fetchTopicRegistration(records.value.student.id)
+
+      // If no topic was found, initialize with default values
+      if (!topicData.value) {
+        initializeTopicData()
+      }
+    }
+    catch (err) {
+      console.error('Error fetching topic registration:', err)
+      // Initialize with default values if fetch fails
+      initializeTopicData()
+    }
   }
 })
 
-// Watch for records changes to fetch assignment data
+// Watch for records changes to initialize topic data
 watch(() => records.value?.student, async (newVal) => {
   if (newVal) {
-    await fetchAssignmentData()
+    try {
+      // Try to fetch existing topic registration
+      await fetchTopicRegistration(newVal.id)
+
+      // If no topic found, initialize default data
+      if (!topicData.value) {
+        initializeTopicData()
+      }
+    }
+    catch (err) {
+      console.error('Error fetching topic registration:', err)
+      // Initialize default data if fetch fails
+      initializeTopicData()
+    }
   }
 })
 </script>

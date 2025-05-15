@@ -1,0 +1,1 @@
+ALTER TABLE `topic_registration_comments` ADD `is_read` integer DEFAULT 1;

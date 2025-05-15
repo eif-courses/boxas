@@ -71,6 +71,13 @@
       "when": 1747252590211,
       "tag": "0009_magenta_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1747310171011,
+      "tag": "0010_opposite_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

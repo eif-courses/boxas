@@ -148,16 +148,13 @@ export const topicRegistrationComments = sqliteTable('topic_registration_comment
   topicRegistrationId: integer('topic_registration_id')
     .references(() => projectTopicRegistrations.id, { onDelete: 'cascade' })
     .notNull(),
-
   fieldName: text('field_name'), // Optional: specify which field the comment is about
   commentText: text('comment_text').notNull(),
-  authorRole: text('author_role').notNull(), // 'supervisor', 'student'
+  authorRole: text('author_role').notNull(), // 'supervisor', 'student', 'department_head'
   authorName: text('author_name').notNull(),
-
   createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`),
-
-  // Optional: for threading comments
-  parentCommentId: integer('parent_comment_id')
+  parentCommentId: integer('parent_comment_id'),
+  unread: integer('is_read').default(1) // 1 = unread, 0 = read
 })
 
 export const projectTopicRegistrationVersions = sqliteTable('project_topic_registration_versions', {
@@ -172,7 +169,6 @@ export const projectTopicRegistrationVersions = sqliteTable('project_topic_regis
   createdBy: text('created_by').notNull(), // 'student' or 'supervisor'
   createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
 })
-
 
 // Relationship Definitions
 export const projectTopicRegistrationRelations = relations(projectTopicRegistrations, ({ one, many }) => ({

@@ -1,7 +1,501 @@
-<script lang="ts" setup>
+<template>
+  <UCard
+    class="w-full"
+    :ui="{
+      base: '',
+      ring: '',
+      divide: 'divide-y divide-gray-200 dark:divide-gray-700',
+      header: { padding: 'px-4 py-5' },
+      body: { padding: '', base: 'divide-y divide-gray-200 dark:divide-gray-700' },
+      footer: { padding: 'p-4' }
+    }"
+  >
+    <div class="flex items-center justify-between gap-3 px-4 py-3">
+      <UInput
+        v-model="search"
+        icon="i-heroicons-magnifying-glass-20-solid"
+        class="w-full"
+        :placeholder="$t('search')"
+      />
+    </div>
+
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
+          <USelect
+            v-model="pageCount"
+            :options="[3, 5, 10, 20, 30, 40]"
+            class="w-16"
+            size="xs"
+            @update:model-value="value => pageCount = Number(value)"
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
+          <USelect
+            v-model="yearFilter"
+            :options="availableYears"
+            class="w-22"
+            size="xs"
+            :placeholder="$t('latest')"
+            clearable
+            :loading="yearsLoading"
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
+          <USelect
+            v-model="groupFilter"
+            :options="uniqueGroups"
+            class="w-20 flex-grow"
+            size="xs"
+            :placeholder="$t('all')"
+            clearable
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
+          <USelect
+            v-model="programFilter"
+            :options="uniquePrograms"
+            class="w-28 flex-grow"
+            size="xs"
+            :placeholder="$t('all')"
+            clearable
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
+        <UButton
+          icon="i-heroicons-funnel"
+          color="gray"
+          size="xs"
+          :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter"
+          @click="resetFilters"
+        >
+          {{ $t('reset') }}
+        </UButton>
+      </div>
+    </div>
+
+    <!-- Video Modal -->
+    <UModal
+      v-model="isOpen"
+      prevent-close
+    >
+      <UCard
+        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
+        class="w-full max-w-6xl"
+      >
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }})
+              pristatomasis vaizdo įrašas
+            </h3>
+            <UButton
+              color="gray"
+              variant="ghost"
+              icon="i-heroicons-x-mark-20-solid"
+              class="ml-4"
+              @click="isOpen = false"
+            />
+          </div>
+        </template>
+
+        <div class="p-4">
+          <div class="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+            <video
+              v-if="videoObject?.url"
+              controls
+              class="w-full h-full object-contain"
+              :src="videoObject?.url"
+            />
+            <div
+              v-else
+              class="flex items-center justify-center h-full"
+            >
+              <p class="text-gray-500">
+                {{ $t('video_not_available') }}
+              </p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ $t('uploaded_on') }}: {{ formatDate(videoObject?.createdAt) }}
+            </p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ $t('file_name') }}: {{ videoObject?.filename }}
+            </p>
+          </div>
+        </div>
+      </UCard>
+    </UModal>
+
+    <!-- Report Modal -->
+    <UModal
+      v-model="isOpenReport"
+      prevent-close
+    >
+      <UCard
+        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
+        class="w-full max-w-6xl"
+      >
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }}),
+              {{ studentObject?.studyProgram }}
+            </h3>
+            <UButton
+              color="gray"
+              variant="ghost"
+              icon="i-heroicons-x-mark-20-solid"
+              class="ml-4"
+              @click="isOpenReport = false"
+            />
+          </div>
+
+          <div class="container mx-auto py-4 px-4">
+            <div
+              v-if="isLoading"
+              class="mt-4 p-4 bg-blue-100 text-blue-700"
+            >
+              {{ $t('processing_document') }}
+            </div>
+
+            <div
+              v-if="statusMessage"
+              class="mt-4 p-4"
+              :class="statusError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+            >
+              {{ statusMessage }}
+            </div>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
+
+    <!-- Project Topic Registration Modal -->
+    <UModal
+      v-model="showProjectTopicModal"
+      size="xl"
+    >
+      <UCard>
+        <template #header>
+          <h3 class="text-lg font-semibold">
+            {{ $t('topic_registration') }}
+          </h3>
+        </template>
+
+        <div class="p-0">
+          <ProjectTopicRegistration
+            v-if="currentStudentData"
+            :initial-data="currentStudentData"
+            :user-role="'supervisor'"
+            :user-name="user?.displayName || ''"
+            :form-variant="determineFormVariant(currentStudentData.GROUP)"
+            button-label=""
+            @save="handleTopicSave"
+            @comment="handleTopicComment"
+            @status-change="handleTopicStatusChange"
+            @mark-read="handleMarkCommentRead"
+            @success="handleTopicSuccess"
+          />
+        </div>
+      </UCard>
+    </UModal>
+
+    <div
+      v-if="status === 'pending'"
+      class="p-6 text-center"
+    >
+      <UIcon
+        name="i-heroicons-arrow-path"
+        class="animate-spin h-8 w-8 mx-auto text-gray-400"
+      />
+      <p class="mt-2 text-sm text-gray-500">
+        {{ $t('loading_student_data') }}
+      </p>
+    </div>
+
+    <div
+      v-else-if="fetchError"
+      class="p-4 text-red-500"
+    >
+      {{ fetchError.message }}
+    </div>
+
+    <div
+      v-else-if="filteredStudents.students.length === 0"
+      class="p-6 text-center"
+    >
+      <UIcon
+        name="i-heroicons-document-magnifying-glass"
+        class="h-10 w-10 mx-auto text-gray-400"
+      />
+      <p class="mt-2 text-gray-500">
+        {{ $t('no_students_found') }}
+      </p>
+    </div>
+
+    <UTable
+      v-else
+      v-model:sort="sort"
+      :rows="filteredStudents.students"
+      :columns="columnsTable"
+      :loading="status === 'pending'"
+      sort-asc-icon="i-heroicons-arrow-up"
+      sort-desc-icon="i-heroicons-arrow-down"
+      sort-mode="manual"
+      class="w-full"
+      :ui="{
+        td: { base: 'whitespace-nowrap px-2 py-1' },
+        th: { base: 'px-2 py-1' },
+        default: { checkbox: { color: 'primary' } }
+      }"
+      @select="select"
+    >
+      <template #studentGroup-data="{ row }">
+        <div class="text-center w-12">
+          {{ row.student.studentGroup }}
+        </div>
+      </template>
+
+      <template #name-data="{ row }">
+        <div class="flex items-center">
+          <div>
+            <div class="w-60 truncate">
+              {{ row.student.studentName }} {{ row.student.studentLastname }}
+            </div>
+            <div class="text-xs font-300 text-gray-500">
+              {{ row.student.finalProjectTitle || $t('no_title') }}
+            </div>
+          </div>
+          <UBadge
+            v-if="row.student.isFavorite"
+            color="amber"
+            variant="soft"
+            class="ml-2"
+            size="xs"
+          >
+            <UIcon
+              name="i-heroicons-star"
+              class="h-3 w-3"
+            />
+          </UBadge>
+        </div>
+      </template>
+
+      <template #actions-data="{ row }">
+        <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
+          <!-- Project Topic Registration Button -->
+          <UButton
+            v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
+            :icon="getTopicStatusIcon(row.projectTopicRegistrations[0].status)"
+            size="xs"
+            :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
+            variant="solid"
+            :label="$t('topic')"
+            :trailing="false"
+            class="p-1 text-xs"
+            @click="openProjectTopic(row)"
+          />
+
+          <UButton
+            v-else
+            icon="i-heroicons-document-plus"
+            size="xs"
+            color="gray"
+            variant="solid"
+            :label="$t('topic')"
+            :trailing="false"
+            class="p-1 text-xs"
+            @click="openProjectTopic(row)"
+          />
+
+          <!-- Video Button -->
+          <UButton
+            v-if="row.videos && row.videos[0]"
+            icon="i-heroicons-video-camera"
+            size="xs"
+            color="white"
+            variant="solid"
+            :label="$t('video')"
+            :trailing="false"
+            class="p-1 text-xs"
+            @click="sendStudentData(row.videos[0], row.student)"
+          />
+
+          <!-- Documents Buttons -->
+          <template
+            v-for="doc in row.documents || []"
+            :key="doc.id"
+          >
+            <UButton
+              :loading="isFetchingDocument"
+              :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
+              size="xs"
+              color="white"
+              variant="solid"
+              :label="doc.documentType"
+              :trailing="false"
+              class="p-1 text-xs"
+              @click="openDocument(doc)"
+            />
+          </template>
+
+          <!-- Supervisor Report Buttons -->
+          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
+            <div>
+              <PreviewSupervisorReport
+                :document-data="{
+                  NAME: row.student?.studentName +' '+row.student?.studentLastname,
+                  PROGRAM: row.student?.studyProgram ?? 'N/A',
+                  CODE: row.student?.programCode ?? 'N/A',
+                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
+                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas',
+                  WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                  EXPL: row.supervisorReports[0].supervisorComments ?? '',
+                  OM: row.supervisorReports[0].otherMatch ?? 0,
+                  SSM: row.supervisorReports[0].oneMatch ?? 0,
+                  STUM: row.supervisorReports[0].ownMatch ?? 0,
+                  JM: row.supervisorReports[0].joinMatch ?? 0,
+                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate),
+                  SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
+                  POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
+                  DATE: formatUnixDate(row.supervisorReports[0].createdDate),
+                  PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
+                }"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
+                :button-label="$t('preview_supervisor_report')"
+                :modal-title="$t('supervisor_report')"
+              />
+            </div>
+          </template>
+          <template v-else>
+            <div>
+              <EditSupervisorReportForm
+                :initial-data="{
+                  studentRecordId: row.student?.id,
+                  DEPT: row.student?.department ? row.student.department : 'N/A Katedra',
+                  PROGRAM: row.student?.studyProgram ?? 'N/A',
+                  CODE: row.student?.programCode ?? 'N/A',
+                  NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
+                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
+                  SUPER: user?.displayName ?? 'N/A',
+                  EXPL: '',
+                  OM: 0,
+                  SSM: 0,
+                  STUM: 0,
+                  JM: 0,
+                  WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+                  POS: '',
+                  PASS: 1,
+                  DATE: new Date().toDateString().toString()
+                }"
+                :form-variant="determineFormVariant(row.student?.studentGroup)"
+                :button-label="$t('fill_supervisor_report')"
+                @save="handleReportSave(row.student?.id ?? null, $event)"
+              />
+            </div>
+          </template>
+
+          <!-- Toggle Favorite Button -->
+          <UButton
+            :icon="row.student.isFavorite ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+            size="xs"
+            color="amber"
+            variant="ghost"
+            class="p-1 text-xs"
+            @click="toggleFavorite(row.student.id, !row.student.isFavorite)"
+          />
+        </div>
+      </template>
+
+      <template #status-data="{ row }">
+        <div class="flex items-center gap-2 justify-center">
+          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
+            <UIcon
+              name="i-heroicons-check-circle"
+              class="w-5 h-5 text-green-500"
+            />
+            <span>{{ $t('report_filled') }}</span>
+
+            <!-- Signed/Unsigned Indicator -->
+            <UBadge
+              v-if="row.supervisorReports[0].isSigned"
+              color="green"
+              variant="soft"
+              size="xs"
+            >
+              {{ $t('signed') }}
+            </UBadge>
+            <UBadge
+              v-else
+              color="gray"
+              variant="soft"
+              size="xs"
+            >
+              {{ $t('unsigned') }}
+            </UBadge>
+          </template>
+          <template v-else>
+            <UIcon
+              name="i-heroicons-clock"
+              class="w-5 h-5 text-amber-400"
+            />
+            <span>{{ $t('report_not_filled') }}</span>
+          </template>
+        </div>
+      </template>
+    </UTable>
+
+    <template #footer>
+      <div class="flex flex-wrap justify-between items-center">
+        <div>
+          <span class="text-sm leading-5">
+            {{ $t('showing') }}
+            <span class="font-medium">{{ pageFrom }}</span>
+            {{ $t('to') }}
+            <span class="font-medium">{{ pageTo }}</span>
+            {{ $t('off') }}
+            <span class="font-medium">{{ pageTotal }}</span>
+          </span>
+          <span class="ml-2 text-sm text-gray-600">
+            {{ $t('year') }} : {{ activeYear || $t('latest') }}
+          </span>
+        </div>
+
+        <UPagination
+          v-model="page"
+          :page-count="Number(pageCount)"
+          :total="pageTotal"
+          :ui="{
+            wrapper: 'flex items-center gap-1',
+            rounded: '!rounded-full min-w-[32px] justify-center',
+            default: {
+              activeButton: {
+                variant: 'outline'
+              }
+            }
+          }"
+        />
+      </div>
+    </template>
+  </UCard>
+</template>
+
+<script setup lang="ts">
 import type { StudentRecord } from '~~/server/utils/db'
 import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
 import { useFormUtilities } from '~/composables/useFormUtilities'
+import type { TopicComment, ProjectTopicRegistrationData, ProjectTopicRegistrationFormData } from '~/components/ProjectTopicRegistration.vue'
 
 definePageMeta({
   middleware: ['teacher-access']
@@ -17,11 +511,10 @@ const isLoading = ref(false)
 
 const { t } = useI18n()
 
-// Project Assignment Modal
-const showProjectAssignmentModal = ref(false)
-const projectAssignmentId = ref(null)
-const currentStudentId = ref(null)
-const hasProjectAssignment = ref(false)
+// Project Topic Registration Modal
+const showProjectTopicModal = ref(false)
+const currentStudentData = ref<ProjectTopicRegistrationData | null>(null)
+const currentStudentId = ref<number | null>(null)
 
 const columns = [
   {
@@ -83,70 +576,292 @@ const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   studentObject.value = mStudent
 }
 
-const openProjectAssignment = async (student) => {
-  currentStudentId.value = student.id
+const openProjectTopic = (row) => {
+  currentStudentId.value = row.student.id
 
-  // Find the assignment from the data we already have
-  const studentData = filteredStudents.value.students.find(s => s.student.id === student.id)
-  const assignment = studentData?.projectAssignments[0]
-
-  if (assignment) {
-    projectAssignmentId.value = assignment.id
-    hasProjectAssignment.value = true
-  }
-  else {
-    projectAssignmentId.value = student.id
-    hasProjectAssignment.value = false
+  // Prepare the data for the topic registration form
+  let topicData: ProjectTopicRegistrationData = {
+    studentRecordId: row.student.id,
+    GROUP: row.student.studentGroup,
+    NAME: `${row.student.studentName} ${row.student.studentLastname}`
   }
 
-  showProjectAssignmentModal.value = true
+  // If student has a topic registration, populate the form with that data
+  if (row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0) {
+    const registration = row.projectTopicRegistrations[0]
+    topicData = {
+      ...topicData,
+      TITLE: registration.title,
+      TITLE_EN: registration.titleEn,
+      PROBLEM: registration.problem,
+      OBJECTIVE: registration.objective,
+      TASKS: registration.tasks,
+      COMPLETION_DATE: registration.completionDate,
+      SUPERVISOR: registration.supervisor,
+      status: registration.status,
+      comments: registration.comments || []
+    }
+  }
+
+  currentStudentData.value = topicData
+  showProjectTopicModal.value = true
 }
 
-// Project Assignment functions
-// const openProjectAssignment = async (student) => {
-//   currentStudentId.value = student.id
-//
-//   console.log(student.id)
-//
-//   // Check if the student already has a project assignment
-//   try {
-//     const { data } = await useFetch(`/api/projectAssignments/check/${student.id}`)
-//     if (data.value && data.value.id) {
-//       projectAssignmentId.value = data.value.id
-//       hasProjectAssignment.value = true
-//     }
-//     else {
-//       projectAssignmentId.value = student.id // Pass student ID when creating new
-//       hasProjectAssignment.value = false
-//     }
-//     showProjectAssignmentModal.value = true
-//   }
-//   catch (error) {
-//     console.error('Error checking project assignment:', error)
-//     toast.add({
-//       title: 'Klaida',
-//       description: 'Nepavyko patikrinti projekto užduoties būsenos.',
-//       color: 'red'
-//     })
-//   }
-// }
+// Handle topic registration form actions
+const handleTopicSave = async (formData: ProjectTopicRegistrationFormData) => {
+  try {
+    const response = await $fetch('/api/students/project-topics', {
+      method: 'POST',
+      body: {
+        studentRecordId: currentStudentId.value,
+        ...formData
+      }
+    })
 
-const handleProjectAssignmentSaved = () => {
-  toast.add({
-    title: 'Pavyko',
-    description: 'Projekto užduotis išsaugota.',
-    color: 'green'
-  })
+    toast.add({
+      title: t('success'),
+      description: t('topic_saved_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after save
+    await refreshNuxtData('allStudents')
+  }
+  catch (error) {
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_saving_topic'),
+      color: 'red'
+    })
+  }
 }
 
-const handleProjectAssignmentSubmitted = () => {
-  toast.add({
-    title: 'Pavyko',
-    description: 'Projekto užduotis pateikta.',
-    color: 'green'
-  })
-  showProjectAssignmentModal.value = false
-  refreshNuxtData('allStudents') // Refresh data
+const handleTopicComment = async (comment: TopicComment) => {
+  try {
+    // Get the actual topic registration ID
+    let topicRegistrationId: number | null = null
+
+    // First, check if we already have the ID in the current student data
+    // This assumes currentStudentData might have the id property directly set
+    if (currentStudentData.value && 'id' in currentStudentData.value) {
+      topicRegistrationId = currentStudentData.value.id
+    }
+
+    // If we don't have it, fetch it using the appropriate endpoint
+    if (!topicRegistrationId && currentStudentId.value) {
+      try {
+        // Use the endpoint you mentioned with the correct query parameter
+        const response = await $fetch(`/api/students/project-topics`, {
+          params: {
+            studentRecordId: currentStudentId.value
+          }
+        })
+
+        if (response && response.topic && response.topic.id) {
+          topicRegistrationId = response.topic.id
+
+          // Update the currentStudentData with the fetched data for future use
+          if (currentStudentData.value) {
+            currentStudentData.value.id = topicRegistrationId
+          }
+        }
+      }
+      catch (fetchError) {
+        console.error('Error fetching topic registration:', fetchError)
+      }
+    }
+
+    // If we still don't have a topic registration ID, we can't add a comment
+    if (!topicRegistrationId) {
+      toast.add({
+        title: t('error'),
+        description: t('no_topic_registration_found'),
+        color: 'red'
+      })
+      return
+    }
+
+    const payload = {
+      topicRegistrationId: topicRegistrationId,
+      fieldName: comment.fieldName || 'general',
+      commentText: comment.commentText,
+      authorRole: 'supervisor',
+      authorName: user?.displayName || t('supervisor'),
+      parentCommentId: comment.parentCommentId || null
+    }
+
+    console.log('Sending comment payload:', payload)
+
+    const response = await $fetch('/api/students/project-topics/comments', {
+      method: 'POST',
+      body: payload
+    })
+
+    toast.add({
+      title: t('success'),
+      description: t('comment_added_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after commenting
+    await refreshNuxtData('allStudents')
+
+    // Return the response in case the caller needs it
+    return response
+  }
+  catch (error) {
+    console.error('Error adding comment:', error)
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_adding_comment'),
+      color: 'red'
+    })
+    throw error // Re-throw to allow caller to handle if needed
+  }
+}
+const handleTopicStatusChange = async (newStatus: string) => {
+  try {
+    // Validate that we have a topic registration ID
+    if (!currentStudentData.value?.id) {
+      // If we don't have the ID yet, try to fetch the topic first
+      const topicResponse = await $fetch('/api/students/project-topics', {
+        params: {
+          studentRecordId: currentStudentId.value
+        }
+      })
+
+      if (topicResponse?.topic?.id) {
+        currentStudentData.value = {
+          ...currentStudentData.value,
+          id: topicResponse.topic.id
+        }
+      }
+      else {
+        toast.add({
+          title: t('error'),
+          description: t('topic_not_found'),
+          color: 'red'
+        })
+        return
+      }
+    }
+
+    // Now we should have the topic ID
+    const topicId = currentStudentData.value.id
+
+    // Call the status update endpoint
+    const response = await $fetch(`/api/students/project-topics/${topicId}/status`, {
+      method: 'POST',
+      body: {
+        status: newStatus,
+        userRole: 'supervisor' // Send the role of the current user
+      }
+    })
+
+    // Update the local status
+    if (currentStudentData.value) {
+      currentStudentData.value.status = newStatus
+    }
+
+    toast.add({
+      title: t('success'),
+      description: t('status_updated_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after status change
+    await refreshNuxtData('allStudents')
+
+    return response
+  }
+  catch (error) {
+    console.error('Error updating topic status:', error)
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_updating_status'),
+      color: 'red'
+    })
+  }
+}
+const handleMarkCommentRead = async (commentId: number) => {
+  try {
+    await $fetch(`/api/students/project-topics/comments/${commentId}/mark-read`, {
+      method: 'PUT'
+    })
+
+    // Refresh data after marking comment as read
+    await refreshNuxtData('allStudents')
+  }
+  catch (error) {
+    console.error('Error marking comment as read:', error)
+  }
+}
+
+const handleTopicSuccess = () => {
+  showProjectTopicModal.value = false
+  refreshNuxtData('allStudents')
+}
+
+// Toggle student favorite status
+const toggleFavorite = async (studentId: number, isFavorite: boolean) => {
+  try {
+    await $fetch(`/api/students/${studentId}/favorite`, {
+      method: 'PUT',
+      body: {
+        isFavorite
+      }
+    })
+
+    // Update local data
+    const students = allStudents.value?.students || []
+    students.forEach((item) => {
+      if (item.student.id === studentId) {
+        item.student.isFavorite = isFavorite
+      }
+    })
+  }
+  catch (error) {
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_updating_favorite'),
+      color: 'red'
+    })
+  }
+}
+
+// Helper function to get icon for topic status
+const getTopicStatusIcon = (status) => {
+  switch (status) {
+    case 'submitted': return 'i-heroicons-document-text'
+    case 'approved': return 'i-heroicons-check-circle'
+    case 'needs_revision': return 'i-heroicons-exclamation-circle'
+    case 'rejected': return 'i-heroicons-x-circle'
+    default: return 'i-heroicons-document'
+  }
+}
+
+// Helper function to get color for topic status
+const getTopicStatusColor = (status) => {
+  switch (status) {
+    case 'submitted': return 'blue'
+    case 'approved': return 'green'
+    case 'needs_revision': return 'amber'
+    case 'rejected': return 'red'
+    default: return 'gray'
+  }
+}
+
+// Format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('lt-LT', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
 }
 
 async function getFile(fileName) {
@@ -255,6 +970,7 @@ const filteredStudents = computed(() => {
         || (student.studentNumber || '').toLowerCase().includes(searchTerm)
         || (student.studentGroup || '').toLowerCase().includes(searchTerm)
         || (student.studyProgram || '').toLowerCase().includes(searchTerm)
+        || (student.finalProjectTitle || '').toLowerCase().includes(searchTerm)
       )
     })
   }
@@ -331,9 +1047,10 @@ watch([search, groupFilter, programFilter, pageCount], () => {
 
 const isParentSaving = ref(false)
 const toast = useToast()
+
 const handleReportSave = async (recordId: number | null, updatedData: SupervisorReportFormData) => {
   // --- 1. Input Validation ---
-  if (recordId === undefined || recordId === null) { // Check against null too
+  if (recordId === undefined || recordId === null) {
     console.error('handleReportSave called without a valid recordId!')
     toast.add({ title: 'Klaida', description: 'Trūksta studento įrašo ID.', color: 'red' })
     return
@@ -349,28 +1066,27 @@ const handleReportSave = async (recordId: number | null, updatedData: Supervisor
 
   // --- 2. Construct API Payload ---
   const apiPayload = {
-    studentRecordId: recordId, // Use the ID passed from the template
-    EXPL: updatedData.EXPL,
-    WORK: updatedData.WORK,
-    OM: updatedData.OM,
-    SSM: updatedData.SSM,
-    STUM: updatedData.STUM,
-    JM: updatedData.JM,
-    POS: updatedData.POS,
-    PASS: updatedData.PASS
+    studentRecordId: recordId,
+    EXPL: updatedData.EXPL || '',
+    WORK: updatedData.WORK || 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+    OM: updatedData.OM ?? 0,
+    SSM: updatedData.SSM ?? 0,
+    STUM: updatedData.STUM ?? 0,
+    JM: updatedData.JM ?? 0,
+    POS: updatedData.POS || '',
+    PASS: updatedData.PASS ? 1 : 0
   }
 
   // --- 3. Make the API Call ---
   try {
-    // --- CORRECTED ENDPOINT ---
-    const { data, error } = await useFetch('/api/students/supervisor-reports', { // Should match supervisor-reports.post.ts
+    const { data, error } = await useFetch('/api/students/supervisor-reports', {
       method: 'POST',
       body: apiPayload
     })
 
     if (error.value) {
-      console.error('Failed to save report:', error.value.statusCode, error.value.statusMessage, error.value.data)
-      toast.add({ // Uncommented toast
+      console.error('Failed to save report:', error.value)
+      toast.add({
         title: 'Klaida',
         description: error.value.data?.message || error.value.statusMessage || 'Nepavyko išsaugoti atsiliepimo.',
         color: 'red'
@@ -378,478 +1094,24 @@ const handleReportSave = async (recordId: number | null, updatedData: Supervisor
     }
     else {
       console.log('Report saved successfully!', data.value)
-      toast.add({ // Uncommented toast
+      toast.add({
         title: 'Pavyko',
         description: data.value?.message || 'Atsiliepimas sėkmingai išsaugotas.',
         color: 'green'
       })
-      // TODO: Add data refresh logic here if needed
-      await refreshNuxtData('allStudents') // Refresh the main student list data
+
+      // Refresh the main student list data
+      await refreshNuxtData('allStudents')
     }
   }
   catch (err) {
     console.error('Unexpected error during report save fetch:', err)
-    toast.add({ title: 'Sistemos Klaida', description: 'Įvyko netikėta klaida bandant išsaugoti.', color: 'red' }) // Uncommented toast
+    toast.add({ title: 'Sistemos Klaida', description: 'Įvyko netikėta klaida bandant išsaugoti.', color: 'red' })
   }
   finally {
     isParentSaving.value = false
   }
 }
-
-const previewStudentRecordObject = ref(null)
-
-const isPreviewOpen = ref(false)
-
+// Determine the form variant based on the student group
 const { determineFormVariant } = useFormUtilities()
 </script>
-
-<template>
-  <UCard
-    class="w-full"
-    :ui="{
-      base: '',
-      ring: '',
-      divide: 'divide-y divide-gray-200 dark:divide-gray-700',
-      header: { padding: 'px-4 py-5' },
-      body: { padding: '', base: 'divide-y divide-gray-200 dark:divide-gray-700' },
-      footer: { padding: 'p-4' }
-    }"
-  >
-    <div class="flex items-center justify-between gap-3 px-4 py-3">
-      <UInput
-        v-model="search"
-        icon="i-heroicons-magnifying-glass-20-solid"
-        class="w-full"
-        :placeholder="$t('search')"
-      />
-    </div>
-
-    <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
-      <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('filter_record_count') }}</span>
-          <USelect
-            v-model="pageCount"
-            :options="[3, 5, 10, 20, 30, 40]"
-            class="w-16"
-            size="xs"
-            @update:model-value="value => pageCount = Number(value)"
-          />
-        </div>
-
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('year') }}</span>
-          <USelect
-            v-model="yearFilter"
-            :options="availableYears"
-            class="w-22"
-            size="xs"
-            :placeholder="$t('latest')"
-            clearable
-            :loading="yearsLoading"
-          />
-        </div>
-
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap">{{ $t('group') }}</span>
-          <USelect
-            v-model="groupFilter"
-            :options="uniqueGroups"
-            class="w-20 flex-grow"
-            size="xs"
-            :placeholder="$t('all')"
-            clearable
-          />
-        </div>
-
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm leading-5 whitespace-nowrap"> {{ $t('study_program') }}</span>
-          <USelect
-            v-model="programFilter"
-            :options="uniquePrograms"
-            class="w-28 flex-grow"
-            size="xs"
-            :placeholder="$t('all')"
-            clearable
-          />
-        </div>
-      </div>
-
-      <div class="flex flex-wrap gap-2 items-center justify-start md:justify-end mt-2 md:mt-0">
-        <UButton
-          icon="i-heroicons-funnel"
-          color="gray"
-          size="xs"
-          :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter"
-          @click="resetFilters"
-        >
-          {{ $t('reset') }}
-        </UButton>
-      </div>
-    </div>
-    <UModal
-      v-model="isOpen"
-      prevent-close
-    >
-      <UCard
-        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
-        class="w-full max-w-6xl"
-      >
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }})
-              pristatomasis vaizdo įrašas
-            </h3>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              class="ml-4"
-              @click="isOpen = false"
-            />
-          </div>
-        </template>
-
-        <div class="p-4">
-          Modal tekstas
-        </div>
-      </UCard>
-    </UModal>
-
-    <UModal
-      v-model="isOpenReport"
-      prevent-close
-    >
-      <UCard
-        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
-        class="w-full max-w-6xl"
-      >
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }}),
-              {{ studentObject?.studyProgram }}
-            </h3>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              class="ml-4"
-              @click="isOpenReport = false"
-            />
-          </div>
-
-          <div class="container mx-auto py-4 px-4">
-            <div
-              v-if="isLoading"
-              class="mt-4 p-4 bg-blue-100 text-blue-700"
-            >
-              Processing document... This may take a moment.
-            </div>
-
-            <div
-              v-if="statusMessage"
-              class="mt-4 p-4"
-              :class="statusError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
-            >
-              {{ statusMessage }}
-            </div>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-
-    <!-- New Project Assignment Modal -->
-    <UModal
-      v-model="showProjectAssignmentModal"
-      size="xl"
-    >
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-semibold">
-            {{ hasProjectAssignment ? ($t('edit_project_assignment') || 'Redaguoti užduotį') : ($t('create_project_assignment') || 'Sukurti užduotį') }}
-          </h3>
-        </template>
-
-        <div class="p-0">
-          <!-- Embed the Project Assignment Form component here -->
-          <ProjectAssignmentForm
-            v-if="projectAssignmentId"
-            :assignment-id="projectAssignmentId"
-            @saved="handleProjectAssignmentSaved"
-            @submitted="handleProjectAssignmentSubmitted"
-          />
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end">
-            <UButton
-              color="gray"
-              variant="ghost"
-              @click="showProjectAssignmentModal = false"
-            >
-              {{ $t('close') || 'Uždaryti' }}
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-
-    <div
-      v-if="status === 'pending'"
-      class="p-6 text-center"
-    >
-      <UIcon
-        name="i-heroicons-arrow-path"
-        class="animate-spin h-8 w-8 mx-auto text-gray-400"
-      />
-      <p class="mt-2 text-sm text-gray-500">
-        Loading student data...
-      </p>
-    </div>
-
-    <div
-      v-else-if="fetchError"
-      class="p-4 text-red-500"
-    >
-      {{ fetchError.message }}
-    </div>
-
-    <div
-      v-else-if="filteredStudents.students.length === 0"
-      class="p-6 text-center"
-    >
-      <UIcon
-        name="i-heroicons-document-magnifying-glass"
-        class="h-10 w-10 mx-auto text-gray-400"
-      />
-      <p class="mt-2 text-gray-500">
-        No students found matching your criteria
-      </p>
-    </div>
-
-    <UTable
-      v-else
-      v-model:sort="sort"
-      :rows="filteredStudents.students"
-      :columns="columnsTable"
-      :loading="status === 'pending'"
-      sort-asc-icon="i-heroicons-arrow-up"
-      sort-desc-icon="i-heroicons-arrow-down"
-      sort-mode="manual"
-      class="w-full"
-      :ui="{
-        td: { base: 'whitespace-nowrap px-2 py-1' },
-        th: { base: 'px-2 py-1' },
-        default: { checkbox: { color: 'primary' } }
-      }"
-      @select="select"
-    >
-      <template #studentGroup-data="{ row }">
-        <div class="text-center w-12">
-          {{ row.student.studentGroup }}
-        </div>
-      </template>
-
-      <template #name-data="{ row }">
-        <div class="w-60 truncate">
-          {{ row.student.studentName }} {{ row.student.studentLastname }}
-        </div>
-        <div class="text-xs font-300">
-          ({{ row.student.finalProjectTitle }})
-        </div>
-      </template>
-
-      <template #actions-data="{ row }">
-        <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
-          <!-- Project Assignment Button -->
-          <!--          <UButton -->
-          <!--            icon="i-heroicons-clipboard-document-list" -->
-          <!--            size="xs" -->
-          <!--            color="white" -->
-          <!--            variant="solid" -->
-          <!--            label="Užduotis" -->
-          <!--            :trailing="false" -->
-          <!--            class="p-1 text-xs" -->
-          <!--            @click="openProjectAssignment(row.student)" -->
-          <!--          /> -->
-          <!--          <UButton -->
-          <!--            v-if="row.projectAssignments && row.projectAssignments.length > 0" -->
-          <!--            icon="i-heroicons-clipboard-document-list" -->
-          <!--            size="xs" -->
-          <!--            color="white" -->
-          <!--            variant="solid" -->
-          <!--            label="Užduotis" -->
-          <!--            :trailing="false" -->
-          <!--            class="p-1 text-xs" -->
-          <!--            @click="openProjectAssignment(row.student)" -->
-          <!--          /> -->
-
-          <UButton
-            v-if="row.projectAssignments && row.projectAssignments.length > 0 && row.projectAssignments[0].status === 'submitted'"
-            icon="i-heroicons-clipboard-document-check"
-            size="xs"
-            color="success"
-            variant="solid"
-            label="Peržiūrėti"
-            :trailing="false"
-            class="p-1 text-xs"
-            @click="openProjectAssignment(row.student)"
-          />
-
-          <UButton
-            v-if="row.videos && row.videos[0]"
-            icon="i-heroicons-video-camera"
-            size="xs"
-            color="white"
-            variant="solid"
-            label="Vaizdo"
-            :trailing="false"
-            class="p-1 text-xs"
-            @click="sendStudentData(row.videos[0], row.student)"
-          />
-
-          <template
-            v-for="doc in row.documents || []"
-            :key="doc.id"
-          >
-            <UButton
-              :loading="isFetchingDocument"
-              :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
-              size="xs"
-              color="white"
-              variant="solid"
-              :label="doc.documentType === 'PDF' ? 'PDF' : 'ZIP'"
-              :trailing="false"
-              class="p-1 text-xs"
-              @click="openDocument(doc)"
-            />
-          </template>
-
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <div>
-              <PreviewSupervisorReport
-                :document-data="{
-                  // --- Data from main student record ---
-                  // Adjust field names based on your actual StudentRecord interface
-                  NAME: row.student?.studentName +' '+row.student?.studentLastname,
-                  PROGRAM: row.student?.studyProgram ?? 'N/A',
-                  CODE: row.student?.programCode ?? 'N/A',
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
-                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
-                  WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  // --- Data specific to THIS report ---
-                  EXPL: row.supervisorReports[0].supervisorComments ?? '', // Use comments as EXPL
-                  OM: row.supervisorReports[0].otherMatch ?? 0,
-                  SSM: row.supervisorReports[0].oneMatch ?? 0,
-                  STUM: row.supervisorReports[0].ownMatch ?? 0,
-                  JM: row.supervisorReports[0].joinMatch ?? 0,
-                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
-
-                  // --- Data that might need specific logic ---
-                  // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
-                  SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
-                  POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
-                  // Use the report's creation date, formatted, for the main 'DATE' field
-                  DATE: formatUnixDate(row.supervisorReports[0].createdDate),
-                  PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
-                }"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                :button-label="$t('preview_supervisor_report')"
-                :modal-title="$t('supervisor_report')"
-              />
-            </div>
-          </template>
-          <template v-else>
-            <div>
-              <EditSupervisorReportForm
-                :initial-data="{
-                  studentRecordId: row.student?.id,
-                  DEPT: row.student?.department ? row.student.department : 'N/A Katedra',
-                  PROGRAM: row.student?.studyProgram ?? 'N/A',
-                  CODE: row.student?.programCode ?? 'N/A',
-                  NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
-                  SUPER: user?.displayName ?? 'N/A',
-                  EXPL: '',
-                  OM: 0,
-                  SSM: 0,
-                  STUM: 0,
-                  JM: 0,
-                  WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  POS: '',
-                  PASS: 1,
-                  DATE: new Date().toDateString().toString()
-                }"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                button-label="Pildyti Atsiliepimą"
-                @save="handleReportSave(row.student?.id ?? null, $event)"
-              />
-            </div>
-          </template>
-        </div>
-      </template>
-
-      <template #status-data="{ row }">
-        <div class="flex items-center gap-2 justify-center">
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <UIcon
-              name="i-heroicons-check-circle"
-              class="w-5 h-5 text-green-500"
-            />
-            <span>{{ $t('report_filled') }}</span>
-          </template>
-          <template v-else>
-            <UIcon
-              name="i-heroicons-clock"
-              class="w-5 h-5 text-amber-400"
-            />
-            <span>{{ $t('report_not_filled') }}</span>
-          </template>
-        </div>
-      </template>
-    </UTable>
-
-    <template #footer>
-      <div class="flex flex-wrap justify-between items-center">
-        <div>
-          <span class="text-sm leading-5">
-            {{ $t('showing') }}
-            <span class="font-medium">{{ pageFrom }}</span>
-            {{ $t('to') }}
-            <span class="font-medium">{{ pageTo }}</span>
-            {{ $t('off') }}
-            <span class="font-medium">{{ pageTotal }}</span>
-          </span>
-          <span class="ml-2 text-sm text-gray-600">
-            {{ $t('year') }} : {{ activeYear || $t('latest') }}
-          </span>
-        </div>
-
-        <UPagination
-          v-model="page"
-          :page-count="Number(pageCount)"
-          :total="pageTotal"
-          :ui="{
-            wrapper: 'flex items-center gap-1',
-            rounded: '!rounded-full min-w-[32px] justify-center',
-            default: {
-              activeButton: {
-                variant: 'outline'
-              }
-            }
-          }"
-        />
-      </div>
-    </template>
-    <UModal
-      v-model="isPreviewOpen"
-      :overlay="false"
-    >
-      <div class="p-4">
-        <code>{{ previewStudentRecordObject }}</code>
-      </div>
-    </UModal>
-  </UCard>
-</template>

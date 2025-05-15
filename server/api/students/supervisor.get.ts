@@ -99,11 +99,12 @@ export default defineEventHandler(async (event) => {
       studentCount: studentRecordIds.length
     })
 
-    // Run all queries in parallel (bulk fetch all related data at once)
+    // Run queries in parallel (bulk fetch related data, but separate topic registrations and comments)
     try {
       logger.debug('Attempting bulk data fetch with inArray')
 
-      const [documentsResult, videosResult, supervisorReportsResult, topicRegistrationsResult, commentsResult]
+      // First batch of queries: documents, videos, supervisor reports, and topic registrations
+      const [documentsResult, videosResult, supervisorReportsResult, topicRegistrationsResult]
           = await Promise.all([
             // Try to use inArray for bulk fetching, which should be much faster
             db.select().from(documents)
@@ -155,7 +156,7 @@ export default defineEventHandler(async (event) => {
                 ).then(results => results.flat())
               }),
 
-            // Updated query for project topic registrations
+            // Query for project topic registrations
             db.select().from(projectTopicRegistrations)
               .where(inArray(projectTopicRegistrations.studentRecordId, studentRecordIds))
               .execute()
@@ -170,30 +171,30 @@ export default defineEventHandler(async (event) => {
                       .execute()
                   )
                 ).then(results => results.flat())
-              }),
-
-            // Additional query to get all related comments for the topic registrations
-            topicRegistrationsResult && topicRegistrationsResult.length > 0
-              ? db.select().from(topicRegistrationComments)
-                  .where(inArray(
-                    topicRegistrationComments.topicRegistrationId,
-                    topicRegistrationsResult.map(tr => tr.id)
-                  ))
-                  .execute()
-                  .catch((err) => {
-                    logger.warn('Bulk topic comments fetch failed, falling back to individual queries', {
-                      error: err.message
-                    })
-                    return Promise.all(
-                      topicRegistrationsResult.map(tr =>
-                        db.select().from(topicRegistrationComments)
-                          .where(eq(topicRegistrationComments.topicRegistrationId, tr.id))
-                          .execute()
-                      )
-                    ).then(results => results.flat())
-                  })
-              : Promise.resolve([]) // Empty array if no topic registrations
+              })
           ])
+
+      // Now that we have topic registrations, we can fetch comments separately
+      let commentsResult = []
+      if (topicRegistrationsResult && topicRegistrationsResult.length > 0) {
+        const topicRegistrationIds = topicRegistrationsResult.map(tr => tr.id)
+
+        commentsResult = await db.select().from(topicRegistrationComments)
+          .where(inArray(topicRegistrationComments.topicRegistrationId, topicRegistrationIds))
+          .execute()
+          .catch((err) => {
+            logger.warn('Bulk topic comments fetch failed, falling back to individual queries', {
+              error: err.message
+            })
+            return Promise.all(
+              topicRegistrationsResult.map(tr =>
+                db.select().from(topicRegistrationComments)
+                  .where(eq(topicRegistrationComments.topicRegistrationId, tr.id))
+                  .execute()
+              )
+            ).then(results => results.flat())
+          })
+      }
 
       logger.info('Related data fetched successfully', {
         documentsCount: documentsResult.length,
