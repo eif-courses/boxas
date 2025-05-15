@@ -13,7 +13,7 @@
       v-else-if="records?.student"
       class="p-4 shadow-md"
     >
-      <EditAssignmentReportForm
+      <ProjectTopicRegistration
         :initial-data="initialAssignmentData"
         form-variant="lt"
         @save="handleSave"

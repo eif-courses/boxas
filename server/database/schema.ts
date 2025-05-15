@@ -115,61 +115,91 @@ export const videos = sqliteTable('videos', {
   studentRecordIndex: index('videos_student_record_idx').on(table.studentRecordId)
 }))
 
-// Main assignment table
-export const projectAssignments = sqliteTable('project_assignments', {
+export const projectTopicRegistrations = sqliteTable('project_topic_registrations', {
   id: integer('id').primaryKey(),
-  studentRecordId: integer('student_record_id').references(() => studentRecords.id, { onDelete: 'cascade' }),
+  studentRecordId: integer('student_record_id')
+    .references(() => studentRecords.id, { onDelete: 'cascade' })
+    .notNull(),
 
-  // Status of the assignment workflow
-  status: text('status').notNull().default('draft'), // 'draft', 'submitted', 'revision_requested', 'approved'
+  // Core Topic Information
+  title: text('title').notNull(),
+  titleEn: text('title_en').notNull(),
+  problem: text('problem').notNull(),
+  objective: text('objective').notNull(),
+  tasks: text('tasks').notNull(),
+  completionDate: text('completion_date'),
+  supervisor: text('supervisor').notNull(),
 
-  // Approval status (for signed documents)
-  isSigned: integer('is_signed').notNull().default(0),
+  // Workflow Status
+  status: text('status').notNull().default('draft'),
+  // Possible statuses: 'draft', 'submitted', 'needs_revision', 'approved', 'rejected'
 
   // Timestamps
-  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`),
-  lastUpdated: integer('last_updated').notNull().default(sql`(strftime('%s', 'now'))`)
-}, table => ({
-  studentRecordIdx: index('project_assignments_student_record_idx').on(table.studentRecordId)
-}))
+  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer('updated_at').default(sql`(strftime('%s', 'now'))`),
+  submittedAt: integer('submitted_at'),
 
-// Assignment versions table
-export const projectAssignmentVersions = sqliteTable('project_assignment_versions', {
+  // Additional metadata
+  currentVersion: integer('current_version').default(1)
+})
+
+export const topicRegistrationComments = sqliteTable('topic_registration_comments', {
   id: integer('id').primaryKey(),
-  assignmentId: integer('assignment_id').references(() => projectAssignments.id, { onDelete: 'cascade' }),
+  topicRegistrationId: integer('topic_registration_id')
+    .references(() => projectTopicRegistrations.id, { onDelete: 'cascade' })
+    .notNull(),
 
-  // Version data
-  createdBy: text('created_by').notNull(), // 'student' or 'supervisor'
-  comment: text('comment').notNull(), // Comment about this version
-  versionData: text('version_data').notNull(), // JSON string of all form fields
-
-  // Timestamp
-  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`)
-}, table => ({
-  assignmentIdIdx: index('project_assignment_versions_assignment_id_idx').on(table.assignmentId)
-}))
-
-// Assignment comments table
-export const assignmentComments = sqliteTable('assignment_comments', {
-  id: integer('id').primaryKey(),
-  assignmentId: integer('assignment_id').references(() => projectAssignments.id, { onDelete: 'cascade' }),
-  versionId: integer('version_id').references(() => projectAssignmentVersions.id, { onDelete: 'cascade' }),
-
-  // For reply threading
-  parentId: integer('parent_id'), // null for top-level comments, otherwise references another comment
-
-  // Comment data
-  fieldName: text('field_name'), // Which field this comment is about (null for general comments)
-  text: text('text').notNull(),
-  role: text('role').notNull(), // 'student' or 'supervisor'
+  fieldName: text('field_name'), // Optional: specify which field the comment is about
+  commentText: text('comment_text').notNull(),
+  authorRole: text('author_role').notNull(), // 'supervisor', 'student'
   authorName: text('author_name').notNull(),
 
-  // Timestamp
-  createdDate: integer('created_date').notNull().default(sql`(strftime('%s', 'now'))`)
-}, table => ({
-  assignmentIdIdx: index('assignment_comments_assignment_id_idx').on(table.assignmentId),
-  versionIdIdx: index('assignment_comments_version_id_idx').on(table.versionId),
-  parentIdIdx: index('assignment_comments_parent_id_idx').on(table.parentId)
+  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`),
+
+  // Optional: for threading comments
+  parentCommentId: integer('parent_comment_id')
+})
+
+export const projectTopicRegistrationVersions = sqliteTable('project_topic_registration_versions', {
+  id: integer('id').primaryKey(),
+  topicRegistrationId: integer('topic_registration_id')
+    .references(() => projectTopicRegistrations.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Snapshot of the entire registration at this version
+  versionData: text('version_data').notNull(), // JSON string of form data
+
+  createdBy: text('created_by').notNull(), // 'student' or 'supervisor'
+  createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
+})
+
+
+// Relationship Definitions
+export const projectTopicRegistrationRelations = relations(projectTopicRegistrations, ({ one, many }) => ({
+  studentRecord: one(studentRecords, {
+    fields: [projectTopicRegistrations.studentRecordId],
+    references: [studentRecords.id]
+  }),
+  comments: many(topicRegistrationComments),
+  versions: many(projectTopicRegistrationVersions)
+}))
+
+export const topicRegistrationCommentsRelations = relations(topicRegistrationComments, ({ one }) => ({
+  topicRegistration: one(projectTopicRegistrations, {
+    fields: [topicRegistrationComments.topicRegistrationId],
+    references: [projectTopicRegistrations.id]
+  }),
+  parentComment: one(topicRegistrationComments, {
+    fields: [topicRegistrationComments.parentCommentId],
+    references: [topicRegistrationComments.id]
+  })
+}))
+
+export const projectTopicRegistrationVersionsRelations = relations(projectTopicRegistrationVersions, ({ one }) => ({
+  topicRegistration: one(projectTopicRegistrations, {
+    fields: [projectTopicRegistrationVersions.topicRegistrationId],
+    references: [projectTopicRegistrations.id]
+  })
 }))
 
 // Define relationships

@@ -61,13 +61,15 @@
           <div class="flex items-center gap-2">
             <!-- New Project Assignment Button -->
 
-            <EditAssignmentReportForm
-              :initial-data="studentTopicData"
-              button-label="Registruoti temą"
-              modal-title="Baigiamojo Darbo Temos Registravimas"
+            <ProjectTopicRegistration
+              :initial-data="newTopicData"
+              user-role="student"
+              user-name="Kosmonautas Studentaitis"
               form-variant="lt"
-              @save="handleSave"
-              @success="handleSuccess"
+              button-label="Registruoti temą"
+              @comment="handleNewComment"
+              @status-change="handleStatusChange"
+              @save="handleSaveRegistration"
             />
 
             <UButton
@@ -650,24 +652,31 @@ import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 import { useReviewerReports } from '~/composables/useReviewerReports'
 import { useAuthStore } from '~/stores/auth'
-import type { ProjectTopicRegistrationFormData } from '~/components/EditAssignmentReportForm.vue'
+import type { ProjectTopicRegistrationFormData, ProjectTopicRegistrationData } from '~/components/ProjectTopicRegistration.vue'
 
 definePageMeta({
   middleware: ['student-access']
 })
 
-const studentTopicData = ref({
-  studentRecordId: 12345,
-  GROUP: 'PI23E',
-  NAME: 'Jonas Jonaitis',
-  TITLE: 'Prekybos platformos kūrimas su Vue.js ir Node.js',
-  TITLE_EN: 'Development of E-commerce Platform Using Vue.js and Node.js',
-  PROBLEM: 'Dabartinės elektroninės prekybos platformos neužtikrina...',
-  OBJECTIVE: 'Sukurti greitai veikiančią elektroninės prekybos platformą...',
-  TASKS: '1. Išanalizuoti esamus elektroninės prekybos sprendimus...',
-  COMPLETION_DATE: '2025-05-30',
-  SUPERVISOR: 'Dr. Petras Petraitis',
-  IS_REGISTERED: 0
+// Initial topic data for a new student that matches the expected types
+const newTopicData = ref<ProjectTopicRegistrationData>({
+  studentRecordId: 123, // Replace with actual student ID
+  GROUP: 'PI21A', // Replace with actual group
+  NAME: 'Kosmonautas Studentaitis', // Replace with actual name
+
+  // Empty initial fields (for a new topic)
+  TITLE: '',
+  TITLE_EN: '',
+  PROBLEM: '',
+  OBJECTIVE: '',
+  TASKS: '',
+  COMPLETION_DATE: null,
+  SUPERVISOR: '',
+  IS_REGISTERED: 0,
+
+  // Initial status and empty comments array
+  status: 'draft',
+  comments: []
 })
 
 // Event handlers
@@ -725,6 +734,18 @@ interface StudentRecordsResponse {
     lastUpdated: number
     status: string
   }
+}
+
+const handleNewComment = () => {
+
+}
+
+const handleStatusChange = () => {
+
+}
+
+const handleSaveRegistration = () => {
+
 }
 
 const { data: records, error, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')

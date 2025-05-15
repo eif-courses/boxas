@@ -64,6 +64,13 @@
       "when": 1744794370462,
       "tag": "0008_opposite_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1747252590211,
+      "tag": "0009_magenta_ironclad",
+      "breakpoints": true
     }
   ]
 }
