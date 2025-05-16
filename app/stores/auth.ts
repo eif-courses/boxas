@@ -17,30 +17,44 @@ export const useAuthStore = defineStore('auth', {
     },
     temporaryCommissionInfo: null as null | {
       department: string
-    }
+    },
+    isInitialized: false
   }),
   actions: {
-    initFromSession() {
-      const { user } = useUserSession()
-      if (user.value) {
-        this.setUser(user.value)
+    async initFromSession() {
+      try {
+        const userSession = useUserSession()
+
+        // Wait for session to be ready if it's loading
+        if (userSession.status.value === 'loading') {
+          await new Promise(resolve => {
+            const unwatch = watch(userSession.status, (newStatus) => {
+              if (newStatus !== 'loading') {
+                unwatch()
+                resolve()
+              }
+            })
+          })
+        }
+
+        if (userSession.loggedIn.value && userSession.user.value) {
+          await this.setUser(userSession.user.value)
+        }
+      } finally {
+        // Always mark as initialized even if there was an error
+        this.isInitialized = true
       }
     },
 
     async setUser(userData) {
+      this.isInitialized = false // Reset while initializing
       this.temporaryCommissionInfo = null
 
       const email = userData.mail || userData.email || userData.userPrincipalName || userData.preferred_username || ''
-
       console.log('Resolved email:', email)
 
-
-
       const role = mapEmailToRole(email)
-
       console.log('Resolved role:', role, 'for email:', email)
-
-
 
       // Check if user is department head via API
       let isDepartmentHead = false
@@ -65,6 +79,9 @@ export const useAuthStore = defineStore('auth', {
         isReviewer: role === 'reviewer',
         isAdmin: role === 'admin'
       }
+
+      // Mark initialization as complete
+      this.isInitialized = true
     },
 
     async setTemporaryCommissionAccess(code: string): Promise<boolean> {
@@ -122,6 +139,7 @@ export const useAuthStore = defineStore('auth', {
     }
   },
   getters: {
+    isReady: state => state.isInitialized && !!state.user,
     getUser: state => state.user,
     isAuthenticated: state => !!state.user,
     isCommissionMemberOrHasTokenAccess: state => !!state.user?.isCommission || !!state.temporaryCommissionInfo,
