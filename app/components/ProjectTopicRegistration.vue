@@ -1,663 +1,5 @@
-<template>
-  <div>
-    <UButton
-      :label="buttonLabel"
-      icon="i-heroicons-pencil-square"
-      size="xs"
-      color="orange"
-      variant="solid"
-      @click="openModal"
-    />
-
-    <UModal
-      v-model="isOpen"
-      prevent-close
-      :ui="{ width: 'sm:max-w-5xl' }"
-    >
-      <UCard :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800', body: { padding: 'p-0' }, header: { padding: 'p-4 sm:p-6' } }">
-        <!-- Header with status badge and notification indicator -->
-        <template #header>
-          <div class="flex items-center">
-            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white truncate">
-              {{ isEnglishVariant ? 'Final Project Topic Registration' : 'Baigiamojo Darbo Temos Registravimo Lapas' }}
-            </h3>
-            <UBadge
-              v-if="formData.status"
-              :color="formData.status === 'approved' ? 'green' : formData.status === 'rejected' ? 'red' : formData.status === 'needs_revision' ? 'orange' : 'blue'"
-              class="ml-3"
-            >
-              {{ statusLabels[formData.status] }}
-            </UBadge>
-            <UBadge
-              v-if="hasUnreadComments"
-              color="red"
-              variant="solid"
-              class="ml-2"
-            >
-              {{ unreadCommentsCount }}
-            </UBadge>
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-x-mark-20-solid"
-              size="sm"
-              square
-              class="ml-auto"
-              @click="closeModal"
-            />
-          </div>
-        </template>
-
-        <div class="flex">
-          <!-- Main Form (75% width) -->
-          <div class="w-3/4 p-6 sm:p-10 border-r border-gray-200 dark:border-gray-700">
-            <UForm
-              :state="formData"
-              :validate="validate"
-              class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif"
-              @submit="handleSave"
-            >
-              <!-- Header Section -->
-              <div class="text-center uppercase font-semibold mb-6 space-y-1">
-                <p>{{ isEnglishVariant ? 'Vilnius Kolegija Higher Education Institution' : 'Vilniaus kolegija' }}</p>
-                <p>{{ isEnglishVariant ? 'Faculty of Electronics and Informatics' : 'Elektronikos ir informatikos fakultetas' }}</p>
-              </div>
-              <div class="text-center uppercase font-semibold mb-8">
-                <p>{{ isEnglishVariant ? 'Final Project Topic Registration Form' : 'Baigiamojo darbo temos registravimo lapas' }}</p>
-              </div>
-
-              <!-- Student Info -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <UFormGroup
-                  :label="isEnglishVariant ? 'Student:' : 'Studentas(-ė):'"
-                  class="mb-0"
-                >
-                  <p class="py-2 font-medium">
-                    {{ displayData.NAME }}
-                  </p>
-                </UFormGroup>
-                <UFormGroup
-                  :label="isEnglishVariant ? 'Academic Group:' : 'Akademinė grupė:'"
-                  class="mb-0"
-                >
-                  <p class="py-2 font-medium">
-                    {{ displayData.GROUP }}
-                  </p>
-                </UFormGroup>
-              </div>
-
-              <!-- Form Fields with Comment Buttons -->
-              <UFormGroup
-                :label="isEnglishVariant ? 'Supervisor:' : 'Baigiamojo darbo vadovas(-ė):'"
-                name="SUPERVISOR"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UInput
-                    v-model="formData.SUPERVISOR"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'Enter supervisor name' : 'Įveskite vadovo vardą ir pavardę'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2"
-                    :class="hasCommentsIndicator('SUPERVISOR')"
-                    @click="selectFieldForComment('SUPERVISOR')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <div class="border-t border-gray-200 dark:border-gray-800 pt-4 my-4">
-                <p class="font-medium mb-2">
-                  {{ isEnglishVariant ? 'Final Project Topic:' : 'Baigiamojo darbo tema:' }}
-                </p>
-              </div>
-
-              <!-- Title Fields -->
-              <UFormGroup
-                :label="isEnglishVariant ? 'In Lithuanian:' : 'Lietuvių kalba:'"
-                name="TITLE"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UInput
-                    v-model="formData.TITLE"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'Enter final project title in Lithuanian' : 'Įveskite baigiamojo darbo temą lietuvių kalba'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2"
-                    :class="hasCommentsIndicator('TITLE')"
-                    @click="selectFieldForComment('TITLE')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <UFormGroup
-                :label="isEnglishVariant ? 'In English:' : 'Anglų kalba:'"
-                name="TITLE_EN"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UInput
-                    v-model="formData.TITLE_EN"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'Enter final project title in English' : 'Įveskite baigiamojo darbo temą anglų kalba'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2"
-                    :class="hasCommentsIndicator('TITLE_EN')"
-                    @click="selectFieldForComment('TITLE_EN')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <!-- Date Field -->
-              <UFormGroup
-                :label="isEnglishVariant ? 'Project Completion Date:' : 'Baigiamojo darbo baigimo data:'"
-                name="COMPLETION_DATE"
-                class="relative group"
-              >
-                <div class="flex">
-                  <UInput
-                    v-model="formData.COMPLETION_DATE"
-                    type="date"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'Select completion date' : 'Pasirinkite baigimo datą'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2"
-                    :class="hasCommentsIndicator('COMPLETION_DATE')"
-                    @click="selectFieldForComment('COMPLETION_DATE')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <!-- Text Areas -->
-              <UFormGroup
-                :label="isEnglishVariant ? 'Final Project Problem:' : 'Baigiamojo darbo problema:'"
-                name="PROBLEM"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UTextarea
-                    v-model="formData.PROBLEM"
-                    :rows="3"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'Describe the problem that the project will address' : 'Aprašykite problemą, kurią spręs baigiamasis darbas'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2 h-8 mt-1"
-                    :class="hasCommentsIndicator('PROBLEM')"
-                    @click="selectFieldForComment('PROBLEM')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <UFormGroup
-                :label="isEnglishVariant ? 'Final Project Objective:' : 'Baigiamojo darbo tikslas:'"
-                name="OBJECTIVE"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UTextarea
-                    v-model="formData.OBJECTIVE"
-                    :rows="3"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'A brief, clear, one-sentence description focused on what will be achieved' : 'Trumpas, aiškus, nusakomas vienu sakiniu, orientuotas į tai, kas bus pasiekta'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2 h-8 mt-1"
-                    :class="hasCommentsIndicator('OBJECTIVE')"
-                    @click="selectFieldForComment('OBJECTIVE')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <UFormGroup
-                :label="isEnglishVariant ? 'Preliminary Tasks and Content Plan:' : 'Preliminarūs baigiamojo darbo uždaviniai ir turinio planas:'"
-                name="TASKS"
-                required
-                class="relative group"
-              >
-                <div class="flex">
-                  <UTextarea
-                    v-model="formData.TASKS"
-                    :rows="5"
-                    :disabled="!canEdit"
-                    :placeholder="isEnglishVariant ? 'List preliminary tasks and outline the content plan' : 'Išvardinkite preliminarius uždavinius ir turinio planą'"
-                    class="flex-grow"
-                  />
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    icon="i-heroicons-chat-bubble-left-right"
-                    class="ml-2 h-8 mt-1"
-                    :class="hasCommentsIndicator('TASKS')"
-                    @click="selectFieldForComment('TASKS')"
-                  />
-                </div>
-              </UFormGroup>
-
-              <!-- Signature Lines -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 border-t border-gray-200 dark:border-gray-800 pt-6">
-                <div>
-                  <p class="mb-2">
-                    {{ isEnglishVariant ? 'Student:' : 'Studentas(-ė):' }}
-                  </p>
-                  <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="mb-2">
-                    {{ isEnglishVariant ? 'Final Project Supervisor:' : 'Baigiamojo darbo vadovas(-ė):' }}
-                  </p>
-                  <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Department Head Line -->
-              <div class="mt-6">
-                <p class="mb-2">
-                  {{ isEnglishVariant ? 'Topic registered:' : 'Tema užregistruota:' }}
-                </p>
-                <div class="flex items-end gap-2">
-                  <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 w-48" />
-                  <p class="mr-2 whitespace-nowrap">
-                    {{ isEnglishVariant ? 'Department Head' : 'katedros vedėjas(-a)' }}
-                  </p>
-                  <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 flex-grow" />
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {{ isEnglishVariant ? '(signature, date) (name, surname)' : '(parašas, data) (vardas, pavardė)' }}
-                </p>
-              </div>
-
-              <!-- Status Change (for supervisors) -->
-              <!-- Status Change (for supervisors) -->
-              <div
-                v-if="canChangeStatus && formData.status === 'submitted'"
-                class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
-              >
-                <h4 class="font-medium mb-2">
-                  {{ isEnglishVariant ? 'Review Decision:' : 'Peržiūros sprendimas:' }}
-                </h4>
-                <div class="flex items-center space-x-3">
-                  <UButton
-                    color="green"
-                    size="sm"
-                    icon="i-heroicons-check-circle"
-                    @click="handleStatusChange('approved')"
-                  >
-                    {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
-                  </UButton>
-                  <UButton
-                    color="amber"
-                    size="sm"
-                    icon="i-heroicons-exclamation-triangle"
-                    @click="handleStatusChange('needs_revision')"
-                  >
-                    {{ isEnglishVariant ? 'Needs Revision' : 'Reikia taisymų' }}
-                  </UButton>
-                </div>
-                <p class="mt-2 text-xs text-gray-500">
-                  {{ isEnglishVariant ? 'Please review the topic registration and approve it or request revisions.' : 'Peržiūrėkite temos registraciją ir patvirtinkite ją arba paprašykite pataisymų.' }}
-                </p>
-              </div>
-
-              <!-- Additional section for when status is "needs_revision" -->
-              <div
-                v-if="canChangeStatus && formData.status === 'needs_revision'"
-                class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
-              >
-                <h4 class="font-medium mb-2">
-                  {{ isEnglishVariant ? 'After Revisions:' : 'Po pataisymų:' }}
-                </h4>
-                <div class="flex items-center space-x-3">
-                  <UButton
-                    color="green"
-                    size="sm"
-                    icon="i-heroicons-check-circle"
-                    @click="handleStatusChange('approved')"
-                  >
-                    {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
-                  </UButton>
-                  <UButton
-                    color="amber"
-                    size="sm"
-                    icon="i-heroicons-exclamation-triangle"
-                    @click="handleStatusChange('needs_revision')"
-                  >
-                    {{ isEnglishVariant ? 'Still Needs Revision' : 'Vis dar reikia taisymų' }}
-                  </UButton>
-                </div>
-                <p class="mt-2 text-xs text-gray-500">
-                  {{ isEnglishVariant ? 'After revisions, you can approve the topic or request additional revisions if needed.' : 'Po pataisymų galite patvirtinti temą arba paprašyti papildomų pataisymų, jei reikia.' }}
-                </p>
-              </div>
-
-              <!-- Error Message -->
-              <div
-                v-if="isError"
-                class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md mb-4"
-              >
-                <p>{{ errorMessage || (isEnglishVariant ? 'Error saving topic registration' : 'Klaida išsaugant temos registraciją') }}</p>
-              </div>
-
-              <!-- Form Buttons -->
-              <div class="text-right space-x-2 pt-4 border-t border-gray-200 dark:border-gray-800 mt-8">
-                <UButton
-                  type="button"
-                  color="gray"
-                  variant="ghost"
-                  :label="isEnglishVariant ? 'Cancel' : 'Atšaukti'"
-                  :disabled="isSaving"
-                  @click="closeModal"
-                />
-                <UButton
-                  v-if="canEdit"
-                  type="submit"
-                  color="primary"
-                  :label="isEnglishVariant ? 'Save Registration' : 'Išsaugoti registraciją'"
-                  :loading="isSaving"
-                />
-                <UButton
-                  v-if="props.userRole === 'student' && (!formData.status || formData.status === 'draft')"
-                  type="button"
-                  color="green"
-                  :label="isEnglishVariant ? 'Submit for Review' : 'Pateikti peržiūrai'"
-                  :loading="isSaving"
-                  @click="handleStatusChange('submitted')"
-                />
-              </div>
-            </UForm>
-          </div>
-
-          <!-- Comments Panel (MS Word style sidebar) - 25% width -->
-          <div
-            class="w-1/4 bg-gray-50 dark:bg-gray-800 p-4 overflow-y-auto comment-panel transition-colors duration-300"
-            :class="{ 'bg-amber-50 dark:bg-amber-900/30': highlightCommentPanel }"
-            style="max-height: 80vh;"
-          >
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-base font-medium">
-                {{ isEnglishVariant ? 'Comments' : 'Komentarai' }}
-              </h3>
-              <UButton
-                v-if="selectedField !== 'general' || newCommentMode !== 'reply'"
-                size="xs"
-                color="gray"
-                variant="ghost"
-                :icon="selectedField ? 'i-heroicons-x-mark' : 'i-heroicons-chat-bubble-left-right'"
-                @click="selectedField ? cancelComment() : selectFieldForComment('general')"
-              >
-                {{ selectedField ? (isEnglishVariant ? 'Cancel' : 'Atšaukti') : (isEnglishVariant ? 'Add Comment' : 'Pridėti komentarą') }}
-              </UButton>
-            </div>
-
-            <!-- Comment Form -->
-            <div
-              v-if="selectedField"
-              class="mb-4 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 comment-form"
-            >
-              <div class="mb-2 text-xs text-gray-500 dark:text-gray-400 flex justify-between">
-                <div>
-                  <span v-if="selectedField !== 'general'">
-                    {{ isEnglishVariant ? 'Commenting on:' : 'Komentuojate:' }}
-                    <span class="font-medium">{{ getFieldLabel(selectedField) }}</span>
-                  </span>
-                  <span v-else>{{ isEnglishVariant ? 'General comment' : 'Bendras komentaras' }}</span>
-                </div>
-                <div v-if="replyToComment">
-                  <span>{{ isEnglishVariant ? 'Replying to:' : 'Atsakote:' }} {{ replyToComment.authorName }}</span>
-                </div>
-              </div>
-
-              <UTextarea
-                v-model="newComment"
-                :rows="3"
-                :placeholder="replyToComment ? (isEnglishVariant ? 'Write a reply...' : 'Parašykite atsakymą...') : (isEnglishVariant ? 'Write a comment...' : 'Parašykite komentarą...')"
-                class="mb-2"
-              />
-
-              <div class="flex justify-between">
-                <UButton
-                  size="xs"
-                  color="gray"
-                  variant="ghost"
-                  @click="cancelComment()"
-                >
-                  {{ isEnglishVariant ? 'Cancel' : 'Atšaukti' }}
-                </UButton>
-                <UButton
-                  size="xs"
-                  color="primary"
-                  :disabled="!newComment.trim()"
-                  @click="addComment()"
-                >
-                  {{ replyToComment ? (isEnglishVariant ? 'Post Reply' : 'Paskelbti atsakymą') : (isEnglishVariant ? 'Post Comment' : 'Paskelbti komentarą') }}
-                </UButton>
-              </div>
-            </div>
-
-            <!-- Filter Dropdown -->
-            <div
-              v-if="!selectedField"
-              class="mb-4"
-            >
-              <USelect
-                v-model="commentFilter"
-                :options="[
-                  { value: 'all', label: isEnglishVariant ? 'All Comments' : 'Visi komentarai' },
-                  { value: 'unread', label: isEnglishVariant ? 'Unread Comments' : 'Neskaityti komentarai' },
-                  ...fieldFilterOptions
-                ]"
-                size="sm"
-              />
-            </div>
-
-            <!-- Empty State -->
-            <div
-              v-if="!selectedField && filteredComments.length === 0"
-              class="text-center py-4 text-gray-500 dark:text-gray-400"
-            >
-              {{ isEnglishVariant ? 'No comments yet' : 'Kol kas komentarų nėra' }}
-            </div>
-
-            <!-- Comments List -->
-            <div class="space-y-4">
-              <div
-                v-for="thread in filteredComments"
-                :key="thread.id"
-                class="bg-white dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 overflow-hidden"
-              >
-                <!-- Parent Comment -->
-                <div
-                  class="p-3"
-                  :class="{ 'bg-amber-50 dark:bg-amber-900/20': thread.unread && thread.authorRole !== props.userRole }"
-                >
-                  <!-- Field Label -->
-                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    {{ getFieldLabel(thread.fieldName || 'general') }}
-                  </div>
-
-                  <!-- Author and Date -->
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center gap-1">
-                      <span
-                        class="text-xs font-medium"
-                        :class="{
-                          'text-green-600 dark:text-green-400': thread.authorRole === 'student',
-                          'text-blue-600 dark:text-blue-400': thread.authorRole === 'supervisor',
-                          'text-purple-600 dark:text-purple-400': thread.authorRole === 'department_head'
-                        }"
-                      >
-                        {{ thread.authorName }}
-                      </span>
-                      <UBadge
-                        v-if="thread.unread && thread.authorRole !== props.userRole"
-                        color="red"
-                        size="xs"
-                        variant="solid"
-                        class="mr-1"
-                      >
-                        {{ isEnglishVariant ? 'New' : 'Naujas' }}
-                      </UBadge>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ formatDate(thread.createdAt) }}
-                    </span>
-                  </div>
-
-                  <!-- Comment Content -->
-                  <p class="text-sm mb-2">
-                    {{ thread.commentText }}
-                  </p>
-
-                  <!-- Actions -->
-                  <div class="flex justify-end">
-                    <UButton
-                      v-if="canComment"
-                      size="xs"
-                      color="gray"
-                      variant="ghost"
-                      @click="startReply(thread)"
-                    >
-                      {{ isEnglishVariant ? 'Reply' : 'Atsakyti' }}
-                    </UButton>
-                    <UButton
-                      v-if="thread.unread && thread.authorRole !== props.userRole"
-                      size="xs"
-                      color="gray"
-                      variant="ghost"
-                      @click="markAsRead(thread)"
-                    >
-                      {{ isEnglishVariant ? 'Mark as Read' : 'Žymėti kaip skaitytą' }}
-                    </UButton>
-                  </div>
-                </div>
-
-                <!-- Reply Separator -->
-                <div
-                  v-if="thread.replies && thread.replies.length > 0"
-                  class="border-t border-gray-100 dark:border-gray-600"
-                />
-
-                <!-- Replies -->
-                <div v-if="thread.replies && thread.replies.length > 0">
-                  <div
-                    v-for="reply in thread.replies"
-                    :key="reply.id"
-                    class="p-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700"
-                    :class="{ 'bg-amber-50 dark:bg-amber-900/20': reply.unread && reply.authorRole !== props.userRole }"
-                  >
-                    <!-- Reply Author and Date -->
-                    <div class="flex justify-between items-start mb-1">
-                      <div class="flex items-center gap-1">
-                        <span
-                          class="text-xs font-medium"
-                          :class="{
-                            'text-green-600 dark:text-green-400': reply.authorRole === 'student',
-                            'text-blue-600 dark:text-blue-400': reply.authorRole === 'supervisor',
-                            'text-purple-600 dark:text-purple-400': reply.authorRole === 'department_head'
-                          }"
-                        >
-                          {{ reply.authorName }}
-                        </span>
-                        <UBadge
-                          v-if="reply.unread && reply.authorRole !== props.userRole"
-                          color="red"
-                          size="xs"
-                          variant="solid"
-                          class="mr-1"
-                        >
-                          {{ isEnglishVariant ? 'New' : 'Naujas' }}
-                        </UBadge>
-                      </div>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ formatDate(reply.createdAt) }}
-                      </span>
-                    </div>
-
-                    <!-- Reply Content -->
-                    <p class="text-sm mb-1">
-                      {{ reply.commentText }}
-                    </p>
-
-                    <!-- Mark Read Button -->
-                    <div
-                      v-if="reply.unread && reply.authorRole !== props.userRole"
-                      class="flex justify-end"
-                    >
-                      <UButton
-                        size="xs"
-                        color="gray"
-                        variant="ghost"
-                        @click="markAsRead(reply)"
-                      >
-                        {{ isEnglishVariant ? 'Mark as Read' : 'Žymėti kaip skaitytą' }}
-                      </UButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </UCard>
-    </UModal>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { PropType } from 'vue'
 import type { FormError } from '#ui/types' // Nuxt UI types
 
@@ -746,7 +88,7 @@ const emit = defineEmits<{
   (e: 'comment', comment: TopicComment): void
   (e: 'status-change', status: string): void
   (e: 'success'): void
-  (e: 'mark-read', commentId: number): void // New emit for marking comments as read
+  (e: 'mark-read', commentId: number): void
 }>()
 
 // --- State ---
@@ -755,10 +97,10 @@ const isSaving = ref(false)
 const isError = ref(false)
 const errorMessage = ref('')
 const newComment = ref('')
-const selectedField = ref<string | null>(null)
+const activeCommentField = ref<string | null>(null)
 const replyToComment = ref<TopicComment | null>(null)
-const newCommentMode = ref<'new' | 'reply'>('new')
-const commentFilter = ref('all') // 'all', 'unread', or a specific field name
+const highlightCommentPanel = ref(false)
+const popoverPosition = ref({})
 
 const formData = ref<ProjectTopicRegistrationFormData>({
   TITLE: '',
@@ -815,43 +157,62 @@ const processedComments = computed(() => {
   })
 })
 
-// Filtered comments based on the selected filter
-const filteredComments = computed(() => {
-  if (commentFilter.value === 'all') {
-    return processedComments.value
+// Get comments for a specific field
+const getFieldComments = (fieldName: string) => {
+  if (!props.initialData.comments) return []
+
+  if (fieldName === 'general') {
+    return processedComments.value.filter(comment =>
+      !comment.fieldName || comment.fieldName === 'general'
+    )
   }
-  else if (commentFilter.value === 'unread') {
-    return processedComments.value.filter((thread) => {
-      // Include thread if the thread itself is unread or any of its replies are unread
-      const threadUnread = thread.unread && thread.authorRole !== props.userRole
-      const hasUnreadReplies = thread.replies?.some(
-        reply => reply.unread && reply.authorRole !== props.userRole
-      )
-      return threadUnread || hasUnreadReplies
-    })
+
+  return processedComments.value.filter(comment =>
+    comment.fieldName === fieldName
+  )
+}
+
+// Count comments for a specific field (including replies)
+const getFieldCommentCount = (fieldName: string): number => {
+  if (!props.initialData.comments) return 0
+
+  let count = 0
+
+  // For general comments, count comments with no field or 'general' field
+  if (fieldName === 'general') {
+    // Count parent comments
+    count = props.initialData.comments.filter(comment =>
+      (!comment.fieldName || comment.fieldName === 'general') && !comment.parentCommentId
+    ).length
+
+    // Count replies to general comments
+    const generalCommentIds = props.initialData.comments
+      .filter(comment => (!comment.fieldName || comment.fieldName === 'general') && !comment.parentCommentId)
+      .map(comment => comment.id)
+
+    count += props.initialData.comments.filter(comment =>
+      comment.parentCommentId && generalCommentIds.includes(comment.parentCommentId)
+    ).length
   }
+  // For specific fields
   else {
-    // Filter by field name
-    return processedComments.value.filter(thread => thread.fieldName === commentFilter.value)
+    // Count parent comments for this field
+    count = props.initialData.comments.filter(comment =>
+      comment.fieldName === fieldName && !comment.parentCommentId
+    ).length
+
+    // Count replies to comments for this field
+    const fieldCommentIds = props.initialData.comments
+      .filter(comment => comment.fieldName === fieldName && !comment.parentCommentId)
+      .map(comment => comment.id)
+
+    count += props.initialData.comments.filter(comment =>
+      comment.parentCommentId && fieldCommentIds.includes(comment.parentCommentId)
+    ).length
   }
-})
 
-// Options for field filters in dropdown
-const fieldFilterOptions = computed(() => {
-  // Get unique field names from comments
-  const fields = new Set<string>()
-  processedComments.value.forEach((comment) => {
-    if (comment.fieldName) {
-      fields.add(comment.fieldName)
-    }
-  })
-
-  // Convert to options array
-  return Array.from(fields).map(field => ({
-    value: field,
-    label: getFieldLabel(field)
-  }))
-})
+  return count
+}
 
 // Check if there are unread comments for the current user
 const hasUnreadComments = computed(() => {
@@ -913,63 +274,6 @@ const canChangeStatus = computed(() => {
   return props.userRole === 'supervisor' || props.userRole === 'department_head'
 })
 
-// Available status changes based on current status and role
-const availableStatusChanges = computed(() => {
-  if (props.userRole === 'student') {
-    if (!formData.value.status || formData.value.status === 'draft') {
-      return [{ value: 'submitted', label: statusLabels.value.submitted }]
-    }
-    return []
-  }
-
-  if (props.userRole === 'supervisor' || props.userRole === 'department_head') {
-    if (formData.value.status === 'submitted') {
-      return [
-        { value: 'needs_revision', label: statusLabels.value.needs_revision },
-        { value: 'approved', label: statusLabels.value.approved },
-        { value: 'rejected', label: statusLabels.value.rejected }
-      ]
-    }
-    if (formData.value.status === 'needs_revision') {
-      return [
-        { value: 'approved', label: statusLabels.value.approved },
-        { value: 'rejected', label: statusLabels.value.rejected }
-      ]
-    }
-  }
-
-  return []
-})
-
-const formatDate = (timestamp: number | Date | undefined) => {
-  if (!timestamp) return ''
-
-  const date = typeof timestamp === 'number'
-    ? new Date(timestamp * 1000)
-    : timestamp
-
-  return date.toLocaleDateString(
-    isEnglishVariant.value ? 'en-US' : 'lt-LT',
-    { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-  )
-}
-
-// Get a human-readable label for field names
-const getFieldLabel = (field: string): string => {
-  const labels: Record<string, string> = {
-    SUPERVISOR: isEnglishVariant.value ? 'Supervisor' : 'Vadovas',
-    TITLE: isEnglishVariant.value ? 'Title (LT)' : 'Tema (LT)',
-    TITLE_EN: isEnglishVariant.value ? 'Title (EN)' : 'Tema (EN)',
-    PROBLEM: isEnglishVariant.value ? 'Problem' : 'Problema',
-    OBJECTIVE: isEnglishVariant.value ? 'Objective' : 'Tikslas',
-    TASKS: isEnglishVariant.value ? 'Tasks' : 'Uždaviniai',
-    COMPLETION_DATE: isEnglishVariant.value ? 'Completion Date' : 'Baigimo data',
-    general: isEnglishVariant.value ? 'General' : 'Bendras'
-  }
-
-  return labels[field] || field
-}
-
 // Check if a field has comments and return appropriate CSS classes
 const hasCommentsIndicator = (fieldName: string): string => {
   if (!props.initialData.comments) return ''
@@ -996,6 +300,37 @@ const hasCommentsIndicator = (fieldName: string): string => {
   return ''
 }
 
+// Get a human-readable label for field names
+const getFieldLabel = (field: string): string => {
+  const labels: Record<string, string> = {
+    SUPERVISOR: isEnglishVariant.value ? 'Supervisor' : 'Vadovas',
+    TITLE: isEnglishVariant.value ? 'Title (LT)' : 'Tema (LT)',
+    TITLE_EN: isEnglishVariant.value ? 'Title (EN)' : 'Tema (EN)',
+    PROBLEM: isEnglishVariant.value ? 'Problem' : 'Problema',
+    OBJECTIVE: isEnglishVariant.value ? 'Objective' : 'Tikslas',
+    TASKS: isEnglishVariant.value ? 'Tasks' : 'Uždaviniai',
+    COMPLETION_DATE: isEnglishVariant.value ? 'Completion Date' : 'Baigimo data',
+    general: isEnglishVariant.value ? 'General' : 'Bendras'
+  }
+
+  return labels[field] || field
+}
+
+// Format date for display
+const formatDate = (timestamp: number | Date | undefined) => {
+  if (!timestamp) return ''
+
+  const date = typeof timestamp === 'number'
+    ? new Date(timestamp * 1000)
+    : timestamp
+
+  return date.toLocaleDateString(
+    isEnglishVariant.value ? 'en-US' : 'lt-LT',
+    { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+  )
+}
+
+// Modal functions
 const openModal = () => {
   formData.value = {
     TITLE: props.initialData.TITLE || '',
@@ -1011,16 +346,16 @@ const openModal = () => {
   isSaving.value = false
   isOpen.value = true
   newComment.value = ''
-  selectedField.value = null
+  activeCommentField.value = null
   replyToComment.value = null
-  newCommentMode.value = 'new'
-  commentFilter.value = 'all'
 }
 
 const closeModal = () => {
   isOpen.value = false
+  activeCommentField.value = null
 }
 
+// Form validation
 const validate = (state: ProjectTopicRegistrationFormData): FormError[] => {
   const errors = []
   if (!state.TITLE) errors.push({ path: 'TITLE', message: isEnglishVariant.value ? 'Topic Title is required' : 'Baigiamojo darbo tema privaloma' })
@@ -1032,6 +367,7 @@ const validate = (state: ProjectTopicRegistrationFormData): FormError[] => {
   return errors
 }
 
+// Save form data
 const handleSave = async () => {
   isSaving.value = true
   isError.value = false
@@ -1085,56 +421,91 @@ const handleSave = async () => {
   }
 }
 
-const highlightCommentPanel = ref(false)
+// Comment Popover Functions
+const toggleCommentPopover = (fieldName: string, event: MouseEvent) => {
+  if (activeCommentField.value === fieldName) {
+    activeCommentField.value = null
+  }
+  else {
+    // Calculate position based on the click event
+    const button = event.target as HTMLElement
+    const buttonRect = button.getBoundingClientRect()
+    const modalContainer = button.closest('.p-6, .p-10') as HTMLElement
+    const modalRect = modalContainer?.getBoundingClientRect() || document.body.getBoundingClientRect()
 
-const focusCommentSection = () => {
-  // Highlight effect for visual cue
-  highlightCommentPanel.value = true
-  setTimeout(() => {
-    highlightCommentPanel.value = false
-  }, 1000)
+    // Position to the right of the button by default
+    let left = buttonRect.right + 10 - modalRect.left
+    let top = buttonRect.top - 100 - modalRect.top // Show a bit above the button
 
-  setTimeout(() => {
-    // Find comment section by class
-    const commentPanel = document.querySelector('.comment-panel')
-    const commentForm = document.querySelector('.comment-form')
+    // Check if this would go outside the viewport
+    const modalWidth = modalRect.width
+    const popoverWidth = 320 // Set a fixed width for the popover
 
-    if (commentPanel && commentForm) {
-      // Scroll the comment form into view
-      commentForm.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (left + popoverWidth > modalWidth - 20) {
+      // Position to the left instead if near right edge
+      left = buttonRect.left - popoverWidth - 10 - modalRect.left
+
+      // If still goes off screen on the left, just center it
+      if (left < 0) {
+        left = Math.max(20, (modalWidth - popoverWidth) / 2)
+      }
     }
-  }, 100)
+
+    // Make sure the popover isn't positioned too high
+    if (top < 0) {
+      top = buttonRect.bottom + 10 - modalRect.top
+    }
+
+    popoverPosition.value = {
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${popoverWidth}px`,
+      maxHeight: '80vh'
+    }
+
+    activeCommentField.value = fieldName
+    newComment.value = ''
+    replyToComment.value = null
+
+    // Highlight effect to draw attention
+    highlightCommentPanel.value = true
+    setTimeout(() => {
+      highlightCommentPanel.value = false
+    }, 500)
+  }
 }
 
-const selectFieldForComment = (fieldName: string) => {
-  selectedField.value = fieldName
-  newCommentMode.value = 'new'
-  replyToComment.value = null
+const closeCommentPopover = () => {
+  activeCommentField.value = null
   newComment.value = ''
-
-  focusCommentSection()
+  replyToComment.value = null
 }
 
+// Handle replies
 const startReply = (comment: TopicComment) => {
-  selectedField.value = comment.fieldName || 'general'
   replyToComment.value = comment
-  newCommentMode.value = 'reply'
   newComment.value = ''
 
-  focusCommentSection()
+  // Focus the textarea
+  nextTick(() => {
+    const textarea = document.querySelector('.comment-popover textarea')
+    if (textarea instanceof HTMLTextAreaElement) {
+      textarea.focus()
+    }
+  })
 }
 
-const cancelComment = () => {
-  selectedField.value = null
+const cancelReply = () => {
   replyToComment.value = null
   newComment.value = ''
 }
 
+// Add a comment
 const addComment = () => {
-  if (!newComment.value.trim()) return
+  if (!newComment.value.trim() || !activeCommentField.value) return
 
   const comment: TopicComment = {
-    fieldName: selectedField.value || undefined,
+    fieldName: activeCommentField.value,
     commentText: newComment.value,
     authorRole: props.userRole,
     authorName: props.userName,
@@ -1144,79 +515,780 @@ const addComment = () => {
 
   emit('comment', comment)
 
+  // Reset form
   newComment.value = ''
-  selectedField.value = null
   replyToComment.value = null
 }
 
+// Mark a comment as read
 const markAsRead = (comment: TopicComment) => {
   if (comment.id) {
     emit('mark-read', comment.id)
   }
 }
 
+// Handle status changes
 const handleStatusChange = async (newStatus: string) => {
   try {
     // First update UI to give immediate feedback
     formData.value.status = newStatus
 
-    // Add confirmation prompt if desired
-    let message = ''
-    switch (newStatus) {
-      case 'approved':
-        message = isEnglishVariant.value
-          ? 'Are you sure you want to approve this topic?'
-          : 'Ar tikrai norite patvirtinti šią temą?'
-        break
-      case 'needs_revision':
-        message = isEnglishVariant.value
-          ? 'Are you sure you want to request revisions for this topic?'
-          : 'Ar tikrai norite paprašyti pataisymų šiai temai?'
-        break
-      case 'rejected':
-        message = isEnglishVariant.value
-          ? 'Are you sure you want to reject this topic?'
-          : 'Ar tikrai norite atmesti šią temą?'
-        break
-    }
-
-    // Optional: You could add a confirmation dialog here
-    // if (!window.confirm(message)) {
-    //   // Revert status if user cancels
-    //   formData.value.status = props.initialData.status || 'draft';
-    //   return;
-    // }
-
     // Emit the status change for parent component to handle
     emit('status-change', newStatus)
-
-    // If you handle the API call directly from this component,
-    // make sure to wait for it to complete before showing success message
-    // const response = await ...
-
-    // Show success message
-    // You can use a toast notification library if available
-    // toast.add({
-    //   title: isEnglishVariant.value ? 'Success' : 'Pavyko',
-    //   description: isEnglishVariant.value
-    //     ? `Topic status updated to ${statusLabels.value[newStatus]}`
-    //     : `Temos būsena pakeista į ${statusLabels.value[newStatus]}`,
-    //   color: 'green'
-    // });
   }
   catch (error) {
     // Revert UI status on error
     formData.value.status = props.initialData.status || 'draft'
-
     console.error('Error updating topic status:', error)
-    // Show error message
-    // toast.add({
-    //   title: isEnglishVariant.value ? 'Error' : 'Klaida',
-    //   description: error.message || (isEnglishVariant.value
-    //     ? 'Failed to update topic status'
-    //     : 'Nepavyko atnaujinti temos būsenos'),
-    //   color: 'red'
-    // });
   }
 }
+
+// Close popover when clicking outside
+const handleOutsideClick = (event: MouseEvent) => {
+  // Only process if a popover is open
+  if (!activeCommentField.value) return
+
+  // Check if click is outside the popover and the comment buttons
+  const popover = document.querySelector('.comment-popover')
+  if (!popover) return
+
+  // Get all comment buttons
+  const commentButtons = document.querySelectorAll('[icon*="chat-bubble"]')
+
+  // Check if click is within the popover
+  if (popover.contains(event.target as Node)) return
+
+  // Check if click is on a comment button
+  for (const button of commentButtons) {
+    if (button.contains(event.target as Node)) {
+      return
+    }
+  }
+
+  // If click is outside both, close the popover
+  closeCommentPopover()
+}
+
+// Setup and cleanup event listeners
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleOutsideClick)
+})
 </script>
+
+<template>
+  <div>
+    <UButton
+      :label="buttonLabel"
+      icon="i-heroicons-pencil-square"
+      size="xs"
+      color="orange"
+      variant="solid"
+      @click="openModal"
+    />
+
+    <UModal
+      v-model="isOpen"
+      prevent-close
+      :ui="{ width: 'sm:max-w-5xl' }"
+    >
+      <UCard :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800', body: { padding: 'p-0' }, header: { padding: 'p-4 sm:p-6' } }">
+        <!-- Header with status badge and notification indicator -->
+        <template #header>
+          <div class="flex items-center">
+            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white truncate">
+              {{ isEnglishVariant ? 'Final Project Topic Registration' : 'Baigiamojo Darbo Temos Registravimo Lapas' }}
+            </h3>
+            <UBadge
+              v-if="formData.status"
+              :color="formData.status === 'approved' ? 'green' : formData.status === 'rejected' ? 'red' : formData.status === 'needs_revision' ? 'orange' : 'blue'"
+              class="ml-3"
+            >
+              {{ statusLabels[formData.status] }}
+            </UBadge>
+            <UBadge
+              v-if="hasUnreadComments"
+              color="red"
+              variant="solid"
+              class="ml-2"
+            >
+              {{ unreadCommentsCount }}
+            </UBadge>
+            <UButton
+              color="gray"
+              variant="ghost"
+              icon="i-heroicons-x-mark-20-solid"
+              size="sm"
+              square
+              class="ml-auto"
+              @click="closeModal"
+            />
+          </div>
+          <div class="flex">
+            <!-- Main Form (full width by default) -->
+            <div
+              class="relative w-full p-6 sm:p-10 transition-all duration-300"
+            >
+              <UForm
+                :state="formData"
+                :validate="validate"
+                class="text-sm text-gray-900 dark:text-gray-100 space-y-4 font-serif"
+                @submit="handleSave"
+              >
+                <!-- Header Section -->
+                <div class="text-center uppercase font-semibold mb-6 space-y-1">
+                  <p>{{ isEnglishVariant ? 'Vilnius Kolegija Higher Education Institution' : 'Vilniaus kolegija' }}</p>
+                  <p>{{ isEnglishVariant ? 'Faculty of Electronics and Informatics' : 'Elektronikos ir informatikos fakultetas' }}</p>
+                </div>
+
+                <div class="text-center uppercase font-semibold mb-8">
+                  <p>{{ isEnglishVariant ? 'Final Project Topic Registration Form' : 'Baigiamojo darbo temos registravimo lapas' }}</p>
+                </div>
+
+                <!-- Student Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <UFormGroup
+                    :label="isEnglishVariant ? 'Student:' : 'Studentas(-ė):'"
+                    class="mb-0"
+                  >
+                    <p class="py-2 font-medium">
+                      {{ displayData.NAME }}
+                    </p>
+                  </UFormGroup>
+                  <UFormGroup
+                    :label="isEnglishVariant ? 'Academic Group:' : 'Akademinė grupė:'"
+                    class="mb-0"
+                  >
+                    <p class="py-2 font-medium">
+                      {{ displayData.GROUP }}
+                    </p>
+                  </UFormGroup>
+                </div>
+
+                <!-- Form Fields with Comment Buttons -->
+                <UFormGroup
+                  :label="isEnglishVariant ? 'Supervisor:' : 'Baigiamojo darbo vadovas(-ė):'"
+                  name="SUPERVISOR"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UInput
+                      v-model="formData.SUPERVISOR"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'Enter supervisor name' : 'Įveskite vadovo vardą ir pavardę'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 comment-btn relative"
+                      :class="hasCommentsIndicator('SUPERVISOR')"
+                      @click="toggleCommentPopover('SUPERVISOR', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('SUPERVISOR') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('SUPERVISOR') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <div class="border-t border-gray-200 dark:border-gray-800 pt-4 my-4">
+                  <p class="font-medium mb-2">
+                    {{ isEnglishVariant ? 'Final Project Topic:' : 'Baigiamojo darbo tema:' }}
+                  </p>
+                </div>
+
+                <!-- Title Fields -->
+                <UFormGroup
+                  :label="isEnglishVariant ? 'In Lithuanian:' : 'Lietuvių kalba:'"
+                  name="TITLE"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UInput
+                      v-model="formData.TITLE"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'Enter final project title in Lithuanian' : 'Įveskite baigiamojo darbo temą lietuvių kalba'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 comment-btn relative"
+                      :class="hasCommentsIndicator('TITLE')"
+                      @click="toggleCommentPopover('TITLE', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('TITLE') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('TITLE') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <UFormGroup
+                  :label="isEnglishVariant ? 'In English:' : 'Anglų kalba:'"
+                  name="TITLE_EN"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UInput
+                      v-model="formData.TITLE_EN"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'Enter final project title in English' : 'Įveskite baigiamojo darbo temą anglų kalba'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 comment-btn relative"
+                      :class="hasCommentsIndicator('TITLE_EN')"
+                      @click="toggleCommentPopover('TITLE_EN', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('TITLE_EN') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('TITLE_EN') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <!-- Date Field -->
+                <UFormGroup
+                  :label="isEnglishVariant ? 'Project Completion Date:' : 'Baigiamojo darbo baigimo data:'"
+                  name="COMPLETION_DATE"
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UInput
+                      v-model="formData.COMPLETION_DATE"
+                      type="date"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'Select completion date' : 'Pasirinkite baigimo datą'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 comment-btn relative"
+                      :class="hasCommentsIndicator('COMPLETION_DATE')"
+                      @click="toggleCommentPopover('COMPLETION_DATE', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('COMPLETION_DATE') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium z-10"
+                        style="min-width: 1.25rem; min-height: 1.25rem;"
+                      >
+                        {{ getFieldCommentCount('COMPLETION_DATE') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <!-- Text Areas -->
+                <UFormGroup
+                  :label="isEnglishVariant ? 'Final Project Problem:' : 'Baigiamojo darbo problema:'"
+                  name="PROBLEM"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UTextarea
+                      v-model="formData.PROBLEM"
+                      :rows="3"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'Describe the problem that the project will address' : 'Aprašykite problemą, kurią spręs baigiamasis darbas'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 h-8 mt-1 comment-btn relative"
+                      :class="hasCommentsIndicator('PROBLEM')"
+                      @click="toggleCommentPopover('PROBLEM', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('PROBLEM') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('PROBLEM') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <UFormGroup
+                  :label="isEnglishVariant ? 'Final Project Objective:' : 'Baigiamojo darbo tikslas:'"
+                  name="OBJECTIVE"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UTextarea
+                      v-model="formData.OBJECTIVE"
+                      :rows="3"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'A brief, clear, one-sentence description focused on what will be achieved' : 'Trumpas, aiškus, nusakomas vienu sakiniu, orientuotas į tai, kas bus pasiekta'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 h-8 mt-1 comment-btn relative"
+                      :class="hasCommentsIndicator('OBJECTIVE')"
+                      @click="toggleCommentPopover('OBJECTIVE', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('OBJECTIVE') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('OBJECTIVE') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <UFormGroup
+                  :label="isEnglishVariant ? 'Preliminary Tasks and Content Plan:' : 'Preliminarūs baigiamojo darbo uždaviniai ir turinio planas:'"
+                  name="TASKS"
+                  required
+                  class="relative group"
+                >
+                  <div class="flex relative">
+                    <UTextarea
+                      v-model="formData.TASKS"
+                      :rows="5"
+                      :disabled="!canEdit"
+                      :placeholder="isEnglishVariant ? 'List preliminary tasks and outline the content plan' : 'Išvardinkite preliminarius uždavinius ir turinio planą'"
+                      class="flex-grow"
+                    />
+                    <UButton
+                      v-if="canComment"
+                      size="xs"
+                      color="amber"
+                      variant="soft"
+                      class="ml-2 h-8 mt-1 comment-btn relative"
+                      :class="hasCommentsIndicator('TASKS')"
+                      @click="toggleCommentPopover('TASKS', $event)"
+                    >
+                      <span class="i-heroicons-chat-bubble-left-right" />
+                      <span
+                        v-if="getFieldCommentCount('TASKS') > 0"
+                        class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                      >
+                        {{ getFieldCommentCount('TASKS') }}
+                      </span>
+                    </UButton>
+                  </div>
+                </UFormGroup>
+
+                <!-- General Comments Button -->
+                <div class="text-right mb-4">
+                  <UButton
+                    v-if="canComment"
+                    size="xs"
+                    color="amber"
+                    variant="soft"
+                    :class="['comment-btn relative', hasCommentsIndicator('general')]"
+                    @click="toggleCommentPopover('general', $event)"
+                  >
+                    <span class="i-heroicons-chat-bubble-left-right mr-1" />
+                    {{ isEnglishVariant ? 'General Comments' : 'Bendri komentarai' }}
+                    <span
+                      v-if="getFieldCommentCount('general') > 0"
+                      class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+                    >
+                      {{ getFieldCommentCount('general') }}
+                    </span>
+                  </UButton>
+                </div>
+
+                <!-- Signature Lines -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 border-t border-gray-200 dark:border-gray-800 pt-6">
+                  <div>
+                    <p class="mb-2">
+                      {{ isEnglishVariant ? 'Student:' : 'Studentas(-ė):' }}
+                    </p>
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="mb-2">
+                      {{ isEnglishVariant ? 'Final Project Supervisor:' : 'Baigiamojo darbo vadovas(-ė):' }}
+                    </p>
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Department Head Line -->
+                <div class="mt-6">
+                  <p class="mb-2">
+                    {{ isEnglishVariant ? 'Topic registered:' : 'Tema užregistruota:' }}
+                  </p>
+                  <div class="flex items-end gap-2">
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 w-48" />
+                    <p class="mr-2 whitespace-nowrap">
+                      {{ isEnglishVariant ? 'Department Head' : 'katedros vedėjas(-a)' }}
+                    </p>
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 flex-grow" />
+                  </div>
+
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {{ isEnglishVariant ? '(signature, date) (name, surname)' : '(parašas, data) (vardas, pavardė)' }}
+                  </p>
+                </div>
+
+                <!-- Status Change (for supervisors) -->
+                <div
+                  v-if="canChangeStatus && formData.status === 'submitted'"
+                  class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
+                >
+                  <h4 class="font-medium mb-2">
+                    {{ isEnglishVariant ? 'Review Decision:' : 'Peržiūros sprendimas:' }}
+                  </h4>
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="green"
+                      size="sm"
+                      icon="i-heroicons-check-circle"
+                      @click="handleStatusChange('approved')"
+                    >
+                      {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
+                    </UButton>
+                    <UButton
+                      color="amber"
+                      size="sm"
+                      icon="i-heroicons-exclamation-triangle"
+                      @click="handleStatusChange('needs_revision')"
+                    >
+                      {{ isEnglishVariant ? 'Needs Revision' : 'Reikia taisymų' }}
+                    </UButton>
+                  </div>
+
+                  <p class="mt-2 text-xs text-gray-500">
+                    {{ isEnglishVariant ? 'Please review the topic registration and approve it or request revisions.' : 'Peržiūrėkite temos registraciją ir patvirtinkite ją arba paprašykite pataisymų.' }}
+                  </p>
+                </div>
+
+                <!-- Additional section for when status is "needs_revision" -->
+                <div
+                  v-if="canChangeStatus && formData.status === 'needs_revision'"
+                  class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
+                >
+                  <h4 class="font-medium mb-2">
+                    {{ isEnglishVariant ? 'After Revisions:' : 'Po pataisymų:' }}
+                  </h4>
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="green"
+                      size="sm"
+                      icon="i-heroicons-check-circle"
+                      @click="handleStatusChange('approved')"
+                    >
+                      {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
+                    </UButton>
+                    <UButton
+                      color="amber"
+                      size="sm"
+                      icon="i-heroicons-exclamation-triangle"
+                      @click="handleStatusChange('needs_revision')"
+                    >
+                      {{ isEnglishVariant ? 'Still Needs Revision' : 'Vis dar reikia taisymų' }}
+                    </UButton>
+                  </div>
+
+                  <p class="mt-2 text-xs text-gray-500">
+                    {{ isEnglishVariant ? 'After revisions, you can approve the topic or request additional revisions if needed.' : 'Po pataisymų galite patvirtinti temą arba paprašyti papildomų pataisymų, jei reikia.' }}
+                  </p>
+                </div>
+
+                <!-- Error Message -->
+                <div
+                  v-if="isError"
+                  class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md mb-4"
+                >
+                  <p>{{ errorMessage || (isEnglishVariant ? 'Error saving topic registration' : 'Klaida išsaugant temos registraciją') }}</p>
+                </div>
+
+                <!-- Form Buttons -->
+                <div class="text-right space-x-2 pt-4 border-t border-gray-200 dark:border-gray-800 mt-8">
+                  <UButton
+                    type="button"
+                    color="gray"
+                    variant="ghost"
+                    :label="isEnglishVariant ? 'Cancel' : 'Atšaukti'"
+                    :disabled="isSaving"
+                    @click="closeModal"
+                  />
+                  <UButton
+                    v-if="canEdit"
+                    type="submit"
+                    color="primary"
+                    :label="isEnglishVariant ? 'Save Registration' : 'Išsaugoti registraciją'"
+                    :loading="isSaving"
+                  />
+                  <UButton
+                    v-if="props.userRole === 'student' && (!formData.status || formData.status === 'draft')"
+                    type="button"
+                    color="green"
+                    :label="isEnglishVariant ? 'Submit for Review' : 'Pateikti peržiūrai'"
+                    :loading="isSaving"
+                    @click="handleStatusChange('submitted')"
+                  />
+                </div>
+              </UForm>
+
+              <!-- Comment Popovers -->
+              <div
+                v-if="activeCommentField"
+                class="comment-popover absolute z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3"
+                :style="popoverPosition"
+              >
+                <div class="flex justify-between items-center mb-2">
+                  <h3 class="text-sm font-medium">
+                    {{ getFieldLabel(activeCommentField) }} {{ isEnglishVariant ? 'Comments' : 'Komentarai' }}
+                  </h3>
+                  <UButton
+                    size="xs"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-x-mark"
+                    @click="closeCommentPopover"
+                  />
+                </div>
+
+                <!-- Comments list - limited height with scroll -->
+                <div class="max-h-64 overflow-y-auto mb-3">
+                  <div
+                    v-for="comment in getFieldComments(activeCommentField)"
+                    :key="comment.id"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded p-2 mb-2"
+                  >
+                    <!-- Comment content here -->
+                    <div class="flex justify-between text-xs mb-1">
+                      <span
+                        class="font-medium"
+                        :class="{
+                          'text-green-600 dark:text-green-400': comment.authorRole === 'student',
+                          'text-blue-600 dark:text-blue-400': comment.authorRole === 'supervisor',
+                          'text-purple-600 dark:text-purple-400': comment.authorRole === 'department_head'
+                        }"
+                      >{{ comment.authorName }}</span>
+                      <span class="text-gray-500">{{ formatDate(comment.createdAt) }}</span>
+                    </div>
+
+                    <p class="text-sm">
+                      {{ comment.commentText }}
+                    </p>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end mt-1">
+                      <UButton
+                        v-if="canComment"
+                        size="xs"
+                        color="gray"
+                        variant="ghost"
+                        @click="startReply(comment)"
+                      >
+                        {{ isEnglishVariant ? 'Reply' : 'Atsakyti' }}
+                      </UButton>
+                      <UButton
+                        v-if="comment.unread && comment.authorRole !== props.userRole"
+                        size="xs"
+                        color="gray"
+                        variant="ghost"
+                        @click="markAsRead(comment)"
+                      >
+                        {{ isEnglishVariant ? 'Mark as Read' : 'Žymėti kaip skaitytą' }}
+                      </UButton>
+                    </div>
+
+                    <!-- Replies if any -->
+                    <div
+                      v-if="comment.replies && comment.replies.length > 0"
+                      class="pl-3 mt-2 border-l-2 border-gray-200 dark:border-gray-700"
+                    >
+                      <div
+                        v-for="reply in comment.replies"
+                        :key="reply.id"
+                        class="mb-2 text-xs"
+                      >
+                        <div class="flex justify-between mb-1">
+                          <span
+                            class="font-medium"
+                            :class="{
+                              'text-green-600 dark:text-green-400': reply.authorRole === 'student',
+                              'text-blue-600 dark:text-blue-400': reply.authorRole === 'supervisor',
+                              'text-purple-600 dark:text-purple-400': reply.authorRole === 'department_head'
+                            }"
+                          >{{ reply.authorName }}</span>
+                          <span class="text-gray-500">{{ formatDate(reply.createdAt) }}</span>
+                        </div>
+
+                        <p>
+                          {{ reply.commentText }}
+                        </p>
+
+                        <!-- Mark Read Button -->
+                        <div
+                          v-if="reply.unread && reply.authorRole !== props.userRole"
+                          class="flex justify-end mt-1"
+                        >
+                          <UButton
+                            size="xs"
+                            color="gray"
+                            variant="ghost"
+                            @click="markAsRead(reply)"
+                          >
+                            {{ isEnglishVariant ? 'Mark as Read' : 'Žymėti kaip skaitytą' }}
+                          </UButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="getFieldComments(activeCommentField).length === 0"
+                    class="text-center text-gray-500 py-2"
+                  >
+                    {{ isEnglishVariant ? 'No comments yet' : 'Kol kas komentarų nėra' }}
+                  </div>
+                </div>
+
+                <!-- Comment form at the bottom of the popover -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded p-2">
+                  <UTextarea
+                    v-model="newComment"
+                    :rows="2"
+                    :placeholder="replyToComment
+                      ? (isEnglishVariant ? 'Write a reply...' : 'Parašykite atsakymą...')
+                      : (isEnglishVariant ? 'Write a comment...' : 'Parašykite komentarą...')"
+                    class="mb-2 text-sm"
+                  />
+
+                  <div class="flex justify-between">
+                    <UButton
+                      v-if="replyToComment"
+                      size="xs"
+                      color="gray"
+                      variant="ghost"
+                      @click="cancelReply"
+                    >
+                      {{ isEnglishVariant ? 'Cancel' : 'Atšaukti' }}
+                    </UButton>
+                    <UButton
+                      size="xs"
+                      color="primary"
+                      :disabled="!newComment.trim()"
+                      @click="addComment"
+                    >
+                      {{ isEnglishVariant ? 'Post' : 'Paskelbti' }}
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
+  </div>
+</template>
+
+<style scoped>
+.comment-popover {
+  transition: opacity 0.2s ease;
+  animation: fadeIn 0.2s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.comment-btn {
+  position: relative;
+}
+
+/* Ensure badge has proper styling regardless of parent button class */
+.comment-btn .absolute {
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 0.7rem;
+  min-width: 1rem;
+  min-height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f59e0b !important; /* Amber-500 */
+  color: white !important;
+}
+
+/* Dark mode adjustment */
+.dark .comment-btn .absolute {
+  background-color: #fbbf24 !important; /* Amber-400 */
+  color: #1f2937 !important; /* Gray-800 */
+}
+
+/* Animation for buttons with unread comments */
+.bg-red-100.comment-btn .absolute,
+.bg-amber-100.comment-btn .absolute,
+.bg-red-900\/30.comment-btn .absolute,
+.bg-amber-900\/30.comment-btn .absolute {
+  animation: pulse 1.5s infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Dark mode support */
+:root {
+  --border-color: #e5e7eb;
+}
+
+.dark {
+  --border-color: #374151;
+}
+</style>
