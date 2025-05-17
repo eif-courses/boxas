@@ -2,7 +2,7 @@
   <div>
     <UButton
       :label="buttonLabel"
-      icon="i-heroicons-document-text"
+      icon="i-heroicons-eye"
       size="xs"
       color="white"
       variant="solid"

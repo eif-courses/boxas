@@ -84,10 +84,7 @@
     </div>
 
     <!-- Video Modal -->
-    <UModal
-      v-model="isOpen"
-      prevent-close
-    >
+    <UModal v-model="isVideoModalOpen">
       <UCard
         :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }"
         class="w-full max-w-6xl"
@@ -95,26 +92,32 @@
         <template #header>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">
-              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} ({{ studentObject?.currentYear }})
-              pristatomasis vaizdo įrašas
+              {{ currentStudentVideo?.studentGroup }}, {{ currentStudentVideo?.studentName }}
+              {{ $t('video_presentation') }}
             </h3>
             <UButton
               color="gray"
               variant="ghost"
               icon="i-heroicons-x-mark-20-solid"
               class="ml-4"
-              @click="isOpen = false"
+              @click="isVideoModalOpen = false"
             />
           </div>
         </template>
 
         <div class="p-4">
           <div class="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+            <VideoPlayer
+              v-if="currentVideo?.key"
+              :video-key="currentVideo?.key"
+              :content-type="currentVideo?.contentType"
+              class="w-full h-full object-contain"
+            />
             <video
-              v-if="videoObject?.url"
+              v-else-if="currentVideo?.url"
               controls
               class="w-full h-full object-contain"
-              :src="videoObject?.url"
+              :src="currentVideo?.url"
             />
             <div
               v-else
@@ -127,16 +130,15 @@
           </div>
           <div class="mt-4">
             <p class="text-sm text-gray-600 dark:text-gray-400">
-              {{ $t('uploaded_on') }}: {{ formatDate(videoObject?.createdAt) }}
+              {{ $t('uploaded_on') }}: {{ formatDate(currentVideo?.createdAt) }}
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-400">
-              {{ $t('file_name') }}: {{ videoObject?.filename }}
+              {{ $t('file_name') }}: {{ currentVideo?.filename }}
             </p>
           </div>
         </div>
       </UCard>
     </UModal>
-
     <div
       v-if="status === 'pending'"
       class="p-6 text-center"
@@ -183,16 +185,18 @@
       :responsive="true"
       :ui="{
         wrapper: 'overflow-x-auto',
-        td: { base: 'whitespace-nowrap px-2 py-1' },
-        th: { base: 'px-2 py-1' },
+        td: {
+          base: 'whitespace-nowrap px-2 py-2' // increased vertical padding
+        },
         default: { checkbox: { color: 'primary' } },
         th: {
           base: 'px-2 py-1',
           padding: 'px-2 py-2',
-          studentGroup: 'w-16',
-          name: 'w-1/3',
-          actions: 'w-1/3',
-          status: 'w-1/3'
+          studentGroup: 'w-16', // Group column
+          name: 'w-1/4', // Name column (decreased width)
+          topic: 'w-1/4', // New topic column
+          documents: 'w-16', // New documents column (narrower)
+          status: 'w-1/4' // Status column
         }
       }"
       @select="select"
@@ -216,22 +220,17 @@
         </div>
       </template>
 
-      <!-- Replace your actions-data template with this improved version -->
-      <template #actions-data="{ row }">
-        <!-- Topic Status and Button with improved visual design -->
-        <div
-          class="flex items-center flex-wrap gap-1 justify-start"
-          style="min-width: 160px;"
-        >
-          <!-- Topic Status and Button -->
-          <div class="flex items-center mr-2">
-            <!-- Status Badge -->
+      <!-- Topic status and actions -->
+      <template #topic-data="{ row }">
+        <div class="flex flex-col gap-2">
+          <!-- Status Badge in a separate row -->
+          <div class="flex items-center">
             <UBadge
               v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
               :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
               variant="soft"
               size="xs"
-              class="mr-1 whitespace-nowrap min-w-[80px] text-center"
+              class="whitespace-nowrap min-w-[80px] text-center"
               :ui="{
                 base: 'inline-flex items-center rounded-md cursor-help justify-center',
                 tooltip: { base: 'z-50 px-2 py-1 rounded text-xs' }
@@ -245,18 +244,19 @@
               color="gray"
               variant="soft"
               size="xs"
-              class="mr-1 whitespace-nowrap min-w-[80px] text-center"
+              class="whitespace-nowrap min-w-[80px] text-center"
             >
               {{ $t('no_topic') }}
             </UBadge>
+          </div>
 
-            <!-- FIXED ProjectTopicRegistration component usage -->
+          <!-- Topic Registration button in a separate row -->
+          <div class="flex items-center">
             <ProjectTopicRegistration
               v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
               :key="`topic-${row.student.id}-${row.projectTopicRegistrations[0].status}-${forceRerender}`"
               :initial-data="{
                 studentRecordId: row.student.id,
-                id: row.projectTopicRegistrations[0].id, // Make sure to include id
                 GROUP: row.student.studentGroup,
                 NAME: `${row.student.studentName} ${row.student.studentLastname}`,
                 TITLE: row.projectTopicRegistrations[0].title,
@@ -275,7 +275,7 @@
               :icon="getTopicStatusIcon(row.projectTopicRegistrations[0].status)"
               :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
               :variant="'solid'"
-              :label="getTopicButtonLabel(row)"
+              :button-label="getTopicButtonLabel(row)"
               :trailing="false"
               class="p-1 text-xs"
               @init="handleInitialData"
@@ -286,36 +286,37 @@
               @success="() => refreshNuxtData('allStudents')"
             />
           </div>
+        </div>
+      </template>
+      <!-- Documents column -->
+      <template #documents-data="{ row }">
+        <div class="flex items-center gap-1">
+          <UButton
+            v-if="row.videos && row.videos[0]"
+            icon="i-heroicons-video-camera"
+            size="xs"
+            color="white"
+            variant="solid"
+            :trailing="false"
+            class="p-1 text-xs min-w-0"
+            @click="openVideoModal(row.videos[0], row.student)"
+          />
 
-          <!-- Document Buttons in a single row -->
-          <div class="flex items-center gap-1">
+          <template
+            v-for="doc in row.documents || []"
+            :key="doc.id"
+          >
             <UButton
-              v-if="row.videos && row.videos[0]"
-              icon="i-heroicons-video-camera"
+              :loading="isFetchingDocument"
+              :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
               size="xs"
               color="white"
               variant="solid"
               :trailing="false"
               class="p-1 text-xs min-w-0"
-              @click="sendStudentData(row.videos[0], row.student)"
+              @click="openDocument(doc)"
             />
-
-            <template
-              v-for="doc in row.documents || []"
-              :key="doc.id"
-            >
-              <UButton
-                :loading="isFetchingDocument"
-                :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
-                size="xs"
-                color="white"
-                variant="solid"
-                :trailing="false"
-                class="p-1 text-xs min-w-0"
-                @click="openDocument(doc)"
-              />
-            </template>
-          </div>
+          </template>
         </div>
       </template>
 
@@ -470,9 +471,14 @@ const columns = [
     sortable: true
   },
   {
-    key: 'actions',
-    label: t('documents_and_topic'),
-    sortable: true // Make this sortable
+    key: 'topic', // New column for topic status and actions
+    label: t('final_project_topic'),
+    sortable: true
+  },
+  {
+    key: 'documents', // New column just for documents
+    label: t('documents'),
+    sortable: false
   },
   {
     key: 'status',
@@ -507,11 +513,48 @@ const videoObject = ref<VideoRecord | null>(null)
 const studentObject = ref<StudentRecord | null>(null)
 const isFetchingDocument = ref(false)
 
-const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
-  isOpen.value = true
-  videoObject.value = mVideo
-  studentObject.value = mStudent
+const isVideoModalOpen = ref(false)
+const currentVideo = ref(null)
+const currentStudentVideo = ref(null)
+
+// Replace your sendStudentData function with this:
+const openVideoModal = async (video, student) => {
+  console.log('Opening video:', video, 'for student:', student)
+
+  // Set the current video and student info
+  currentVideo.value = video
+  currentStudentVideo.value = student
+
+  // If the video doesn't have a URL, fetch it
+  if (video && !video.url && video.filePath) {
+    try {
+      const url = await getFile(video.filePath)
+      if (url) {
+        currentVideo.value = {
+          ...video,
+          url: url
+        }
+      }
+    }
+    catch (error) {
+      console.error('Error fetching video URL:', error)
+      useToast().add({
+        title: t('error'),
+        description: t('error_loading_video'),
+        color: 'red'
+      })
+    }
+  }
+
+  // Open the modal
+  isVideoModalOpen.value = true
 }
+
+// const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
+//   isOpen.value = true
+//   videoObject.value = mVideo
+//   studentObject.value = mStudent
+// }
 
 // Handle topic registration form actions
 // Similarly, update handleTopicSave to properly handle the studentRecordId
@@ -725,10 +768,10 @@ const handleMarkCommentRead = async (commentId: number) => {
   }
 }
 
-const handleTopicSuccess = () => {
-  showProjectTopicModal.value = false
-  refreshNuxtData('allStudents')
-}
+// const handleTopicSuccess = () => {
+//   showProjectTopicModal.value = false
+//   refreshNuxtData('allStudents')
+// }
 
 // Add this helper function to your script section to get contextual button labels
 const getTopicButtonLabel = (row) => {
@@ -812,7 +855,7 @@ const getTopicStatusColor = (status) => {
 const getTopicStatusIcon = (status) => {
   switch (status) {
     case 'submitted':
-      return 'i-heroicons-clock'
+      return 'i-heroicons-document-check'
     case 'approved':
       return 'i-heroicons-check-circle'
     case 'needs_revision':
@@ -839,19 +882,30 @@ const formatDate = (dateString) => {
   }).format(date)
 }
 
+// Make sure your getFile function is working correctly
 async function getFile(fileName) {
+  console.log('Getting file URL for:', fileName)
   try {
-    const response = await $fetch(`/api/blob/get/${fileName}`)
+    const response = await $fetch(`/api/blob/get/${fileName}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    })
+
+    console.log('File URL response:', response)
+
     if (response?.url) {
-      return response.url // Return the temporary access URL
+      // You might need to parse the URL or modify it
+      console.log('Got file URL:', response.url)
+      return response.url
     }
-    else {
-      throw new Error('Invalid response from server')
-    }
+    throw new Error('Invalid response from server: No URL returned')
   }
   catch (error) {
     console.error('Error fetching file URL:', error)
-    return ''
+    throw error
   }
 }
 

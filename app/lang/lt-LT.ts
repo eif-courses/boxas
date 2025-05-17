@@ -168,5 +168,18 @@ export default {
   info: {
     title: 'Informacija',
     versionLoaded: 'Versija sėkmingai įkelta'
-  }
+  },
+  submitted: 'pateiktas',
+  approved: 'tema patvirtinta',
+  needs_revision: 'reikia pataisymų',
+  draft: 'juodraštis',
+  rejected: 'atmesta',
+  topic: 'Tema',
+  edit: 'Redaguoti',
+  review: 'Peržiūrėti',
+  view: 'Žiūrėti',
+  final_project_topic: 'Temos registravimo lapas',
+  no_topic: 'nepradėtas pildyti',
+  documents: 'Dokumentai',
+  no_title: 'Temos pavadinimas nenurodytas'
 }

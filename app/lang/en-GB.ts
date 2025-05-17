@@ -168,5 +168,18 @@ export default {
   info: {
     title: 'Information',
     versionLoaded: 'Version loaded successfully'
-  }
+  },
+  submitted: 'Submitted',
+  approved: 'Topic approved',
+  needs_revision: 'Needs revisions',
+  draft: 'Draft',
+  rejected: 'Rejected',
+  topic: 'Topic',
+  edit: 'Edit',
+  review: 'Review',
+  view: 'View',
+  final_project_topic: 'Topic registration form',
+  no_topic: 'Not started',
+  documents: 'Documents',
+  no_title: 'Title not specified'
 }

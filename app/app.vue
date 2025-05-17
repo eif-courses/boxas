@@ -154,24 +154,42 @@ const logout = async () => {
 
 <template>
   <UContainer class="min-h-screen flex flex-col my-4">
-    <div class="mb-2 text-right">
-      <UButton
-        square
-        variant="ghost"
-        color="black"
-        :icon="$colorMode.preference === 'dark' ? 'i-heroicons-moon' : 'i-heroicons-sun'"
-        @click="toggleColorMode"
-      />
+    <!-- Improve header with flex layout for better alignment -->
+    <div class="flex justify-between items-center mb-4">
+      <!-- Left side: App name with consistent styling -->
+      <div class="flex items-center">
+        <NuxtLink
+          to="/"
+          class="flex items-center gap-3"
+        >
+          <!-- Logo with adjusted size and no distortion -->
+          <img
+            src="/VIKO_LOGO_ELEKTR_H_LT.png"
+            alt="VIKO Elektronikos ir informatikos fakultetas"
+            class="h-12 w-auto"
+          >
+          <!-- Optional vertical divider -->
+          <div class="h-8 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
+          <!-- App name with proper spacing and sizing -->
+          <span class="text-xl font-medium ml-3 hidden sm:block">{{ $t('app_name') }}</span>
+        </NuxtLink>
+      </div>
+
+      <!-- Right side: Theme toggle button -->
+      <div>
+        <UButton
+          square
+          variant="ghost"
+          color="black"
+          :icon="$colorMode.preference === 'dark' ? 'i-heroicons-moon' : 'i-heroicons-sun'"
+          class="ml-2"
+          @click="toggleColorMode"
+        />
+      </div>
     </div>
 
     <UCard>
       <template #header>
-        <h3 class="text-lg font-semibold">
-          <NuxtLink to="/">
-            {{ $t('app_name') }}
-          </NuxtLink>
-        </h3>
-
         <div
           v-if="loggedIn"
           class="flex flex-wrap sm:mx-0 gap-2"
@@ -195,7 +213,7 @@ const logout = async () => {
           />
 
           <UButton
-            v-if="authStore.hasReviewerAccess()"
+            v-if="authStore.hasReviewerAccess() || authStore.hasDepartmentHeadAccess()"
             :to="`/${locale}/dashboard/reviewer`"
             icon="i-heroicons-pencil"
             :label="$t('nav_reviewer')"

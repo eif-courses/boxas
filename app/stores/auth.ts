@@ -26,21 +26,22 @@ export const useAuthStore = defineStore('auth', {
         const userSession = useUserSession()
 
         // Wait for session to be ready if it's loading
-        if (userSession.status.value === 'loading') {
-          await new Promise(resolve => {
-            const unwatch = watch(userSession.status, (newStatus) => {
-              if (newStatus !== 'loading') {
-                unwatch()
-                resolve()
-              }
-            })
-          })
-        }
+        // if (userSession.status.value === 'loading') {
+        //   await new Promise(resolve => {
+        //     const unwatch = watch(userSession.status, (newStatus) => {
+        //       if (newStatus !== 'loading') {
+        //         unwatch()
+        //         resolve()
+        //       }
+        //     })
+        //   })
+        // }
 
         if (userSession.loggedIn.value && userSession.user.value) {
           await this.setUser(userSession.user.value)
         }
-      } finally {
+      }
+      finally {
         // Always mark as initialized even if there was an error
         this.isInitialized = true
       }
