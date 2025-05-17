@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { PropType } from 'vue'
-import type { FormError } from '#ui/types' // Nuxt UI types
+import type { ButtonColor, ButtonVariant, FormError } from '#ui/types' // Nuxt UI types
 
 // Type for comments
 export interface TopicComment {
@@ -77,6 +77,22 @@ const props = defineProps({
   formVariant: {
     type: String as PropType<'lt' | 'en'>,
     required: true
+  },
+  color: {
+    type: String as PropType<ButtonColor>,
+    default: 'primary'
+  },
+  variant: {
+    type: String as PropType<ButtonVariant>,
+    default: 'solid'
+  },
+  icon: {
+    type: String,
+    default: 'i-heroicons-pencil-square'
+  },
+  trailing: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -84,9 +100,10 @@ const isEnglishVariant = computed(() => props.formVariant === 'en')
 
 // --- Emits ---
 const emit = defineEmits<{
+  (e: 'init', data: ProjectTopicRegistrationData): void
   (e: 'save', data: ProjectTopicRegistrationFormData): void
   (e: 'comment', comment: TopicComment): void
-  (e: 'status-change', status: string): void
+  (e: 'status-change', status: string, topicData?: ProjectTopicRegistrationData): void // Added topicData
   (e: 'success'): void
   (e: 'mark-read', commentId: number): void
 }>()
@@ -368,13 +385,14 @@ const validate = (state: ProjectTopicRegistrationFormData): FormError[] => {
 }
 
 // Save form data
+// Similarly, modify your handleSave function to ensure studentRecordId is included
 const handleSave = async () => {
   isSaving.value = true
   isError.value = false
   errorMessage.value = ''
 
   try {
-    // Map data for API consumption
+    // Make sure studentRecordId is explicitly included
     const payload = {
       studentRecordId: props.initialData.studentRecordId,
       TITLE: formData.value.TITLE,
@@ -385,8 +403,9 @@ const handleSave = async () => {
       COMPLETION_DATE: formData.value.COMPLETION_DATE,
       SUPERVISOR: formData.value.SUPERVISOR,
       status: formData.value.status
-      // REGISTRATION_DATE is handled by the server
     }
+
+    console.log('Saving with payload:', payload)
 
     // First emit save for potential additional handling
     emit('save', formData.value)
@@ -533,8 +552,16 @@ const handleStatusChange = async (newStatus: string) => {
     // First update UI to give immediate feedback
     formData.value.status = newStatus
 
+    // Log the data being passed to help with debugging
+    console.log('Status change:', {
+      newStatus,
+      studentRecordId: props.initialData.studentRecordId,
+      topicData: props.initialData
+    })
+
     // Emit the status change for parent component to handle
-    emit('status-change', newStatus)
+    // Pass the complete props.initialData object to ensure studentRecordId is included
+    emit('status-change', newStatus, props.initialData)
   }
   catch (error) {
     // Revert UI status on error
@@ -571,8 +598,18 @@ const handleOutsideClick = (event: MouseEvent) => {
 
 // Setup and cleanup event listeners
 onMounted(() => {
+  if (props.initialData) {
+    emit('init', props.initialData)
+  }
   document.addEventListener('click', handleOutsideClick)
 })
+
+// Also emit when initialData changes
+watch(() => props.initialData, (newData) => {
+  if (newData) {
+    emit('init', newData)
+  }
+}, { immediate: true })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick)
@@ -583,12 +620,22 @@ onBeforeUnmount(() => {
   <div>
     <UButton
       :label="buttonLabel"
-      icon="i-heroicons-pencil-square"
+      :icon="icon"
       size="xs"
-      color="orange"
-      variant="solid"
+      :color="color"
+      :variant="variant"
+      :trailing="trailing"
       @click="openModal"
     />
+
+    <!--    <UButton -->
+    <!--      :label="buttonLabel" -->
+    <!--      icon="i-heroicons-pencil-square" -->
+    <!--      size="xs" -->
+    <!--      :color="formData.status === 'approved' ? 'green' : formData.status === 'rejected' ? 'red' : formData.status === 'needs_revision' ? 'orange' : 'blue'" -->
+    <!--      variant="solid" -->
+    <!--      @click="openModal" -->
+    <!--    /> -->
 
     <UModal
       v-model="isOpen"

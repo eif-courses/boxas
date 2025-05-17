@@ -157,30 +157,48 @@
               variant="ghost"
               icon="i-heroicons-x-mark-20-solid"
               class="ml-4"
-              @click="isOpenReport = false"
+              @click="closeReportModal"
             />
           </div>
-
-          <div class="container mx-auto py-4 px-4">
-            <div
-              v-if="isLoading"
-              class="mt-4 p-4 bg-blue-100 text-blue-700"
-            >
-              {{ $t('processing_document') }}
-            </div>
-
-            <div
-              v-if="statusMessage"
-              class="mt-4 p-4"
-              :class="statusError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
-            >
-              {{ statusMessage }}
-            </div>
-          </div>
         </template>
+
+        <div class="p-4">
+          <!-- Preview Supervisor Report (if data available) -->
+          <PreviewSupervisorReport
+            v-if="supervisorReportData"
+            :document-data="supervisorReportData"
+            :form-variant="determineFormVariant(studentObject?.studentGroup)"
+            button-label=""
+            :modal-title="$t('supervisor_report')"
+          />
+
+          <!-- Edit Supervisor Report Form (if form data available) -->
+          <EditSupervisorReportForm
+            v-if="reportFormData"
+            :initial-data="reportFormData"
+            :form-variant="determineFormVariant(studentObject?.studentGroup)"
+            button-label=""
+            @save="handleReportSave(reportFormData.studentRecordId, $event)"
+          />
+
+          <!-- Loading and status messages -->
+          <div
+            v-if="isLoading"
+            class="mt-4 p-4 bg-blue-100 text-blue-700"
+          >
+            {{ $t('processing_document') }}
+          </div>
+
+          <div
+            v-if="statusMessage"
+            class="mt-4 p-4"
+            :class="statusError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+          >
+            {{ statusMessage }}
+          </div>
+        </div>
       </UCard>
     </UModal>
-
     <!-- Project Topic Registration Modal -->
     <UModal
       v-model="showProjectTopicModal"
@@ -254,10 +272,20 @@
       sort-desc-icon="i-heroicons-arrow-down"
       sort-mode="manual"
       class="w-full"
+      :responsive="true"
       :ui="{
+        wrapper: 'overflow-x-auto',
         td: { base: 'whitespace-nowrap px-2 py-1' },
         th: { base: 'px-2 py-1' },
-        default: { checkbox: { color: 'primary' } }
+        default: { checkbox: { color: 'primary' } },
+        th: {
+          base: 'px-2 py-1',
+          padding: 'px-2 py-2',
+          studentGroup: 'w-16',
+          name: 'w-1/3',
+          actions: 'w-1/3',
+          status: 'w-1/3'
+        }
       }"
       @select="select"
     >
@@ -280,156 +308,129 @@
         </div>
       </template>
 
+      <!-- Replace your actions-data template with this improved version -->
       <template #actions-data="{ row }">
-        <div class="flex items-center justify-center gap-1 w-[max-content] flex-nowrap">
-          <!-- Project Topic Registration Button -->
-          <UButton
-            v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
-            :icon="getTopicStatusIcon(row.projectTopicRegistrations[0].status)"
-            size="xs"
-            :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
-            variant="solid"
-            :label="$t('topic')"
-            :trailing="false"
-            class="p-1 text-xs"
-            @click="openProjectTopic(row)"
-          />
-
-          <UButton
-            v-else
-            icon="i-heroicons-document-plus"
-            size="xs"
-            color="gray"
-            variant="solid"
-            :label="$t('topic')"
-            :trailing="false"
-            class="p-1 text-xs"
-            @click="openProjectTopic(row)"
-          />
-
-          <!-- Video Button -->
-          <UButton
-            v-if="row.videos && row.videos[0]"
-            icon="i-heroicons-video-camera"
-            size="xs"
-            color="white"
-            variant="solid"
-            :label="$t('video')"
-            :trailing="false"
-            class="p-1 text-xs"
-            @click="sendStudentData(row.videos[0], row.student)"
-          />
-
-          <!-- Documents Buttons -->
-          <template
-            v-for="doc in row.documents || []"
-            :key="doc.id"
-          >
-            <UButton
-              :loading="isFetchingDocument"
-              :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
-              size="xs"
-              color="white"
-              variant="solid"
-              :label="doc.documentType"
-              :trailing="false"
-              class="p-1 text-xs"
-              @click="openDocument(doc)"
-            />
-          </template>
-
-          <!-- Supervisor Report Buttons -->
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <div>
-              <PreviewSupervisorReport
-                :document-data="{
-                  NAME: row.student?.studentName +' '+row.student?.studentLastname,
-                  PROGRAM: row.student?.studyProgram ?? 'N/A',
-                  CODE: row.student?.programCode ?? 'N/A',
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
-                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas',
-                  WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  EXPL: row.supervisorReports[0].supervisorComments ?? '',
-                  OM: row.supervisorReports[0].otherMatch ?? 0,
-                  SSM: row.supervisorReports[0].oneMatch ?? 0,
-                  STUM: row.supervisorReports[0].ownMatch ?? 0,
-                  JM: row.supervisorReports[0].joinMatch ?? 0,
-                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate),
-                  SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
-                  POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
-                  DATE: formatUnixDate(row.supervisorReports[0].createdDate),
-                  PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
-                }"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                :button-label="$t('preview_supervisor_report')"
-                :modal-title="$t('supervisor_report')"
-              />
-            </div>
-          </template>
-          <template v-else>
-            <div>
-              <EditSupervisorReportForm
-                :initial-data="{
-                  studentRecordId: row.student?.id,
-                  DEPT: row.student?.department ? row.student.department : 'N/A Katedra',
-                  PROGRAM: row.student?.studyProgram ?? 'N/A',
-                  CODE: row.student?.programCode ?? 'N/A',
-                  NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
-                  SUPER: user?.displayName ?? 'N/A',
-                  EXPL: '',
-                  OM: 0,
-                  SSM: 0,
-                  STUM: 0,
-                  JM: 0,
-                  WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  POS: '',
-                  PASS: 1,
-                  DATE: new Date().toDateString().toString()
-                }"
-                :form-variant="determineFormVariant(row.student?.studentGroup)"
-                :button-label="$t('fill_supervisor_report')"
-                @save="handleReportSave(row.student?.id ?? null, $event)"
-              />
-            </div>
-          </template>
-        </div>
-      </template>
-
-      <template #status-data="{ row }">
-        <div class="flex items-center gap-2 justify-center">
-          <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
-            <UIcon
-              name="i-heroicons-check-circle"
-              class="w-5 h-5 text-green-500"
-            />
-            <span>{{ $t('report_filled') }}</span>
-
-            <!-- Signed/Unsigned Indicator -->
+        <div
+          class="flex items-center flex-wrap gap-1 justify-start"
+          style="min-width: 160px;"
+        >
+          <!-- Topic Status and Button -->
+          <div class="flex items-center mr-2">
             <UBadge
-              v-if="row.supervisorReports[0].isSigned"
-              color="green"
+              v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
+              :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
               variant="soft"
               size="xs"
+              class="mr-1 whitespace-nowrap"
+              :ui="{
+                base: 'inline-flex items-center rounded-md cursor-help',
+                tooltip: { base: 'z-50 px-2 py-1 rounded text-xs' }
+              }"
+              :tooltips="{ content: getTopicStatusTooltip(row.projectTopicRegistrations[0].status) }"
             >
-              {{ $t('signed') }}
+              {{ getTopicStatusLabel(row.projectTopicRegistrations[0].status) }}
             </UBadge>
             <UBadge
               v-else
               color="gray"
               variant="soft"
               size="xs"
+              class="mr-1 whitespace-nowrap"
             >
-              {{ $t('unsigned') }}
+              {{ $t('no_topic') }}
             </UBadge>
-          </template>
-          <template v-else>
-            <UIcon
-              name="i-heroicons-clock"
-              class="w-5 h-5 text-amber-400"
+
+            <UButton
+              :icon="getTopicButtonIcon(row)"
+              size="xs"
+              :color="getTopicButtonColor(row)"
+              variant="solid"
+              :label="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0 ? $t('review') : $t('topic')"
+              :trailing="false"
+              class="p-1 text-xs"
+              @click="openProjectTopic(row)"
             />
-            <span>{{ $t('report_not_filled') }}</span>
-          </template>
+          </div>
+
+          <!-- Document Buttons in a single row -->
+          <div class="flex items-center gap-1">
+            <UButton
+              v-if="row.videos && row.videos[0]"
+              icon="i-heroicons-video-camera"
+              size="xs"
+              color="white"
+              variant="solid"
+              :trailing="false"
+              class="p-1 text-xs min-w-0"
+              @click="sendStudentData(row.videos[0], row.student)"
+            />
+
+            <template
+              v-for="doc in row.documents || []"
+              :key="doc.id"
+            >
+              <UButton
+                :loading="isFetchingDocument"
+                :icon="doc.documentType === 'PDF' ? 'i-heroicons-document-text' : 'i-heroicons-code-bracket-square'"
+                size="xs"
+                color="white"
+                variant="solid"
+                :trailing="false"
+                class="p-1 text-xs min-w-0"
+                @click="openDocument(doc)"
+              />
+            </template>
+          </div>
+        </div>
+      </template>
+
+      `
+      <template #status-data="{ row }">
+        <div class="flex items-center gap-2 justify-center">
+          <!-- Status icon -->
+          <UIcon
+            :name="row.supervisorReports && row.supervisorReports.length > 0 ? 'i-heroicons-check-circle' : 'i-heroicons-clock'"
+            :class="row.supervisorReports && row.supervisorReports.length > 0 ? 'w-5 h-5 text-green-500' : 'w-5 h-5 text-amber-400'"
+          />
+
+          <!-- Action button -->
+          <div>
+            <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
+              <!-- Show preview button with fixed width -->
+              <UButton
+                icon="i-heroicons-document-text"
+                size="xs"
+                color="blue"
+                variant="solid"
+                :label="$t('preview')"
+                class="p-1 text-xs w-24"
+                @click="openPreviewReport(row)"
+              />
+
+              <!-- Badge below button -->
+              <div class="flex justify-center mt-1">
+                <UBadge
+                  :color="row.supervisorReports[0].isSigned ? 'green' : 'gray'"
+                  variant="soft"
+                  size="xs"
+                >
+                  {{ row.supervisorReports[0].isSigned ? $t('signed') : $t('unsigned') }}
+                </UBadge>
+              </div>
+            </template>
+            <template v-else>
+              <!-- Fill button with same width as preview -->
+              <UButton
+                icon="i-heroicons-pencil-square"
+                size="xs"
+                color="amber"
+                variant="solid"
+                :label="$t('fill')"
+                class="p-1 text-xs w-24"
+                @click="openEditReport(row)"
+              />
+            </template>
+          </div>
         </div>
       </template>
     </UTable>
@@ -480,6 +481,10 @@ definePageMeta({
   middleware: ['teacher-access']
 })
 
+// MISSING REFS: adding the missing refs for supervisor report data
+const supervisorReportData = ref(null)
+const reportFormData = ref(null)
+
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
 
 const { user } = useUserSession()
@@ -509,8 +514,8 @@ const columns = [
   },
   {
     key: 'actions',
-    label: t('actions'),
-    sortable: false
+    label: t('documents_and_topic'),
+    sortable: true // Make this sortable
   },
   {
     key: 'status',
@@ -549,6 +554,72 @@ const isOpenReport = ref(false)
 const videoObject = ref<VideoRecord | null>(null)
 const studentObject = ref<StudentRecord | null>(null)
 const isFetchingDocument = ref(false)
+
+// Method to open report preview
+const openPreviewReport = (row) => {
+  // Set student object for the modal
+  studentObject.value = row.student
+
+  // Create the document data object
+  const documentData = {
+    NAME: row.student?.studentName + ' ' + row.student?.studentLastname,
+    PROGRAM: row.student?.studyProgram ?? 'N/A',
+    CODE: row.student?.programCode ?? 'N/A',
+    TITLE: row.student?.finalProjectTitle ?? 'N/A',
+    DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas',
+    WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+    EXPL: row.supervisorReports[0].supervisorComments ?? '',
+    OM: row.supervisorReports[0].otherMatch ?? 0,
+    SSM: row.supervisorReports[0].oneMatch ?? 0,
+    STUM: row.supervisorReports[0].ownMatch ?? 0,
+    JM: row.supervisorReports[0].joinMatch ?? 0,
+    createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate),
+    SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
+    POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
+    DATE: formatUnixDate(row.supervisorReports[0].createdDate),
+    PASS: row.supervisorReports[0]?.isPassOrFailed ?? 0
+  }
+
+  // Show the preview modal - this depends on how your PreviewSupervisorReport component works
+  isOpenReport.value = true
+
+  // You may need to store the document data in a ref to pass to the component
+  // If your component needs this data via prop:
+  supervisorReportData.value = documentData
+}
+
+// Method to open report editing form
+const openEditReport = (row) => {
+  // Set student object for the modal
+  studentObject.value = row.student
+
+  // Create the initial form data
+  const initialData = {
+    studentRecordId: row.student?.id,
+    DEPT: row.student?.department ? row.student.department : 'N/A Katedra',
+    PROGRAM: row.student?.studyProgram ?? 'N/A',
+    CODE: row.student?.programCode ?? 'N/A',
+    NAME: `${row.student?.studentName ?? ''} ${row.student?.studentLastname ?? ''}`.trim(),
+    TITLE: row.student?.finalProjectTitle ?? 'N/A',
+    SUPER: user?.displayName ?? 'N/A',
+    EXPL: '',
+    OM: 0,
+    SSM: 0,
+    STUM: 0,
+    JM: 0,
+    WORK: 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
+    POS: '',
+    PASS: 1,
+    DATE: new Date().toDateString().toString()
+  }
+
+  // Show the edit form modal - this depends on how your EditSupervisorReportForm component works
+  isOpenReport.value = true
+
+  // You may need to store the initial data in a ref to pass to the component
+  // If your component needs this data via prop:
+  reportFormData.value = initialData
+}
 
 const sendStudentData = (mVideo: VideoRecord, mStudent: StudentRecord) => {
   isOpen.value = true
@@ -699,6 +770,7 @@ const handleTopicComment = async (comment: TopicComment) => {
     throw error // Re-throw to allow caller to handle if needed
   }
 }
+
 const handleTopicStatusChange = async (newStatus: string) => {
   try {
     // Validate that we have a topic registration ID
@@ -763,6 +835,7 @@ const handleTopicStatusChange = async (newStatus: string) => {
     })
   }
 }
+
 const handleMarkCommentRead = async (commentId: number) => {
   try {
     await $fetch(`/api/students/project-topics/comments/${commentId}/mark-read`, {
@@ -782,6 +855,15 @@ const handleTopicSuccess = () => {
   refreshNuxtData('allStudents')
 }
 
+// Helper function to get icon for topic status
+const getTopicButtonIcon = (row) => {
+  if (!row.projectTopicRegistrations || row.projectTopicRegistrations.length === 0) {
+    return 'i-heroicons-document-plus'
+  }
+
+  return getTopicStatusIcon(row.projectTopicRegistrations[0].status)
+}
+
 const getTopicStatusIcon = (status) => {
   switch (status) {
     case 'submitted': return 'i-heroicons-document-text'
@@ -793,6 +875,14 @@ const getTopicStatusIcon = (status) => {
 }
 
 // Helper function to get color for topic status
+const getTopicButtonColor = (row) => {
+  if (!row.projectTopicRegistrations || row.projectTopicRegistrations.length === 0) {
+    return 'gray'
+  }
+
+  return getTopicStatusColor(row.projectTopicRegistrations[0].status)
+}
+
 const getTopicStatusColor = (status) => {
   switch (status) {
     case 'submitted': return 'blue'
@@ -800,6 +890,28 @@ const getTopicStatusColor = (status) => {
     case 'needs_revision': return 'amber'
     case 'rejected': return 'red'
     default: return 'gray'
+  }
+}
+
+// Helper method to get topic status label
+const getTopicStatusLabel = (status) => {
+  switch (status) {
+    case 'submitted': return t('submitted')
+    case 'approved': return t('approved')
+    case 'needs_revision': return t('needs_revision')
+    case 'rejected': return t('rejected')
+    default: return t('unknown')
+  }
+}
+
+// Helper method to get topic status tooltip
+const getTopicStatusTooltip = (status) => {
+  switch (status) {
+    case 'submitted': return t('topic_submitted_tooltip')
+    case 'approved': return t('topic_approved_tooltip')
+    case 'needs_revision': return t('topic_needs_revision_tooltip')
+    case 'rejected': return t('topic_rejected_tooltip')
+    default: return ''
   }
 }
 
@@ -1026,19 +1138,55 @@ const filteredStudents = computed(() => {
     result = result.filter(item => item.student.studyProgram === programFilter.value)
   }
 
-  // Apply sorting
+  // Apply sorting with enhanced column options
   result.sort((a, b) => {
     let valA, valB
 
-    if (sort.value.column === 'name') {
+    if (sort.value.column === 'actions') {
+      // Sort by topic status
+      const getTopicValue = (item) => {
+        if (!item.projectTopicRegistrations || item.projectTopicRegistrations.length === 0) {
+          return 0 // No topic
+        }
+        // Order: approved (3), submitted (2), needs_revision (1), rejected (0)
+        const status = item.projectTopicRegistrations[0].status
+        switch (status) {
+          case 'approved': return 3
+          case 'submitted': return 2
+          case 'needs_revision': return 1
+          case 'rejected': return 0
+          default: return -1
+        }
+      }
+
+      valA = getTopicValue(a)
+      valB = getTopicValue(b)
+    }
+    else if (sort.value.column === 'status') {
+      // Sort by report status
+      const getReportValue = (item) => {
+        // Has report and is signed (2), has report but unsigned (1), no report (0)
+        if (!item.supervisorReports || item.supervisorReports.length === 0) {
+          return 0
+        }
+        return item.supervisorReports[0].isSigned ? 2 : 1
+      }
+
+      valA = getReportValue(a)
+      valB = getReportValue(b)
+    }
+    else if (sort.value.column === 'name') {
+      // Name sort
       valA = `${a.student.studentName} ${a.student.studentLastname}`.toLowerCase()
       valB = `${b.student.studentName} ${b.student.studentLastname}`.toLowerCase()
     }
     else {
+      // Default sort by ID
       valA = a.student.id
       valB = b.student.id
     }
 
+    // Apply sort direction
     if (sort.value.direction === 'asc') {
       return valA > valB ? 1 : -1
     }
@@ -1090,6 +1238,13 @@ watch(yearFilter, () => {
 watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
+
+// Add this method to clear data when closing the modal
+const closeReportModal = () => {
+  isOpenReport.value = false
+  supervisorReportData.value = null
+  reportFormData.value = null
+}
 
 const isParentSaving = ref(false)
 const toast = useToast()

@@ -538,8 +538,8 @@ const { t } = useI18n()
 
 // User role state
 const userStore = useAuthStore()
-const isStudent = ref(true) // For production, use: computed(() => userStore.isStudent)
-const isSupervisor = ref(false) // For production, use: computed(() => userStore.isTeacher)
+const isStudent = computed(() => userStore.isStudent)
+// const isSupervisor = computed(() => userStore.isTeacher)
 
 // Utility composables
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
