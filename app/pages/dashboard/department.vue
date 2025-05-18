@@ -181,6 +181,7 @@
                   comments: row.projectTopicRegistrations[0].comments || []
                 }"
                 :user-role="'department_head'"
+                :department-head-name="user?.displayName || ''"
                 :user-name="user?.displayName || ''"
                 :form-variant="determineFormVariant(row.student.studentGroup)"
                 :icon="getTopicStatusIcon(row.projectTopicRegistrations[0].status)"
@@ -251,7 +252,7 @@
               <PreviewReviewerReport
                 :review-data="getReviewerModalData(row)"
                 :form-variant="determineFormVariant(row.student?.studentGroup)"
-                button-label="Peržiūrėti"
+                :button-label="t('view')"
               />
             </div>
           </template>
@@ -494,8 +495,8 @@ const getTopicStatusLabel = (status) => {
       return t('approved')
     case 'needs_revision':
       return t('needs_revision')
-    case 'rejected':
-      return t('rejected')
+    case 'head_approved':
+      return t('head_approved')
     case 'draft':
       return t('draft')
     default:
@@ -511,8 +512,8 @@ const getTopicStatusTooltip = (status) => {
       return t('topic_approved_tooltip')
     case 'needs_revision':
       return t('topic_needs_revision_tooltip')
-    case 'rejected':
-      return t('topic_rejected_tooltip')
+    case 'head_approved':
+      return t('topic_head_approved_tooltip')
     case 'draft':
       return t('topic_draft_tooltip')
     default:
@@ -525,11 +526,11 @@ const getTopicStatusColor = (status) => {
     case 'submitted':
       return 'blue'
     case 'approved':
-      return 'green'
+      return 'blue'
     case 'needs_revision':
       return 'orange'
-    case 'rejected':
-      return 'red'
+    case 'head_approved':
+      return 'green'
     case 'draft':
       return 'gray'
     default:
@@ -678,7 +679,7 @@ const filteredStudents = computed(() => {
         if (!item.projectTopicRegistrations || item.projectTopicRegistrations.length === 0) {
           return 0 // No topic
         }
-        // Order: approved (3), submitted (2), needs_revision (1), rejected (0)
+        // Order: approved (3), submitted (2), needs_revision (1), head_approved (0)
         const status = item.projectTopicRegistrations[0].status
         switch (status) {
           case 'approved':
@@ -687,7 +688,7 @@ const filteredStudents = computed(() => {
             return 2
           case 'needs_revision':
             return 1
-          case 'rejected':
+          case 'head_approved':
             return 0
           default:
             return -1
@@ -744,66 +745,6 @@ watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
 
-async function updateProjectTitle({ studentId, finalProjectTitle }) {
-  try {
-    // Optimistic update: Update the local state immediately
-    const studentIndex = filteredStudents.value.students.findIndex(
-      row => row.student.id === studentId
-    )
-
-    if (studentIndex !== -1) {
-      // Update the title in the local state
-      filteredStudents.value.students[studentIndex].student.finalProjectTitle = finalProjectTitle
-
-      // Force table to update by incrementing the counter
-      updateCounter.value++
-    }
-
-    // Then make the API call
-    const { data, error } = await useFetch('/api/students/project-title', {
-      method: 'PATCH',
-      body: {
-        id: studentId,
-        finalProjectTitle
-      }
-    })
-
-    if (error.value) {
-      // If there's an error, revert the optimistic update
-      if (studentIndex !== -1) {
-        // Get the original data from the server again
-        const { data: refreshData } = await useFetch(`/api/students/${studentId}`)
-        if (refreshData.value) {
-          filteredStudents.value.students[studentIndex].student.finalProjectTitle
-              = refreshData.value.finalProjectTitle
-        }
-      }
-
-      throw new Error(error.value.message || 'Failed to update project title')
-    }
-
-    // Show success notification
-    toast.add({
-      title: t('success'),
-      description: finalProjectTitle,
-      color: 'green'
-    })
-
-    return true
-  }
-  catch (err) {
-    // Show error notification
-    toast.add({
-      title: t('error'),
-      description: err.message || finalProjectTitle,
-      color: 'red'
-    })
-
-    console.error('Update error:', err)
-    return false
-  }
-}
-
 const handleTopicStatusChange = async (newStatus: string, topicData?: ProjectTopicRegistrationData) => {
   console.log('Parent received status change:', newStatus, 'topicData:', topicData)
 
@@ -853,7 +794,7 @@ const handleTopicStatusChange = async (newStatus: string, topicData?: ProjectTop
       method: 'POST',
       body: {
         status: newStatus,
-        userRole: 'supervisor'
+        userRole: 'department_head'
       }
     })
 
@@ -910,7 +851,7 @@ const getTopicButtonLabel = (row) => {
       return t('review')
     case 'approved':
       return t('view')
-    case 'rejected':
+    case 'head_approved':
       return t('view')
     default:
       return t('edit')
@@ -926,6 +867,8 @@ const getTopicStatusIcon = (status) => {
       return 'i-heroicons-exclamation-circle'
     case 'rejected':
       return 'i-heroicons-x-circle'
+    case 'head_approved':
+      return 'i-heroicons-eye'
     case 'draft':
       return 'i-heroicons-pencil-square'
     default:
@@ -956,13 +899,26 @@ const handleTopicSave = async (formData) => {
       return
     }
 
-    // Use the studentRecordId from the formData
+    // Create the API payload with all required fields
+    const apiPayload = {
+      studentRecordId: formData.studentRecordId,
+      TITLE: formData.TITLE,
+      TITLE_EN: formData.TITLE_EN,
+      PROBLEM: formData.PROBLEM,
+      OBJECTIVE: formData.OBJECTIVE,
+      TASKS: formData.TASKS,
+      COMPLETION_DATE: formData.COMPLETION_DATE,
+      SUPERVISOR: formData.SUPERVISOR,
+      status: formData.status,
+      REGISTRATION_DATE: formData.REGISTRATION_DATE
+    }
+
+    console.log('Sending API payload:', apiPayload)
+
+    // Make the API call
     const response = await $fetch('/api/students/project-topics', {
       method: 'POST',
-      body: {
-        studentRecordId: formData.studentRecordId,
-        ...formData
-      }
+      body: apiPayload
     })
 
     toast.add({
@@ -985,7 +941,6 @@ const handleTopicSave = async (formData) => {
     })
   }
 }
-
 const handleTopicComment = async (comment) => {
   try {
     // Use formData.id directly if it exists
@@ -1028,8 +983,8 @@ const handleTopicComment = async (comment) => {
       topicRegistrationId: topicRegistrationId,
       fieldName: comment.fieldName || 'general',
       commentText: comment.commentText,
-      authorRole: 'supervisor',
-      authorName: user?.displayName || t('supervisor'),
+      authorRole: 'department_head',
+      authorName: t('department_head'),
       parentCommentId: comment.parentCommentId || null
     }
 

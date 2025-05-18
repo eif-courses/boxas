@@ -1,5 +1,4 @@
 import { defineNitroPlugin } from 'nitropack/runtime'
-//import { hubKV } from '@nuxthub/core/dist/runtime/kv/server/utils/kv'
 
 // Define a symbol for storing timestamp to avoid TypeScript issues
 const REQUEST_TIMESTAMP = Symbol('requestTimestamp')

@@ -38,9 +38,9 @@ export default defineEventHandler(async (event) => {
     })
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
-
+  const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
   logger.info('User authenticated', {
-    email: user.mail
+    email: userEmail
   })
 
   // --- 2. Read and Validate Request Body ---

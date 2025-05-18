@@ -2,37 +2,34 @@ import { eq, and } from 'drizzle-orm'
 import { departmentHeads } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
-  // Get logger from event context
   const logger = event.context.logger || console
-
   logger.info('Processing department head check request')
 
+  let user
+
   try {
-    const { user } = await requireUserSession(event)
-
-    if (!user) {
-      logger.warn('Unauthorized access attempt', {
-        endpoint: 'department-head-check'
-      })
-      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-    }
-
-    logger.info('User authenticated', {
-      email: user.mail
-    })
+    // Attempt to get the user session explicitly
+    const session = await requireUserSession(event)
+    user = session.user
+  }
+  catch (authError) {
+    logger.warn('Unauthorized access attempt', { endpoint: 'department-head-check' })
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+  const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
+  try {
+    logger.info('User authenticated', { email: userEmail })
 
     const db = useDB()
 
-    // Check if the user is a department head
-    logger.debug('Checking department head status', {
-      email: user.mail
-    })
+    logger.debug('Checking department head status', { email: userEmail })
 
-    const deptHeadResult = await db.select()
+    const deptHeadResult = await db
+      .select()
       .from(departmentHeads)
       .where(
         and(
-          eq(departmentHeads.email, user.mail),
+          eq(departmentHeads.email, userEmail),
           eq(departmentHeads.isActive, 1)
         )
       )
@@ -42,18 +39,15 @@ export default defineEventHandler(async (event) => {
 
     if (isDepartmentHead) {
       logger.info('User is a department head', {
-        email: user.mail,
+        email: userEmail,
         department: deptHeadResult[0].department,
         jobTitle: deptHeadResult[0].jobTitle
       })
     }
     else {
-      logger.info('User is not a department head', {
-        email: user.mail
-      })
+      logger.info('User is not a department head', { email: userEmail })
     }
 
-    // If they are a department head, also return the department information
     const departmentInfo = isDepartmentHead
       ? {
           department: deptHeadResult[0].department,

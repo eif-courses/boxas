@@ -35,12 +35,13 @@ export interface ProjectTopicRegistrationData {
   IS_REGISTERED?: number // 0 or 1
 
   // Added fields for workflow
-  status?: 'draft' | 'submitted' | 'needs_revision' | 'approved' | 'rejected'
+  status?: 'draft' | 'submitted' | 'needs_revision' | 'approved' | 'head_approved'
   comments?: TopicComment[]
 }
 
 // Type for data managed by the form and emitted on save
 export interface ProjectTopicRegistrationFormData {
+  studentRecordId?: number // Add this line
   TITLE: string
   TITLE_EN: string
   PROBLEM: string
@@ -48,8 +49,8 @@ export interface ProjectTopicRegistrationFormData {
   TASKS: string
   COMPLETION_DATE: Date | string | null
   SUPERVISOR: string
-  REGISTRATION_DATE: Date | null // Date set when form opens
-  status: string // Added for workflow status
+  REGISTRATION_DATE: Date | null
+  status: string
 }
 
 // --- Props ---
@@ -93,6 +94,10 @@ const props = defineProps({
   trailing: {
     type: Boolean,
     default: false
+  },
+  departmentHeadName: {
+    type: String,
+    default: ''
   }
 })
 
@@ -249,23 +254,22 @@ const unreadCommentsCount = computed(() => {
   ).length
 })
 
-// Computed for status labels based on language
 const statusLabels = computed(() => {
   if (isEnglishVariant.value) {
     return {
       draft: 'Draft',
       submitted: 'Submitted',
       needs_revision: 'Needs Revision',
-      approved: 'Approved',
-      rejected: 'Rejected'
+      approved: 'Supervisor Approved', // Change to clarify it's the supervisor
+      head_approved: 'Approved by Department Head'
     }
   }
   return {
     draft: 'Juodraštis',
     submitted: 'Pateikta',
     needs_revision: 'Reikia taisymų',
-    approved: 'Patvirtinta',
-    rejected: 'Atmesta'
+    approved: 'Patvirtinta vadovo', // Change to clarify it's the supervisor
+    head_approved: 'Patvirtinta katedros vedėjo'
   }
 })
 
@@ -276,8 +280,12 @@ const canEdit = computed(() => {
     return !formData.value.status || formData.value.status === 'draft' || formData.value.status === 'needs_revision'
   }
 
-  // Supervisors and department heads can edit status and add comments
-  // but not the form content directly
+  // Department heads can now edit all fields
+  if (props.userRole === 'department_head') {
+    return true
+  }
+
+  // Supervisors cannot edit the form content directly
   return false
 })
 
@@ -384,7 +392,6 @@ const validate = (state: ProjectTopicRegistrationFormData): FormError[] => {
   return errors
 }
 
-// Save form data
 // Similarly, modify your handleSave function to ensure studentRecordId is included
 const handleSave = async () => {
   isSaving.value = true
@@ -392,45 +399,22 @@ const handleSave = async () => {
   errorMessage.value = ''
 
   try {
-    // Make sure studentRecordId is explicitly included
-    const payload = {
-      studentRecordId: props.initialData.studentRecordId,
-      TITLE: formData.value.TITLE,
-      TITLE_EN: formData.value.TITLE_EN,
-      PROBLEM: formData.value.PROBLEM,
-      OBJECTIVE: formData.value.OBJECTIVE,
-      TASKS: formData.value.TASKS,
-      COMPLETION_DATE: formData.value.COMPLETION_DATE,
-      SUPERVISOR: formData.value.SUPERVISOR,
-      status: formData.value.status
+    // Create a complete form data object that includes studentRecordId
+    const completeFormData = {
+      ...formData.value,
+      studentRecordId: props.initialData.studentRecordId
     }
 
-    console.log('Saving with payload:', payload)
+    console.log('Emitting complete form data:', completeFormData)
 
-    // First emit save for potential additional handling
-    emit('save', formData.value)
+    // Emit the save event with the complete form data
+    emit('save', completeFormData)
 
-    // Then post to API - using your existing endpoint
-    const response = await fetch('/api/students/project-topics', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null)
-      throw new Error(errorData?.statusMessage || `Error: ${response.status}`)
-    }
-
-    const result = await response.json()
-
-    // Close modal and reset states
+    // Close modal and reset states after successful save
     closeModal()
     emit('success')
   }
-  catch (error: any) {
+  catch (error) {
     isError.value = true
     errorMessage.value = error.message || 'Failed to save topic registration'
     console.error('Error saving project topic registration:', error)
@@ -552,11 +536,17 @@ const handleStatusChange = async (newStatus: string) => {
     // First update UI to give immediate feedback
     formData.value.status = newStatus
 
+    // Special case for department head approval
+    if (newStatus === 'head_approved') {
+      console.log('Final approval by department head')
+    }
+
     // Log the data being passed to help with debugging
     console.log('Status change:', {
       newStatus,
       studentRecordId: props.initialData.studentRecordId,
-      topicData: props.initialData
+      topicData: props.initialData,
+      changedBy: props.userRole
     })
 
     // Emit the status change for parent component to handle
@@ -627,16 +617,6 @@ onBeforeUnmount(() => {
       :trailing="trailing"
       @click="openModal"
     />
-
-    <!--    <UButton -->
-    <!--      :label="buttonLabel" -->
-    <!--      icon="i-heroicons-pencil-square" -->
-    <!--      size="xs" -->
-    <!--      :color="formData.status === 'approved' ? 'green' : formData.status === 'rejected' ? 'red' : formData.status === 'needs_revision' ? 'orange' : 'blue'" -->
-    <!--      variant="solid" -->
-    <!--      @click="openModal" -->
-    <!--    /> -->
-
     <UModal
       v-model="isOpen"
       prevent-close
@@ -651,7 +631,10 @@ onBeforeUnmount(() => {
             </h3>
             <UBadge
               v-if="formData.status"
-              :color="formData.status === 'approved' ? 'green' : formData.status === 'rejected' ? 'red' : formData.status === 'needs_revision' ? 'orange' : 'blue'"
+              :color="formData.status === 'needs_revision' ? 'amber'
+                : formData.status === 'approved' ? 'blue'
+                  : formData.status === 'head_approved' ? 'green'
+                    : formData.status === 'submitted' ? 'blue' : 'gray'"
               class="ml-3"
             >
               {{ statusLabels[formData.status] }}
@@ -966,7 +949,9 @@ onBeforeUnmount(() => {
                     <p class="mb-2">
                       {{ isEnglishVariant ? 'Student:' : 'Studentas(-ė):' }}
                     </p>
-                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1">
+                      {{ displayData.NAME }}
+                    </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                       {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
                     </p>
@@ -976,7 +961,9 @@ onBeforeUnmount(() => {
                     <p class="mb-2">
                       {{ isEnglishVariant ? 'Final Project Supervisor:' : 'Baigiamojo darbo vadovas(-ė):' }}
                     </p>
-                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1" />
+                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 mb-1">
+                      {{ formData.SUPERVISOR }}
+                    </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                       {{ isEnglishVariant ? '(signature) (name, surname)' : '(parašas) (vardas, pavardė)' }}
                     </p>
@@ -991,13 +978,56 @@ onBeforeUnmount(() => {
                   <div class="flex items-end gap-2">
                     <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 w-48" />
                     <p class="mr-2 whitespace-nowrap">
-                      {{ isEnglishVariant ? 'Department Head' : 'katedros vedėjas(-a)' }}
+                      {{ isEnglishVariant ? 'Head of Department' : 'katedros vedėjas(-a)' }}
                     </p>
-                    <div class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 flex-grow" />
+                    <div
+                      class="border-b border-dashed border-gray-300 dark:border-gray-700 h-6 flex-grow"
+                      :class="{ 'bg-green-50 dark:bg-green-900/10': formData.status === 'head_approved' }"
+                    >
+                      <!-- Display the department head's name when status is head_approved -->
+                      <span
+                        v-if="formData.status === 'head_approved'"
+                        class="inline-block px-2 py-1 text-sm"
+                      >
+                        {{ props.departmentHeadName || props.userName }}
+                        <span class="text-xs text-gray-500 ml-2">{{ formatDate(new Date()) }}</span>
+                      </span>
+                    </div>
                   </div>
-
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {{ isEnglishVariant ? '(signature, date) (name, surname)' : '(parašas, data) (vardas, pavardė)' }}
+                  </p>
+                </div>
+
+                <!-- Department Head Actions -->
+                <div
+                  v-if="userRole === 'department_head' && (formData.status === 'approved' || formData.status === 'needs_revision')"
+                  class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
+                >
+                  <h4 class="font-medium mb-2">
+                    {{ isEnglishVariant ? 'Department Head Review:' : 'Katedros vedėjo peržiūra:' }}
+                  </h4>
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="green"
+                      size="sm"
+                      icon="i-heroicons-check-badge"
+                      @click="handleStatusChange('head_approved')"
+                    >
+                      {{ isEnglishVariant ? 'Final Approval' : 'Galutinis patvirtinimas' }}
+                    </UButton>
+                    <UButton
+                      color="amber"
+                      size="sm"
+                      icon="i-heroicons-exclamation-triangle"
+                      @click="handleStatusChange('needs_revision')"
+                    >
+                      {{ isEnglishVariant ? 'Request Revisions' : 'Prašyti pataisymų' }}
+                    </UButton>
+                  </div>
+
+                  <p class="mt-2 text-xs text-gray-500">
+                    {{ isEnglishVariant ? 'Please review the topic registration. As department head, your approval finalizes the topic registration process.' : 'Peržiūrėkite temos registraciją. Kaip katedros vedėjo patvirtinimas baigia temos registracijos procesą.' }}
                   </p>
                 </div>
 
@@ -1011,10 +1041,41 @@ onBeforeUnmount(() => {
                   </h4>
                   <div class="flex items-center space-x-3">
                     <UButton
-                      color="green"
+                      color="blue"
                       size="sm"
                       icon="i-heroicons-check-circle"
                       @click="handleStatusChange('approved')"
+                    >
+                      {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
+                    </UButton>
+                    <UButton
+                      color="amber"
+                      size="sm"
+                      icon="i-heroicons-exclamation-triangle"
+                      @click="handleStatusChange('needs_revision')"
+                    >
+                      {{ isEnglishVariant ? 'Needs Revision' : 'Reikia taisymų' }}
+                    </UButton>
+                  </div>
+
+                  <p class="mt-2 text-xs text-gray-500">
+                    {{ isEnglishVariant ? 'Please review the topic registration and approve it or request revisions.' : 'Peržiūrėkite temos registraciją ir patvirtinkite ją arba paprašykite pataisymų.' }}
+                  </p>
+                </div>
+
+                <div
+                  v-if="userRole === 'department_head' && formData.status === 'approved'"
+                  class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-6"
+                >
+                  <h4 class="font-medium mb-2">
+                    {{ isEnglishVariant ? 'Review Decision:' : 'Peržiūros sprendimas:' }}
+                  </h4>
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="green"
+                      size="sm"
+                      icon="i-heroicons-check-circle"
+                      @click="handleStatusChange('head_approved')"
                     >
                       {{ isEnglishVariant ? 'Approve' : 'Patvirtinti' }}
                     </UButton>
@@ -1077,9 +1138,8 @@ onBeforeUnmount(() => {
                 <div class="text-right space-x-2 pt-4 border-t border-gray-200 dark:border-gray-800 mt-8">
                   <UButton
                     type="button"
-                    color="gray"
-                    variant="ghost"
-                    :label="isEnglishVariant ? 'Cancel' : 'Atšaukti'"
+                    color="red"
+                    :label="isEnglishVariant ? 'Close' : 'Uždaryti'"
                     :disabled="isSaving"
                     @click="closeModal"
                   />
@@ -1087,11 +1147,11 @@ onBeforeUnmount(() => {
                     v-if="canEdit"
                     type="submit"
                     color="primary"
-                    :label="isEnglishVariant ? 'Save Registration' : 'Išsaugoti registraciją'"
+                    :label="isEnglishVariant ? 'Save' : 'Išsaugoti'"
                     :loading="isSaving"
                   />
                   <UButton
-                    v-if="props.userRole === 'student' && (!formData.status || formData.status === 'draft')"
+                    v-if="props.userRole === 'student' && (!formData.status || formData.status === 'draft' || formData.status === 'needs_revision')"
                     type="button"
                     color="green"
                     :label="isEnglishVariant ? 'Submit for Review' : 'Pateikti peržiūrai'"
@@ -1237,7 +1297,7 @@ onBeforeUnmount(() => {
                       variant="ghost"
                       @click="cancelReply"
                     >
-                      {{ isEnglishVariant ? 'Cancel' : 'Atšaukti' }}
+                      {{ isEnglishVariant ? 'Cancel' : 'Uždaryti' }}
                     </UButton>
                     <UButton
                       size="xs"

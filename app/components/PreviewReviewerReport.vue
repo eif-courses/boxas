@@ -2,7 +2,7 @@
   <div>
     <UButton
       :label="buttonLabel"
-      icon="i-heroicons-document-text"
+      icon="i-heroicons-eye"
       size="xs"
       color="white"
       variant="solid"
@@ -34,7 +34,7 @@
               size="sm"
               square
               class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-400 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-700 dark:hover:text-red-400 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500 dark:focus-visible:ring-red-400"
-              :aria-label="isEnglishVariant ? 'Close modal' : 'Uždaryti modalą'"
+              :aria-label="isEnglishVariant ? 'Close modal' : 'Uždaryti'"
               @click="closeModal"
             />
           </div>

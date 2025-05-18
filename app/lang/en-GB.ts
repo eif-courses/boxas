@@ -169,8 +169,8 @@ export default {
     title: 'Information',
     versionLoaded: 'Version loaded successfully'
   },
-  submitted: 'Submitted',
-  approved: 'Topic approved',
+  submitted: 'Submitted for Review',
+  approved: 'Waiting Head of Department Approval',
   needs_revision: 'Needs revisions',
   draft: 'Draft',
   rejected: 'Rejected',
@@ -181,5 +181,7 @@ export default {
   final_project_topic: 'Topic registration form',
   no_topic: 'Not started',
   documents: 'Documents',
-  no_title: 'Title not specified'
+  no_title: 'Title not specified',
+  department_head: 'Head of Department',
+  head_approved: 'Approved by Head of Department'
 }

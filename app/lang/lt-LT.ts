@@ -169,9 +169,9 @@ export default {
     title: 'Informacija',
     versionLoaded: 'Versija sėkmingai įkelta'
   },
-  submitted: 'pateiktas',
-  approved: 'laukiama vedėjo patvirtinimo',
-  needs_revision: 'reikia pataisymų',
+  submitted: 'studentas pateikė peržiūrai',
+  approved: 'laukiama katedros vedėjo patvirtinimo',
+  needs_revision: 'laukiama studento pataisymų',
   draft: 'juodraštis',
   rejected: 'atmesta',
   topic: 'Tema',
@@ -181,5 +181,7 @@ export default {
   final_project_topic: 'Temos registravimo lapas',
   no_topic: 'nepradėtas pildyti',
   documents: 'Dokumentai',
-  no_title: 'Temos pavadinimas nenurodytas'
+  no_title: 'Temos pavadinimas nenurodytas',
+  department_head: 'Katedros vedėjas',
+  head_approved: 'Patvirtinta katedros vedėjo'
 }

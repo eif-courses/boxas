@@ -41,9 +41,10 @@ export default eventHandler(async (event) => {
       })
       throw createError({ statusCode: 403, message: 'Access denied: User not authenticated' })
     }
+    const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
 
     logger.info('User authenticated', {
-      email: user.mail,
+      email: userEmail,
       pathname: pathname,
       mode: mode
     })
@@ -150,7 +151,7 @@ export default eventHandler(async (event) => {
 
     // Log this access for auditing
     await logDocumentAccess({
-      user: user.mail,
+      user: userEmail,
       document: decodedPathname,
       mode: mode,
       timestamp: new Date().toISOString(),

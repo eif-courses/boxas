@@ -788,7 +788,7 @@ const getTopicButtonLabel = (row) => {
       return t('review')
     case 'approved':
       return t('view')
-    case 'rejected':
+    case 'head_approved':
       return t('view')
     default:
       return t('edit')
@@ -804,8 +804,8 @@ const getTopicStatusLabel = (status) => {
       return t('approved')
     case 'needs_revision':
       return t('needs_revision')
-    case 'rejected':
-      return t('rejected')
+    case 'head_approved':
+      return t('head_approved')
     case 'draft':
       return t('draft')
     default:
@@ -820,6 +820,8 @@ const getTopicStatusTooltip = (status) => {
       return t('topic_submitted_tooltip')
     case 'approved':
       return t('topic_approved_tooltip')
+    case 'head_approved':
+      return t('topic_head_approved_tooltip')
     case 'needs_revision':
       return t('topic_needs_revision_tooltip')
     case 'rejected':
@@ -837,9 +839,11 @@ const getTopicStatusColor = (status) => {
     case 'submitted':
       return 'blue'
     case 'approved':
-      return 'green'
+      return 'blue'
     case 'needs_revision':
       return 'orange'
+    case 'head_approved':
+      return 'green'
     case 'rejected':
       return 'red'
     case 'draft':
@@ -860,6 +864,8 @@ const getTopicStatusIcon = (status) => {
       return 'i-heroicons-exclamation-circle'
     case 'rejected':
       return 'i-heroicons-x-circle'
+    case 'head_approved':
+      return 'i-heroicons-eye'
     case 'draft':
       return 'i-heroicons-pencil-square'
     default:
@@ -1111,7 +1117,7 @@ const filteredStudents = computed(() => {
         if (!item.projectTopicRegistrations || item.projectTopicRegistrations.length === 0) {
           return 0 // No topic
         }
-        // Order: approved (3), submitted (2), needs_revision (1), rejected (0)
+        // Order: approved (3), submitted (2), needs_revision (1), head_approved (0)
         const status = item.projectTopicRegistrations[0].status
         switch (status) {
           case 'approved':
@@ -1120,7 +1126,7 @@ const filteredStudents = computed(() => {
             return 2
           case 'needs_revision':
             return 1
-          case 'rejected':
+          case 'head_approved':
             return 0
           default:
             return -1

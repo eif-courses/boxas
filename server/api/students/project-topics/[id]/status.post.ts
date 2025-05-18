@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Validate status
-  const validStatuses = ['draft', 'submitted', 'needs_revision', 'approved', 'rejected']
+  const validStatuses = ['draft', 'submitted', 'needs_revision', 'approved', 'rejected', 'head_approved']
   if (!validStatuses.includes(status)) {
     throw createError({
       statusCode: 400,

@@ -16,9 +16,9 @@ export default defineEventHandler(async (event) => {
       })
       throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     }
-
+    const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
     logger.info('User authenticated', {
-      email: user.mail
+      email: userEmail
     })
 
     const query = getQuery(event)
@@ -36,14 +36,14 @@ export default defineEventHandler(async (event) => {
 
     // First, check if the user is a department head
     logger.debug('Checking if user is a department head', {
-      email: user.mail
+      email: userEmail
     })
 
     const deptHeadResult = await db.select()
       .from(departmentHeads)
       .where(
         and(
-          eq(departmentHeads.email, user.mail),
+          eq(departmentHeads.email, userEmail),
           eq(departmentHeads.isActive, 1)
         )
       )
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
 
     if (isDepartmentHead) {
       logger.info('User is a department head', {
-        email: user.mail,
+        email: userEmail,
         department: deptHeadResult[0].department
       })
 
@@ -62,11 +62,11 @@ export default defineEventHandler(async (event) => {
     }
     else {
       logger.info('User is a regular supervisor', {
-        email: user.mail
+        email: userEmail
       })
 
       // Regular supervisor - only see their own students
-      conditions.push(eq(studentRecords.supervisorEmail, user.mail))
+      conditions.push(eq(studentRecords.supervisorEmail, userEmail))
     }
 
     // Add department filter if explicitly provided in the query

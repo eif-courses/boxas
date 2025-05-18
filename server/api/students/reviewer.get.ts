@@ -16,9 +16,9 @@ export default defineEventHandler(async (event) => {
       })
       throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     }
-
+    const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
     logger.info('User authenticated', {
-      email: user.mail
+      email: userEmail
     })
 
     const query = getQuery(event)
@@ -35,9 +35,9 @@ export default defineEventHandler(async (event) => {
     const conditions = []
 
     // For reviewer, we'll use their email to filter
-    conditions.push(eq(studentRecords.reviewerEmail, user.mail))
+    conditions.push(eq(studentRecords.reviewerEmail, userEmail))
     logger.debug('Filtering by reviewer email', {
-      reviewerEmail: user.mail
+      reviewerEmail: userEmail
     })
 
     // First, if no year is specified, determine the latest year from the database
@@ -76,7 +76,7 @@ export default defineEventHandler(async (event) => {
     if (!studentRecordsResult?.length) {
       logger.info('No students found', {
         year: latestYear,
-        reviewerEmail: user.mail
+        reviewerEmail: userEmail
       })
 
       return {
@@ -203,7 +203,7 @@ export default defineEventHandler(async (event) => {
       logger.info('Response prepared successfully', {
         studentCount: studentsData.length,
         year: latestYear,
-        reviewerEmail: user.mail
+        reviewerEmail: userEmail
       })
 
       return {

@@ -5,14 +5,15 @@ import { relations, sql } from 'drizzle-orm'
 export const departmentHeads = sqliteTable('department_heads', {
   id: integer('id').primaryKey(),
   email: text('email').notNull().unique(),
+  name: text('name').notNull(),
+  surname: text('surname').notNull(),
   department: text('department').notNull(),
+  departmentEn: text('departmentEn').notNull(),
   jobTitle: text('job_title').notNull(),
   isActive: integer('is_active').notNull().default(1),
   createdAt: integer('created_at').default(sql`(strftime('%s', 'now'))`)
 }, table => ({
-  emailIndex: index('department_heads_email_idx').on(table.email),
-  departmentIndex: index('department_heads_department_idx').on(table.department),
-  isActiveIndex: index('department_heads_is_active_idx').on(table.isActive)
+  emailIndex: index('department_heads_email_idx').on(table.email)
 }))
 
 export const commissionMembers = sqliteTable('commission_members', {

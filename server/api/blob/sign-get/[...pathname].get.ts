@@ -5,6 +5,7 @@ import { createError } from 'h3'
 export default eventHandler(async (event) => {
   // Get logger from event context
   const logger = event.context.logger || console
+  const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
 
   logger.info('Processing stream URL request')
 
@@ -25,7 +26,7 @@ export default eventHandler(async (event) => {
     }
 
     logger.info('User authenticated', {
-      email: user.mail,
+      email: userEmail,
       pathname
     })
 

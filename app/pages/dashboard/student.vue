@@ -41,7 +41,7 @@
               ({{ records.student.currentYear }})
             </p>
           </div>
-        </div>`
+        </div>
       </template>
 
       <!-- Assignment Section -->
@@ -119,7 +119,7 @@
                   {{ $t('final_project') || 'Baigiamasis darbas' }}
                 </h4>
                 <p class="text-xs text-gray-500">
-                  {{ formatDate(getFinalDocument().createdDate) }}
+                  {{ formatDate(getFinalDocument()?.createdDate) }}
                 </p>
               </div>
               <UButton
@@ -148,7 +148,7 @@
                   {{ $t('source_code') || 'Išeities kodas' }}
                 </h4>
                 <p class="text-xs text-gray-500">
-                  {{ formatDate(getSourceCodeDocument().createdDate) }}
+                  {{ formatDate(getSourceCodeDocument()?.createdDate) }}
                 </p>
               </div>
               <div class="flex gap-2">
@@ -328,17 +328,17 @@
             v-if="isStudent"
             icon="i-heroicons-video-camera"
             size="sm"
-            :color="records.videos.length > 0 ? 'orange' : 'primary'"
-            :variant="records.videos.length > 0 ? 'outline' : 'solid'"
+            :color="records.videos?.length > 0 ? 'orange' : 'primary'"
+            :variant="records.videos?.length > 0 ? 'outline' : 'solid'"
             @click="openVideoUploader = true"
           >
-            {{ records.videos.length > 0 ? ($t('update_video') || 'Atnaujinti vaizdo įrašą') : ($t('upload_video') || 'Įkelti vaizdo įrašą') }}
+            {{ records.videos?.length > 0 ? ($t('update_video') || 'Atnaujinti vaizdo įrašą') : ($t('upload_video') || 'Įkelti vaizdo įrašą') }}
           </UButton>
         </div>
 
         <!-- Video Player -->
         <div
-          v-if="records.videos.length > 0"
+          v-if="records.videos?.length > 0"
           class="bg-gray-50 rounded-md overflow-hidden"
         >
           <VideoPlayer
@@ -467,19 +467,19 @@
         <UCard>
           <template #header>
             <h3 class="text-lg font-semibold">
-              {{ records.videos.length > 0 ? ($t('update_video_presentation') || 'Atnaujinti vaizdo pristatymą') : ($t('upload_video_presentation') || 'Įkelti vaizdo pristatymą') }}
+              {{ records.videos?.length > 0 ? ($t('update_video_presentation') || 'Atnaujinti vaizdo pristatymą') : ($t('upload_video_presentation') || 'Įkelti vaizdo pristatymą') }}
             </h3>
           </template>
 
           <div class="p-4">
             <p class="mb-4 text-sm text-gray-600">
-              {{ records.videos.length > 0
+              {{ records.videos?.length > 0
                 ? ($t('update_video_instructions') || 'Pasirinkite naują vaizdo įrašą, kuris pakeis dabartinį pristatymą')
                 : ($t('upload_video_instructions') || 'Pasirinkite vaizdo įrašą su jūsų darbo pristatymu') }}
             </p>
 
             <VideoUploader
-              :title="records.videos.length > 0 ? 'Atnaujinti vaizdo įrašą' : ''"
+              :title="records.videos?.length > 0 ? 'Atnaujinti vaizdo įrašą' : ''"
               @video-uploaded="handleVideoUploadSuccess"
             />
           </div>
@@ -501,29 +501,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+<script setup>
 import { useI18n } from 'vue-i18n'
-import ZipUploader from '~/components/ZipUploader.vue'
-import PreviewSupervisorReport from '~/components/PreviewSupervisorReport.vue'
-import PreviewReviewerReport from '~/components/PreviewReviewerReport.vue'
-import VideoUploader from '~/components/VideoUploader.vue'
-import VideoPlayer from '~/components/VideoPlayer.vue'
-import type { DocumentRecord, ReviewerReport, StudentRecord, VideoRecord, SupervisorReport } from '~~/server/utils/db'
-import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
+import { useAuthStore } from '~/stores/auth'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 import { useReviewerReports } from '~/composables/useReviewerReports'
-import { useAuthStore } from '~/stores/auth'
+import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useProjectTopic } from '~/composables/useProjectTopic'
-import type {
-  ProjectTopicRegistrationFormData,
-  ProjectTopicRegistrationData,
-  TopicComment
-} from '~/components/ProjectTopicRegistration.vue'
-
-definePageMeta({
-  middleware: ['student-access']
-})
 
 // UI state
 const openDocumentUploader = ref(false)
@@ -531,15 +515,12 @@ const openVideoUploader = ref(false)
 const openSourceCodeUploader = ref(false)
 const isFetchingDocument = ref(false)
 const isSubmitting = ref(false)
-const notificationMessage = ref('')
-const showNotification = ref(false)
 
 const { t } = useI18n()
 
 // User role state
 const userStore = useAuthStore()
 const isStudent = computed(() => userStore.isStudent)
-// const isSupervisor = computed(() => userStore.isTeacher)
 
 // Utility composables
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
@@ -547,26 +528,7 @@ const { determineFormVariant } = useFormUtilities()
 const { getReviewerModalData } = useReviewerReports()
 
 // Fetch student data
-interface StudentRecordsResponse {
-  student: StudentRecord
-  documents: DocumentRecord[]
-  videos: VideoRecord[]
-  supervisorReports: SupervisorReport[]
-  reviewerReports: ReviewerReport[]
-  assignment?: {
-    id: number
-    title: string
-    titleEn: string
-    objective: string
-    supervisor: string
-    isSigned: number
-    assignmentDate: number
-    lastUpdated: number
-    status: string
-  }
-}
-
-const { data: records, refresh, status } = useFetch<StudentRecordsResponse>('/api/students/get-documents')
+const { data: records, refresh, status } = useFetch('/api/students/get-documents')
 
 // Get user's full name from records
 const getUserFullName = computed(() => {
@@ -621,7 +583,7 @@ const initializeTopicData = () => {
 }
 
 // Handler for saving topic registration
-const handleSaveRegistration = async (data: ProjectTopicRegistrationFormData) => {
+const handleSaveRegistration = async (data) => {
   isSubmitting.value = true
 
   try {
@@ -647,7 +609,7 @@ const handleSaveRegistration = async (data: ProjectTopicRegistrationFormData) =>
       color: 'green'
     })
   }
-  catch (err: any) {
+  catch (err) {
     console.error('Error saving topic:', err)
 
     // Show error message
@@ -663,7 +625,7 @@ const handleSaveRegistration = async (data: ProjectTopicRegistrationFormData) =>
 }
 
 // Handler for comments
-const handleComment = async (comment: TopicComment) => {
+const handleComment = async (comment) => {
   try {
     await addComment(comment)
 
@@ -677,7 +639,7 @@ const handleComment = async (comment: TopicComment) => {
       color: 'green'
     })
   }
-  catch (err: any) {
+  catch (err) {
     console.error('Error adding comment:', err)
 
     // Show error message
@@ -690,7 +652,7 @@ const handleComment = async (comment: TopicComment) => {
 }
 
 // Handler for status changes
-const handleStatusChange = async (status: string) => {
+const handleStatusChange = async (status) => {
   try {
     await changeStatus(status)
 
@@ -704,7 +666,7 @@ const handleStatusChange = async (status: string) => {
       color: 'green'
     })
   }
-  catch (err: any) {
+  catch (err) {
     console.error('Error changing status:', err)
 
     // Show error message
@@ -717,11 +679,11 @@ const handleStatusChange = async (status: string) => {
 }
 
 // Handler for marking comments as read
-const handleMarkAsRead = async (commentId: number) => {
+const handleMarkAsRead = async (commentId) => {
   try {
     await markCommentAsRead(commentId)
   }
-  catch (err: any) {
+  catch (err) {
     console.error('Error marking comment as read:', err)
   }
 }
@@ -755,7 +717,7 @@ const formatDate = (timestamp) => {
 }
 
 // Get supervisor report data for preview component
-const getSupervisorReportData = (report: SupervisorReport) => {
+const getSupervisorReportData = (report) => {
   const student = records.value?.student
 
   if (!student || !report) return null
@@ -819,7 +781,7 @@ const handleVideoUploadSuccess = async (result) => {
   // Show success notification
   useToast().add({
     title: t('success') || 'Sėkmingai',
-    description: records.value?.videos.length > 0
+    description: records.value?.videos?.length > 0
       ? (t('video_updated_success') || 'Vaizdo įrašas sėkmingai atnaujintas')
       : (t('video_uploaded_success') || 'Vaizdo įrašas sėkmingai įkeltas'),
     color: 'green'
@@ -827,7 +789,7 @@ const handleVideoUploadSuccess = async (result) => {
 }
 
 // File handling
-async function getFile(fileName: string) {
+async function getFile(fileName) {
   try {
     const response = await $fetch(`/api/blob/get/${fileName}`)
     if (response?.url) {
@@ -841,7 +803,7 @@ async function getFile(fileName: string) {
   }
 }
 
-const openDocument = async (doc: DocumentRecord) => {
+const openDocument = async (doc) => {
   if (!doc) return
 
   isFetchingDocument.value = true
@@ -867,10 +829,6 @@ const openDocument = async (doc: DocumentRecord) => {
 
 // Initialization and lifecycle hooks
 onMounted(async () => {
-  // For production use, uncomment these lines:
-  // isStudent.value = userStore.isStudent
-  // isSupervisor.value = userStore.isTeacher
-
   // Wait for records to be loaded
   if (records.value?.student) {
     try {
@@ -889,7 +847,6 @@ onMounted(async () => {
     }
   }
 })
-
 // Watch for records changes to initialize topic data
 watch(() => records.value?.student, async (newVal) => {
   if (newVal) {
