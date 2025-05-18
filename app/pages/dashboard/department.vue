@@ -20,39 +20,6 @@
             class="w-full"
           />
         </div>
-
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <UToggle
-              v-model="showFavoritesOnly"
-              color="amber"
-            >
-              <template #left>
-                <UIcon
-                  name="i-heroicons-star"
-                  class="w-5 h-5 text-amber-400"
-                />
-              </template>
-            </UToggle>
-
-            {{ $t('favorites') }}
-            <span
-              class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer"
-              @click="showFavoritesOnly = !showFavoritesOnly"
-            >
-
-              <UBadge
-                v-if="allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length > 0"
-                color="amber"
-                variant="solid"
-                size="xs"
-                class="ml-1"
-              >
-                {{ allStudents.value?.students?.filter(s => s.student.isFavorite === 1).length }}
-              </UBadge>
-            </span>
-          </div>
-        </div>
       </div>
 
       <div class="flex flex-col md:flex-row md:justify-between md:items-center w-full px-4 py-3 gap-3">
@@ -111,7 +78,7 @@
             icon="i-heroicons-funnel"
             color="gray"
             size="xs"
-            :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter && !showFavoritesOnly"
+            :disabled="search === '' && selectedStatus.length === 0 && !yearFilter && !groupFilter && !programFilter"
             @click="resetFilters"
           >
             {{ $t('reset') }}
@@ -132,34 +99,20 @@
         class="w-full"
         :ui="{
           td: { base: 'whitespace-nowrap px-2 py-1' },
-          th: { base: 'px-2 py-1' },
+          th: {
+            base: 'px-2 py-1',
+            padding: 'px-2 py-2',
+            favorite: 'w-10',
+            group: 'w-16',
+            name: 'w-1/4',
+            topic: 'w-1/5',
+            supervisor: 'w-1/5',
+            reviewer: 'w-1/5',
+            actions: 'w-1/6'
+          },
           default: { checkbox: { color: 'primary' } }
         }"
       >
-        <template #favorite-data="{ row }">
-          <div class="flex justify-center items-center">
-            <!-- Using v-if/v-else for better reactivity -->
-            <UButton
-              v-if="row.student.isFavorite === 1"
-              icon="i-heroicons-star-solid"
-              size="xs"
-              color="amber"
-              variant="ghost"
-              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-100"
-              @click.stop="toggleFavorite(row.student)"
-            />
-            <UButton
-              v-else
-              icon="i-heroicons-star"
-              size="xs"
-              color="amber"
-              variant="ghost"
-              class="rounded-full w-8 h-8 p-0 transition-all duration-200 opacity-50 hover:opacity-80"
-              @click.stop="toggleFavorite(row.student)"
-            />
-          </div>
-        </template>
-
         <template #group-data="{ row }">
           <div class="text-center w-12">
             {{ row.student.studentGroup }}
@@ -170,60 +123,127 @@
           <div class="truncate font-bold">
             {{ row.student.studentName }} {{ row.student.studentLastname }}
           </div>
-          <div>{{ row.student.finalProjectTitle }}</div>
-          <div>{{ row.student.finalProjectTitleEn }}</div>
+          <div class="truncate text-xs text-gray-600">
+            {{ row.student.finalProjectTitle }}
+          </div>
+          <div class="truncate text-xs text-gray-500 italic">
+            {{ row.student.finalProjectTitleEn }}
+          </div>
+        </template>
+
+        <!-- NEW COLUMN: Topic Registration Status -->
+        <template #topic-data="{ row }">
+          <div class="flex flex-col gap-2">
+            <!-- Status Badge in a separate row -->
+            <div class="flex items-center">
+              <UBadge
+                v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
+                :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
+                variant="soft"
+                size="xs"
+                class="whitespace-nowrap min-w-[80px] text-center"
+                :ui="{
+                  base: 'inline-flex items-center rounded-md cursor-help justify-center',
+                  tooltip: { base: 'z-50 px-2 py-1 rounded text-xs' }
+                }"
+                :tooltips="{ content: getTopicStatusTooltip(row.projectTopicRegistrations[0].status) }"
+              >
+                {{ getTopicStatusLabel(row.projectTopicRegistrations[0].status) }}
+              </UBadge>
+              <UBadge
+                v-else
+                color="gray"
+                variant="soft"
+                size="xs"
+                class="whitespace-nowrap min-w-[80px] text-center"
+              >
+                {{ $t('no_topic') }}
+              </UBadge>
+            </div>
+
+            <!-- Topic Registration button in a separate row -->
+            <div class="flex items-center">
+              <ProjectTopicRegistration
+                v-if="row.projectTopicRegistrations && row.projectTopicRegistrations.length > 0"
+                :key="`topic-${row.student.id}-${row.projectTopicRegistrations[0].status}-${forceRerender}`"
+                :initial-data="{
+                  studentRecordId: row.student.id,
+                  GROUP: row.student.studentGroup,
+                  NAME: `${row.student.studentName} ${row.student.studentLastname}`,
+                  TITLE: row.projectTopicRegistrations[0].title,
+                  TITLE_EN: row.projectTopicRegistrations[0].titleEn,
+                  PROBLEM: row.projectTopicRegistrations[0].problem,
+                  OBJECTIVE: row.projectTopicRegistrations[0].objective,
+                  TASKS: row.projectTopicRegistrations[0].tasks,
+                  COMPLETION_DATE: row.projectTopicRegistrations[0].completionDate,
+                  SUPERVISOR: row.projectTopicRegistrations[0].supervisor,
+                  status: row.projectTopicRegistrations[0].status,
+                  comments: row.projectTopicRegistrations[0].comments || []
+                }"
+                :user-role="'department_head'"
+                :user-name="user?.displayName || ''"
+                :form-variant="determineFormVariant(row.student.studentGroup)"
+                :icon="getTopicStatusIcon(row.projectTopicRegistrations[0].status)"
+                :color="getTopicStatusColor(row.projectTopicRegistrations[0].status)"
+                :variant="'solid'"
+                :button-label="getTopicButtonLabel(row)"
+                :trailing="false"
+                class="p-1 text-xs"
+                @init="handleInitialData"
+                @save="(data) => handleTopicSave(data)"
+                @comment="handleTopicComment"
+                @status-change="handleTopicStatusChange"
+                @mark-read="handleMarkCommentRead"
+                @success="() => refreshNuxtData('allStudents')"
+              />
+            </div>
+          </div>
         </template>
 
         <template #supervisor-data="{ row }">
-          <div class="truncate mb-1">
+          <div class="truncate text-xs mb-1">
             {{ row.student.supervisorEmail }}
           </div>
           <template v-if="row.supervisorReports && row.supervisorReports.length > 0">
             <div>
               <PreviewSupervisorReport
                 :document-data="{
-                  // --- Data from main student record ---
-                  // Adjust field names based on your actual StudentRecord interface
                   NAME: row.student?.studentName +' '+row.student?.studentLastname,
                   PROGRAM: row.student?.studyProgram ?? 'N/A',
                   CODE: row.student?.programCode ?? 'N/A',
-                  TITLE: row.student?.finalProjectTitle ?? 'N/A', // Example: maybe title is thesisTitle
-                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas', // Provide default or get from studentRecord
+                  TITLE: row.student?.finalProjectTitle ?? 'N/A',
+                  DEPT: row.student?.department ?? 'Elektronikos ir informatikos fakultetas',
                   WORK: row.student?.supervisorWorkplace ?? 'Vilniaus kolegija Elektronikos ir informatikos fakultetas',
-                  // --- Data specific to THIS report ---
-                  EXPL: row.supervisorReports[0].supervisorComments ?? '', // Use comments as EXPL
+                  EXPL: row.supervisorReports[0].supervisorComments ?? '',
                   OM: row.supervisorReports[0].otherMatch ?? 0,
                   SSM: row.supervisorReports[0].oneMatch ?? 0,
                   STUM: row.supervisorReports[0].ownMatch ?? 0,
                   JM: row.supervisorReports[0].joinMatch ?? 0,
-                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate), // Format the timestamp for the component
+                  createdDate: formatUnixDateTime(row.supervisorReports[0].createdDate),
                   PASS: row.supervisorReports[0].isPassOrFailed ?? 1,
-                  // --- Data that might need specific logic ---
-                  // Assuming supervisor details might be on studentRecord or fetched/known elsewhere
                   SUPER: row.supervisorReports[0].supervisorName ?? 'N/A Supervisor',
                   POS: row.supervisorReports[0].supervisorPosition ?? 'N/A Position',
-                  // Use the report's creation date, formatted, for the main 'DATE' field
                   DATE: formatUnixDate(row.supervisorReports[0].createdDate)
                 }"
-                :button-label="$t('preview_supervisor_report')"
+                :button-label="$t('view')"
                 :form-variant="determineFormVariant(row.student?.studentGroup)"
                 :modal-title="$t('supervisor_report')"
               />
             </div>
           </template>
           <template v-else>
-            <div class="flex gap-2 justify-left">
+            <div class="flex gap-1 justify-left items-center">
               <UIcon
                 name="i-heroicons-clock"
-                class="w-5 h-5 text-yellow-500"
+                class="w-4 h-4 text-yellow-500"
               />
-              <span>{{ $t('supervisor_report') }} ({{ $t('report_not_filled') }})</span>
+              <span class="text-xs">{{ $t('not_filled') }}</span>
             </div>
           </template>
         </template>
 
         <template #reviewer-data="{ row }">
-          <div class="truncate mb-1">
+          <div class="truncate text-xs mb-1">
             {{ row.student.reviewerName }}
           </div>
           <template v-if="row.reviewerReports && row.reviewerReports.length > 0">
@@ -231,17 +251,17 @@
               <PreviewReviewerReport
                 :review-data="getReviewerModalData(row)"
                 :form-variant="determineFormVariant(row.student?.studentGroup)"
-                button-label="Peržiūrėti Recenziją"
+                button-label="Peržiūrėti"
               />
             </div>
           </template>
           <template v-else>
-            <div class="flex gap-2 justify-left">
+            <div class="flex gap-1 justify-left items-center">
               <UIcon
                 name="i-heroicons-clock"
-                class="w-5 h-5 text-yellow-500"
+                class="w-4 h-4 text-yellow-500"
               />
-              <span>{{ $t('reviewer_report') }} ({{ $t('report_not_filled') }})</span>
+              <span class="text-xs">{{ $t('not_filled') }}</span>
             </div>
           </template>
         </template>
@@ -254,9 +274,8 @@
               size="xs"
               color="white"
               variant="solid"
-              label="Vaizdo"
               :trailing="false"
-              class="p-1 text-xs"
+              class="p-1 text-xs min-w-0"
               @click="sendStudentData(row.videos[0], row.student)"
             />
 
@@ -270,33 +289,13 @@
                 size="xs"
                 color="white"
                 variant="solid"
-                :label="doc.documentType === 'PDF' ? 'PDF' : 'ZIP'"
                 :trailing="false"
-                class="p-1 text-xs"
+                class="p-1 text-xs min-w-0"
                 @click="openDocument(doc)"
               />
             </template>
           </div>
         </template>
-
-        <!--        <template #status-data="{ row }"> -->
-        <!--          <div class="flex items-center gap-2 justify-center"> -->
-        <!--            <template v-if="row.reviewerReports && row.reviewerReports.length > 0 && row.supervisorReports && row.supervisorReports.length > 0"> -->
-        <!--              <UIcon -->
-        <!--                name="i-heroicons-check-circle" -->
-        <!--                class="w-5 h-5 text-green-500" -->
-        <!--              /> -->
-        <!--              <span>Pateikta</span> -->
-        <!--            </template> -->
-        <!--            <template v-else> -->
-        <!--              <UIcon -->
-        <!--                name="i-heroicons-clock" -->
-        <!--                class="w-5 h-5 text-yellow-500" -->
-        <!--              /> -->
-        <!--              <span>Laukiama...</span> -->
-        <!--            </template> -->
-        <!--          </div> -->
-        <!--        </template> -->
       </UTable>
 
       <div
@@ -330,15 +329,6 @@
         <p class="mt-2 text-gray-500">
           No students found matching your criteria
         </p>
-        <UButton
-          v-if="showFavoritesOnly"
-          color="gray"
-          size="sm"
-          class="mt-3"
-          @click="showFavoritesOnly = false"
-        >
-          Clear favorites filter
-        </UButton>
       </div>
 
       <template #footer>
@@ -390,38 +380,7 @@
       v-model="isOpen"
       prevent-close
     >
-      <!--      <UCard -->
-      <!--        :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }" -->
-      <!--        class="w-full max-w-6xl" -->
-      <!--      > -->
-      <!--        <template #header> -->
-      <!--          <div class="flex items-center justify-between"> -->
-      <!--            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white"> -->
-      <!--              {{ studentObject?.studentGroup }}, {{ studentObject?.studentName }} {{ studentObject?.studentLastname }} ({{ studentObject?.currentYear }}) -->
-      <!--              pristatomasis vaizdo įrašas -->
-      <!--            </h3> -->
-      <!--            <UButton -->
-      <!--              color="gray" -->
-      <!--              variant="ghost" -->
-      <!--              icon="i-heroicons-x-mark-20-solid" -->
-      <!--              class="ml-4" -->
-      <!--              @click="isOpen = false" -->
-      <!--            /> -->
-      <!--          </div> -->
-      <!--        </template> -->
-
-      <!--        <div class="p-4"> -->
-      <!--          <div class="flex justify-center"> -->
-      <!--            <iframe -->
-      <!--              v-if="videoObject?.uid" -->
-      <!--              :src="`https://customer-lgoylb8hch1to7bf.cloudflarestream.com/${videoObject.uid}/iframe`" -->
-      <!--              style="border: none; width: 800px; height: 450px;" -->
-      <!--              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" -->
-      <!--              allowfullscreen -->
-      <!--            /> -->
-      <!--          </div> -->
-      <!--        </div> -->
-      <!--      </UCard> -->
+      <!-- Video modal content goes here (commented out in original) -->
     </UModal>
   </div>
 </template>
@@ -429,120 +388,62 @@
 <script lang="ts" setup>
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useFormUtilities } from '~/composables/useFormUtilities'
+import type {
+  ProjectTopicRegistrationData
+} from '~/components/ProjectTopicRegistration.vue'
 
 definePageMeta({
-  middleware: ['department-access']
+  middleware: 'department-access'
 })
-
+const forceRerender = ref(0)
 const { t } = useI18n()
 
 const { getReviewerModalData } = useReviewerReports()
 
-const columns = [{
-  key: 'favorite',
-  sortable: false,
-  class: 'w-10'
-},
-{
-  key: 'group',
-  label: t('group'),
-  sortable: false
-},
-{
-  key: 'name',
-  label: t('fullname'),
-  sortable: true
-},
-{
-  key: 'reviewer',
-  label: t('reviewer'),
-  sortable: true
-},
-{
-  key: 'supervisor',
-  label: t('supervisor'),
-  sortable: true
-},
-{
-  key: 'actions',
-  label: t('actions'),
-  sortable: false
-}
-// {
-//   key: 'status',
-//   label: 'Būsena',
-//   sortable: true
-// }
+// Updated columns array to include the topic column
+const columns = [
+  {
+    key: 'group',
+    label: t('group'),
+    sortable: false
+  },
+  {
+    key: 'name',
+    label: t('fullname'),
+    sortable: true
+  },
+  {
+    key: 'topic', // New column for topic status
+    label: t('final_project_topic'),
+    sortable: true
+  },
+
+  {
+    key: 'actions',
+    label: t('documents'),
+    sortable: false
+  },
+  {
+    key: 'reviewer',
+    label: t('reviewer'),
+    sortable: true
+  },
+  {
+    key: 'supervisor',
+    label: t('supervisor'),
+    sortable: true
+  }
+
 ]
 
 const selectedColumns = ref(columns)
 const columnsTable = computed(() => columns.filter(column => selectedColumns.value.includes(column)))
-const excludeSelectColumn = computed(() => columns.filter(v => v.key !== 'select'))
 
-const showFavoritesOnly = ref(false)
 const isRefreshing = ref(false)
 
 const toast = useToast()
 
 const updateCounter = ref(0)
-
-// Simplified toggle function that forces refresh
-async function toggleFavorite(student) {
-  try {
-    // Get the current status and prepare new status
-    const currentStatus = student.isFavorite
-    const newStatus = currentStatus === 1 ? 0 : 1
-    const actionText = newStatus === 1 ? 'added to' : 'removed from'
-
-    // Set loading state
-    isRefreshing.value = true
-
-    // Call API to update favorite status
-    await $fetch(`/api/students/favorite/${student.id}`, {
-      method: 'PATCH',
-      body: { isFavorite: newStatus }
-    })
-
-    // After API succeeds, refresh the data
-    const queryParams = new URLSearchParams()
-    if (yearFilter.value) {
-      queryParams.set('year', yearFilter.value.toString())
-    }
-
-    // Get fresh data from server
-    const response = await $fetch(`/api/students/department?${queryParams.toString()}`)
-
-    // Update the data
-    allStudents.value = response
-
-    // Increment counter to force complete UI refresh
-    updateCounter.value++
-
-    // Show success notification
-    toast.add({
-      title: `${student.studentName} ${student.studentLastname}`,
-      description: `Successfully ${actionText} favorites`,
-      icon: newStatus === 1 ? 'i-heroicons-star-solid' : 'i-heroicons-star',
-      color: 'amber',
-      timeout: 3000
-    })
-  }
-  catch (error) {
-    console.error('Error updating favorite status:', error)
-
-    // Show error toast
-    toast.add({
-      title: 'Error',
-      description: 'Failed to update favorites status',
-      icon: 'i-heroicons-exclamation-triangle',
-      color: 'red',
-      timeout: 5000
-    })
-  }
-  finally {
-    isRefreshing.value = false
-  }
-}
 
 // Use the same function for the refresh button
 async function refreshData() {
@@ -581,6 +482,58 @@ async function refreshData() {
   }
   finally {
     isRefreshing.value = false
+  }
+}
+
+// Add helper functions for topic status (copied from supervisor view)
+const getTopicStatusLabel = (status) => {
+  switch (status) {
+    case 'submitted':
+      return t('submitted')
+    case 'approved':
+      return t('approved')
+    case 'needs_revision':
+      return t('needs_revision')
+    case 'rejected':
+      return t('rejected')
+    case 'draft':
+      return t('draft')
+    default:
+      return t('unknown')
+  }
+}
+
+const getTopicStatusTooltip = (status) => {
+  switch (status) {
+    case 'submitted':
+      return t('topic_submitted_tooltip')
+    case 'approved':
+      return t('topic_approved_tooltip')
+    case 'needs_revision':
+      return t('topic_needs_revision_tooltip')
+    case 'rejected':
+      return t('topic_rejected_tooltip')
+    case 'draft':
+      return t('topic_draft_tooltip')
+    default:
+      return ''
+  }
+}
+
+const getTopicStatusColor = (status) => {
+  switch (status) {
+    case 'submitted':
+      return 'blue'
+    case 'approved':
+      return 'green'
+    case 'needs_revision':
+      return 'orange'
+    case 'rejected':
+      return 'red'
+    case 'draft':
+      return 'gray'
+    default:
+      return 'gray'
   }
 }
 
@@ -651,12 +604,12 @@ const resetFilters = () => {
   yearFilter.value = null
   groupFilter.value = ''
   programFilter.value = ''
-  showFavoritesOnly.value = false
 }
 
 // Dynamic years from API
 const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
 
+// The API call is already using the department endpoint, no need to change
 const { data: allStudents, status, error: fetchError } = useLazyAsyncData('allStudents', async () => {
   const queryParams = new URLSearchParams()
   if (yearFilter.value) {
@@ -686,10 +639,6 @@ const filteredStudents = computed(() => {
   }
 
   let result = [...allStudents.value.students]
-
-  if (showFavoritesOnly.value) {
-    result = result.filter(item => item.student.isFavorite === 1)
-  }
 
   if (search.value.trim()) {
     const searchTerm = search.value.toLowerCase().trim()
@@ -722,6 +671,31 @@ const filteredStudents = computed(() => {
     if (sort.value.column === 'name') {
       valA = `${a.student.studentName} ${a.student.studentLastname}`.toLowerCase()
       valB = `${b.student.studentName} ${b.student.studentLastname}`.toLowerCase()
+    }
+    else if (sort.value.column === 'topic') {
+      // Sort by topic status
+      const getTopicValue = (item) => {
+        if (!item.projectTopicRegistrations || item.projectTopicRegistrations.length === 0) {
+          return 0 // No topic
+        }
+        // Order: approved (3), submitted (2), needs_revision (1), rejected (0)
+        const status = item.projectTopicRegistrations[0].status
+        switch (status) {
+          case 'approved':
+            return 3
+          case 'submitted':
+            return 2
+          case 'needs_revision':
+            return 1
+          case 'rejected':
+            return 0
+          default:
+            return -1
+        }
+      }
+
+      valA = getTopicValue(a)
+      valB = getTopicValue(b)
     }
     else {
       valA = a.student.id
@@ -766,7 +740,7 @@ watch(pageCount, (newValue) => {
   }
 })
 
-watch([search, groupFilter, programFilter, pageCount, showFavoritesOnly], () => {
+watch([search, groupFilter, programFilter, pageCount], () => {
   page.value = 1
 })
 
@@ -829,6 +803,266 @@ async function updateProjectTitle({ studentId, finalProjectTitle }) {
     return false
   }
 }
+
+const handleTopicStatusChange = async (newStatus: string, topicData?: ProjectTopicRegistrationData) => {
+  console.log('Parent received status change:', newStatus, 'topicData:', topicData)
+
+  try {
+    // Try to get the topic ID from the parameter or from currentStudentData
+    let topicId = topicData?.id || (currentStudentData.value?.id || null)
+    const studentRecordId = topicData?.studentRecordId || currentStudentId.value
+
+    console.log('Processing with:', { topicId, studentRecordId, topicData })
+
+    // If we don't have the student ID, log an error and return
+    if (!studentRecordId) {
+      console.error('Missing studentRecordId in handleTopicStatusChange')
+      toast.add({
+        title: t('error'),
+        description: t('missing_student_id'),
+        color: 'red'
+      })
+      return
+    }
+
+    // If we don't have the ID yet, try to fetch the topic
+    if (!topicId && studentRecordId) {
+      const topicResponse = await $fetch('/api/students/project-topics', {
+        params: {
+          studentRecordId: studentRecordId
+        }
+      })
+
+      if (topicResponse?.topic?.id) {
+        topicId = topicResponse.topic.id
+      }
+      else {
+        toast.add({
+          title: t('error'),
+          description: t('topic_not_found'),
+          color: 'red'
+        })
+        return
+      }
+    }
+
+    console.log('Updating topic status with ID:', topicId)
+
+    // Call the status update endpoint
+    const response = await $fetch(`/api/students/project-topics/${topicId}/status`, {
+      method: 'POST',
+      body: {
+        status: newStatus,
+        userRole: 'supervisor'
+      }
+    })
+
+    toast.add({
+      title: t('success'),
+      description: t('status_updated_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after status change
+    await refreshNuxtData('allStudents')
+
+    // Force component to re-render
+    forceRerender.value++
+
+    return response
+  }
+  catch (error) {
+    console.error('Error updating topic status:', error)
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_updating_status'),
+      color: 'red'
+    })
+  }
+}
+
+const handleMarkCommentRead = async (commentId: number) => {
+  try {
+    await $fetch(`/api/students/project-topics/comments/${commentId}/mark-read`, {
+      method: 'PUT'
+    })
+
+    // Refresh data after marking comment as read
+    await refreshNuxtData('allStudents')
+  }
+  catch (error) {
+    console.error('Error marking comment as read:', error)
+  }
+}
+const getTopicButtonLabel = (row) => {
+  if (!row.projectTopicRegistrations || row.projectTopicRegistrations.length === 0) {
+    return t('topic')
+  }
+
+  const status = row.projectTopicRegistrations[0].status
+
+  switch (status) {
+    case 'draft':
+      return t('edit')
+    case 'submitted':
+      return t('review')
+    case 'needs_revision':
+      return t('review')
+    case 'approved':
+      return t('view')
+    case 'rejected':
+      return t('view')
+    default:
+      return t('edit')
+  }
+}
+const getTopicStatusIcon = (status) => {
+  switch (status) {
+    case 'submitted':
+      return 'i-heroicons-document-check'
+    case 'approved':
+      return 'i-heroicons-check-circle'
+    case 'needs_revision':
+      return 'i-heroicons-exclamation-circle'
+    case 'rejected':
+      return 'i-heroicons-x-circle'
+    case 'draft':
+      return 'i-heroicons-pencil-square'
+    default:
+      return 'i-heroicons-document'
+  }
+}
+const handleInitialData = (data) => {
+  // Update the currentStudentId and currentStudentData when the component initializes
+  if (data && data.studentRecordId) {
+    currentStudentId.value = data.studentRecordId
+    currentStudentData.value = { ...data } // Create a copy to avoid reference issues
+    console.log('Set current student data:', currentStudentData.value)
+  }
+}
+
+const handleTopicSave = async (formData) => {
+  console.log('Parent received save:', formData)
+
+  try {
+    // Ensure studentRecordId is available
+    if (!formData.studentRecordId) {
+      console.error('Missing studentRecordId in handleTopicSave')
+      toast.add({
+        title: t('error'),
+        description: t('missing_student_id'),
+        color: 'red'
+      })
+      return
+    }
+
+    // Use the studentRecordId from the formData
+    const response = await $fetch('/api/students/project-topics', {
+      method: 'POST',
+      body: {
+        studentRecordId: formData.studentRecordId,
+        ...formData
+      }
+    })
+
+    toast.add({
+      title: t('success'),
+      description: t('topic_saved_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after save
+    await refreshNuxtData('allStudents')
+
+    // Force component to re-render
+    forceRerender.value++
+  }
+  catch (error) {
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_saving_topic'),
+      color: 'red'
+    })
+  }
+}
+
+const handleTopicComment = async (comment) => {
+  try {
+    // Use formData.id directly if it exists
+    let topicRegistrationId = comment.topicRegistrationId || null
+
+    // If we don't have the topic ID from the comment, try from currentStudentData
+    if (!topicRegistrationId && currentStudentData.value && currentStudentData.value.id) {
+      topicRegistrationId = currentStudentData.value.id
+    }
+
+    // If still no ID, try to fetch it
+    if (!topicRegistrationId && currentStudentId.value) {
+      try {
+        const response = await $fetch(`/api/students/project-topics`, {
+          params: {
+            studentRecordId: currentStudentId.value
+          }
+        })
+
+        if (response && response.topic && response.topic.id) {
+          topicRegistrationId = response.topic.id
+        }
+      }
+      catch (fetchError) {
+        console.error('Error fetching topic registration:', fetchError)
+      }
+    }
+
+    // If we still don't have a topic registration ID, we can't add a comment
+    if (!topicRegistrationId) {
+      toast.add({
+        title: t('error'),
+        description: t('no_topic_registration_found'),
+        color: 'red'
+      })
+      return
+    }
+
+    const payload = {
+      topicRegistrationId: topicRegistrationId,
+      fieldName: comment.fieldName || 'general',
+      commentText: comment.commentText,
+      authorRole: 'supervisor',
+      authorName: user?.displayName || t('supervisor'),
+      parentCommentId: comment.parentCommentId || null
+    }
+
+    const response = await $fetch('/api/students/project-topics/comments', {
+      method: 'POST',
+      body: payload
+    })
+
+    toast.add({
+      title: t('success'),
+      description: t('comment_added_successfully'),
+      color: 'green'
+    })
+
+    // Refresh data after commenting
+    await refreshNuxtData('allStudents')
+
+    return response
+  }
+  catch (error) {
+    console.error('Error adding comment:', error)
+    toast.add({
+      title: t('error'),
+      description: error.message || t('error_adding_comment'),
+      color: 'red'
+    })
+    throw error
+  }
+}
+const { user } = useUserSession()
+const currentStudentId = ref<number | null>(null)
+const currentStudentData = ref<ProjectTopicRegistrationData | null>(null)
+
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
 
 const { determineFormVariant } = useFormUtilities()

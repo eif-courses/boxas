@@ -170,7 +170,7 @@ export default {
     versionLoaded: 'Versija sėkmingai įkelta'
   },
   submitted: 'pateiktas',
-  approved: 'tema patvirtinta',
+  approved: 'laukiama vedėjo patvirtinimo',
   needs_revision: 'reikia pataisymų',
   draft: 'juodraštis',
   rejected: 'atmesta',

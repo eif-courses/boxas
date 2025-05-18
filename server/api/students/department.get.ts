@@ -1,5 +1,5 @@
 import { eq, and, inArray, desc } from 'drizzle-orm'
-import { studentRecords, documents, videos, reviewerReports, supervisorReports, departmentHeads } from '~~/server/database/schema'
+import { studentRecords, documents, videos, reviewerReports, supervisorReports, departmentHeads, projectTopicRegistrations, topicRegistrationComments } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   // Get logger from event context
@@ -143,7 +143,8 @@ export default defineEventHandler(async (event) => {
     try {
       logger.debug('Attempting bulk data fetch with inArray')
 
-      const [documentsResult, videosResult, reviewerReportsResult, supervisorReportsResult]
+      // First batch of queries: documents, videos, reviewer reports, supervisor reports, and topic registrations
+      const [documentsResult, videosResult, reviewerReportsResult, supervisorReportsResult, topicRegistrationsResult]
           = await Promise.all([
             // Try to use inArray for bulk fetching, which should be much faster
             db.select().from(documents)
@@ -208,14 +209,55 @@ export default defineEventHandler(async (event) => {
                       .execute()
                   )
                 ).then(results => results.flat())
+              }),
+
+            // Query for project topic registrations
+            db.select().from(projectTopicRegistrations)
+              .where(inArray(projectTopicRegistrations.studentRecordId, studentRecordIds))
+              .execute()
+              .catch((err) => {
+                logger.warn('Bulk project topic registrations fetch failed, falling back to individual queries', {
+                  error: err.message
+                })
+                return Promise.all(
+                  studentRecordIds.map(id =>
+                    db.select().from(projectTopicRegistrations)
+                      .where(eq(projectTopicRegistrations.studentRecordId, id))
+                      .execute()
+                  )
+                ).then(results => results.flat())
               })
           ])
+
+      // Now that we have topic registrations, we can fetch comments separately
+      let commentsResult = []
+      if (topicRegistrationsResult && topicRegistrationsResult.length > 0) {
+        const topicRegistrationIds = topicRegistrationsResult.map(tr => tr.id)
+
+        commentsResult = await db.select().from(topicRegistrationComments)
+          .where(inArray(topicRegistrationComments.topicRegistrationId, topicRegistrationIds))
+          .execute()
+          .catch((err) => {
+            logger.warn('Bulk topic comments fetch failed, falling back to individual queries', {
+              error: err.message
+            })
+            return Promise.all(
+              topicRegistrationsResult.map(tr =>
+                db.select().from(topicRegistrationComments)
+                  .where(eq(topicRegistrationComments.topicRegistrationId, tr.id))
+                  .execute()
+              )
+            ).then(results => results.flat())
+          })
+      }
 
       logger.info('Related data fetched successfully', {
         documentsCount: documentsResult.length,
         videosCount: videosResult.length,
         reviewerReportsCount: reviewerReportsResult.length,
-        supervisorReportsCount: supervisorReportsResult.length
+        supervisorReportsCount: supervisorReportsResult.length,
+        topicRegistrationsCount: topicRegistrationsResult.length,
+        commentsCount: commentsResult.length
       })
 
       // Group data by student with an optimized approach
@@ -225,6 +267,8 @@ export default defineEventHandler(async (event) => {
       const videosMap = new Map()
       const reviewerReportsMap = new Map()
       const supervisorReportsMap = new Map()
+      const topicRegistrationsMap = new Map()
+      const topicCommentsMap = new Map()
 
       // Create lookup maps for faster access
       documentsResult.forEach((doc) => {
@@ -255,6 +299,30 @@ export default defineEventHandler(async (event) => {
         supervisorReportsMap.get(report.studentRecordId).push(report)
       })
 
+      // Map project topic registrations
+      topicRegistrationsResult.forEach((registration) => {
+        if (!topicRegistrationsMap.has(registration.studentRecordId)) {
+          topicRegistrationsMap.set(registration.studentRecordId, [])
+        }
+        topicRegistrationsMap.get(registration.studentRecordId).push(registration)
+      })
+
+      // Group comments by topic registration ID
+      commentsResult.forEach((comment) => {
+        if (!topicCommentsMap.has(comment.topicRegistrationId)) {
+          topicCommentsMap.set(comment.topicRegistrationId, [])
+        }
+        topicCommentsMap.get(comment.topicRegistrationId).push(comment)
+      })
+
+      // Attach comments to their respective topic registrations
+      for (const [studentId, registrations] of topicRegistrationsMap.entries()) {
+        registrations.forEach((registration) => {
+          // Add comments to each registration
+          registration.comments = topicCommentsMap.get(registration.id) || []
+        })
+      }
+
       // Map the data using the lookup maps
       const studentsData = studentRecordsResult.map((student) => {
         return {
@@ -262,7 +330,8 @@ export default defineEventHandler(async (event) => {
           documents: documentsMap.get(student.id) || [],
           videos: videosMap.get(student.id) || [],
           reviewerReports: reviewerReportsMap.get(student.id) || [],
-          supervisorReports: supervisorReportsMap.get(student.id) || []
+          supervisorReports: supervisorReportsMap.get(student.id) || [],
+          projectTopicRegistrations: topicRegistrationsMap.get(student.id) || []
         }
       })
 

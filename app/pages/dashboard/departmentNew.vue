@@ -421,11 +421,13 @@ import type { StudentRecord } from '~~/server/utils/db'
 import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
 import { useFormUtilities } from '~/composables/useFormUtilities'
 import type {
-  ProjectTopicRegistrationData
+  TopicComment,
+  ProjectTopicRegistrationData,
+  ProjectTopicRegistrationFormData
 } from '~/components/ProjectTopicRegistration.vue'
 
 definePageMeta({
-  middleware: 'teacher-access'
+  middleware: ['teacher-access']
 })
 
 const handleInitialData = (data) => {

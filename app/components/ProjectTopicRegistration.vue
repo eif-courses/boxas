@@ -960,27 +960,6 @@ onBeforeUnmount(() => {
                   </div>
                 </UFormGroup>
 
-                <!-- General Comments Button -->
-                <div class="text-right mb-4">
-                  <UButton
-                    v-if="canComment"
-                    size="xs"
-                    color="amber"
-                    variant="soft"
-                    :class="['comment-btn relative', hasCommentsIndicator('general')]"
-                    @click="toggleCommentPopover('general', $event)"
-                  >
-                    <span class="i-heroicons-chat-bubble-left-right mr-1" />
-                    {{ isEnglishVariant ? 'General Comments' : 'Bendri komentarai' }}
-                    <span
-                      v-if="getFieldCommentCount('general') > 0"
-                      class="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-400 text-white dark:text-gray-900 text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
-                    >
-                      {{ getFieldCommentCount('general') }}
-                    </span>
-                  </UButton>
-                </div>
-
                 <!-- Signature Lines -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 border-t border-gray-200 dark:border-gray-800 pt-6">
                   <div>
