@@ -158,9 +158,6 @@
 
 <script setup lang="ts">
 // Import utility types
-import type { StudentRecord } from '~~/server/utils/db'
-import type { SupervisorReportFormData } from '~/components/EditSupervisorReportForm.vue'
-import type { ProjectTopicRegistrationData } from '~/components/ProjectTopicRegistration.vue'
 
 // Import role-specific components
 import StudentSearchHeader from '~/components/student/StudentSearchHeader.vue'

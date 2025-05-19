@@ -34,11 +34,12 @@
 
 <script setup lang="ts">
 import { useTopicStatusUtils } from '~/composables/useTopicStatusUtils'
+import TopicStatusBadge from '~/components/student/TopicStatusBadge.vue';
 
 const props = defineProps({
   row: { type: Object, required: true },
   userName: { type: String, default: '' },
-  formVariant: { type: String, required: true },
+  formVariant: { type: String as PropType<'lt' | 'en'>, required: true },
   forceRerender: { type: Number, required: true }
 })
 
@@ -58,8 +59,16 @@ const studentId = computed(() => props.row.student.id)
 
 const buttonLabel = computed(() => getTopicButtonLabel(props.row))
 
-const topicData = computed(() => {
-  if (!hasTopic.value) return {}
+const topicData = computed<ProjectTopicRegistrationData>(() => {
+  if (!hasTopic.value) {
+    // Return a default object that satisfies the ProjectTopicRegistrationData interface
+    return {
+      studentRecordId: props.row.student.id,
+      GROUP: props.row.student.studentGroup || '',
+      NAME: `${props.row.student.studentName || ''} ${props.row.student.studentLastname || ''}`
+      // Other fields are optional so they can be undefined
+    } as ProjectTopicRegistrationData
+  }
 
   const registration = props.row.projectTopicRegistrations[0]
 
@@ -74,7 +83,7 @@ const topicData = computed(() => {
     TASKS: registration.tasks,
     COMPLETION_DATE: registration.completionDate,
     SUPERVISOR: registration.supervisor,
-    status: registration.status,
+    status: registration.status as 'draft' | 'submitted' | 'needs_revision' | 'approved' | 'head_approved',
     comments: registration.comments || []
   }
 })
