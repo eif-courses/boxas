@@ -1,23 +1,31 @@
-// composables/useStudentData.ts
-/**
- * Composable for fetching and managing student data
- */
 export function useStudentData(role = 'supervisor') {
+  console.log(`useStudentData initialized with role: ${role}`) // Add logging
+
   const { yearFilter } = useStudentTable()
   const authStore = useAuthStore()
   const authReady = computed(() => authStore.isReady)
   const toast = useToast()
+  const isInitialFetchDone = ref(false) // Add tracking for initial fetch
 
   // Wait for auth to be ready before fetching
   const waitForAuth = () => {
+    console.log('waitForAuth called, current auth status:', {
+      isReady: authStore.isReady,
+      isAuthenticated: authStore.isAuthenticated
+    })
+
     return new Promise<void>((resolve, reject) => {
       if (authStore.isReady) {
+        console.log('Auth is already ready')
         resolve()
         return
       }
 
+      console.log('Watching for auth to be ready...')
       const unwatch = watch(() => authStore.isReady, (isReady) => {
+        console.log('Auth ready state changed:', isReady)
         if (isReady) {
+          console.log('Auth is now ready')
           unwatch()
           resolve()
         }
@@ -25,10 +33,13 @@ export function useStudentData(role = 'supervisor') {
 
       setTimeout(() => {
         unwatch()
+        console.log('Auth timeout reached, checking authentication state')
         if (authStore.isAuthenticated) {
+          console.log('Auth is authenticated despite timeout, proceeding')
           resolve()
         }
         else {
+          console.error('Auth failed to initialize in time and is not authenticated')
           reject(new Error('Authentication timed out'))
         }
       }, 5000)
@@ -36,16 +47,22 @@ export function useStudentData(role = 'supervisor') {
   }
 
   // Determine the API endpoint based on role
-  const endpoint = role === 'supervisor' ? '/api/students/supervisor' : '/api/students/department'
+  const endpoint = role === 'supervisor'
+    ? '/api/students/supervisor'
+    : '/api/students/department'
+
+  console.log(`Using API endpoint: ${endpoint} for role: ${role}`)
 
   // Fetch student data
   const { data: allStudents, status, error: fetchError, refresh } = useLazyAsyncData(
-    'allStudents',
+    role === 'supervisor' ? 'supervisorStudents' : 'departmentStudents', // Use different keys for different roles
     async () => {
       try {
+        console.log(`Starting data fetch for ${role} role`)
         await waitForAuth()
 
         if (!authStore.isAuthenticated) {
+          console.error('Not authenticated after waiting for auth')
           throw new Error('Authentication required')
         }
 
@@ -55,16 +72,24 @@ export function useStudentData(role = 'supervisor') {
         }
         params.set('_t', Date.now().toString())
 
+        console.log(`Fetching from: ${endpoint}?${params.toString()}`)
         const response = await $fetch(`${endpoint}?${params.toString()}`, {
           timeout: 15000,
           retry: 1,
           retryDelay: 1000
         })
 
+        console.log(`Data fetch successful for ${role}:`, {
+          studentCount: response?.students?.length || 0,
+          totalCount: response?.total || 0,
+          hasError: !!response?.error
+        })
+
+        isInitialFetchDone.value = true
         return response
       }
       catch (err) {
-        console.error('Error in data fetch:', err)
+        console.error(`Error in data fetch for ${role}:`, err)
         if (err.message === 'Authentication required' || err.message === 'Authentication timed out') {
           throw err
         }
@@ -90,12 +115,30 @@ export function useStudentData(role = 'supervisor') {
     }
   )
 
-  // Refresh data with optional notification
-  const refreshData = async (showNotification = true) => {
+  // Enhanced refresh function with better logging
+  const refreshStudents = async () => {
+    console.log(`Refreshing students data for ${role} role`)
     try {
       await refresh()
+      console.log(`Refresh complete for ${role}:`, {
+        studentCount: allStudents.value?.students?.length || 0,
+        status: status.value
+      })
+      return true
+    }
+    catch (error) {
+      console.error(`Error refreshing ${role} data:`, error)
+      return false
+    }
+  }
 
-      if (showNotification) {
+  // Refresh data with optional notification
+  const refreshData = async (showNotification = true) => {
+    console.log(`Manual refresh requested for ${role}`)
+    try {
+      const result = await refreshStudents()
+
+      if (showNotification && result) {
         toast.add({
           title: 'Success',
           description: 'Data refreshed successfully',
@@ -104,7 +147,7 @@ export function useStudentData(role = 'supervisor') {
       }
     }
     catch (error) {
-      console.error('Error refreshing data:', error)
+      console.error(`Error in manual refresh for ${role}:`, error)
 
       if (showNotification) {
         toast.add({
@@ -121,12 +164,26 @@ export function useStudentData(role = 'supervisor') {
     return yearFilter.value || allStudents.value?.year || null
   })
 
+  // Auto-fetch data when component is mounted
+  onMounted(async () => {
+    console.log(`onMounted triggered for ${role} data`)
+    if (!isInitialFetchDone.value) {
+      try {
+        await refreshStudents()
+      }
+      catch (error) {
+        console.error(`Error during initial data fetch for ${role}:`, error)
+      }
+    }
+  })
+
   return {
     allStudents,
     status,
     fetchError,
-    refreshStudents: refresh,
+    refreshStudents,
     activeYear,
-    refreshData
+    refreshData,
+    isInitialFetchDone
   }
 }

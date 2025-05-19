@@ -1,164 +1,21 @@
 // composables/useReviewerReports.ts
-import { ref } from 'vue'
-
-export const useReviewerReports = (baseUrl = '/api/students/reviewer-reports') => {
-  const isLoading = ref(false)
-  const error = ref(null)
-
-  /**
-     * Create a new reviewer report
-     */
-  const createReport = async (reportData) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await $fetch(baseUrl, {
-        method: 'POST',
-        body: reportData
-      })
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to create reviewer report')
-      }
-
-      return response.data
-    }
-    catch (err) {
-      console.error('Error creating reviewer report:', err)
-      error.value = err
-      return null
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
+/**
+ * Composable for handling reviewer reports
+ */
+export function useReviewerReports() {
+  const isParentSavingReview = ref(false)
+  const toast = useToast()
 
   /**
-     * Get a reviewer report by ID
-     */
-  const getReportById = async (id) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await $fetch(`${baseUrl}/${id}`, {
-        method: 'GET'
-      })
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to fetch reviewer report')
-      }
-
-      return response.data
-    }
-    catch (err) {
-      console.error(`Error fetching reviewer report ${id}:`, err)
-      error.value = err
-      return null
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
-
-  /**
-     * Update an existing reviewer report
-     */
-  const updateReport = async (id, updateData) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await $fetch(`${baseUrl}/${id}`, {
-        method: 'PUT',
-        body: updateData
-      })
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to update reviewer report')
-      }
-
-      return response.data
-    }
-    catch (err) {
-      console.error(`Error updating reviewer report ${id}:`, err)
-      error.value = err
-      return null
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
-
-  /**
-     * Delete a reviewer report
-     */
-  const deleteReport = async (id) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await $fetch(`${baseUrl}/${id}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to delete reviewer report')
-      }
-
-      return true
-    }
-    catch (err) {
-      console.error(`Error deleting reviewer report ${id}:`, err)
-      error.value = err
-      return false
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
-
-  /**
-     * Get all reviewer reports for a student
-     */
-  const getReportsByStudentId = async (studentId) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await $fetch(baseUrl, {
-        method: 'GET',
-        params: {
-          studentRecordId: studentId
-        }
-      })
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to fetch reviewer reports')
-      }
-
-      return response.data
-    }
-    catch (err) {
-      console.error(`Error fetching reviewer reports for student ${studentId}:`, err)
-      error.value = err
-      return []
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
-  interface StudentRecordsResponse {
-    student: StudentRecord
-    documents: DocumentRecord[]
-    videos: VideoRecord[]
-    supervisorReports: SupervisorReport[]
-    reviewerReports: ReviewerReport[]
-  }
-
-  const getReviewerModalData = (response: StudentRecordsResponse) => {
+   * Extracts reviewer report data from a student record
+   */
+  const getReviewerModalData = (response) => {
     if (!response.student) return null // Need student record
+
+    // If there's no reviewer report, return null
+    if (!response.reviewerReports || response.reviewerReports.length === 0) {
+      return null
+    }
 
     // Construct the object expected by ReviewerReportModal
     return {
@@ -185,17 +42,96 @@ export const useReviewerReports = (baseUrl = '/api/students/reviewer-reports') =
       FINAL_GRADE: response.reviewerReports[0]?.grade ?? undefined, // Assuming 'finalGrade' field exists
       REPORT_DATE: response.reviewerReports[0]?.createdDate ? new Date(response.reviewerReports[0]?.createdDate * 1000) : undefined,
       IS_SIGNED: response.reviewerReports[0]?.isSigned ?? undefined
-      // Map any other necessary fields...
     }
   }
+
+  /**
+   * Get initial reviewer report form data for a new report
+   */
+  const getInitialReviewerFormData = () => {
+    return {
+      REVIEWER_FULL_DETAILS: '',
+      REVIEW_GOALS: '',
+      REVIEW_THEORY: '',
+      REVIEW_PRACTICAL: '',
+      REVIEW_THEORY_PRACTICAL_LINK: '',
+      REVIEW_RESULTS: '',
+      REVIEW_PRACTICAL_SIGNIFICANCE: '',
+      REVIEW_LANGUAGE: '',
+      REVIEW_PROS: '',
+      REVIEW_CONS: '',
+      REVIEW_QUESTIONS: '',
+      FINAL_GRADE: 8
+    }
+  }
+
+  /**
+   * Handle saving a reviewer report
+   */
+  const handleReviewerReportSave = async (recordId, updatedData, refreshCallback) => {
+    if (recordId === undefined || recordId === null) {
+      toast.add({
+        title: 'Klaida',
+        description: 'Trūksta studento įrašo ID recenzijos išsaugojimui.',
+        color: 'red'
+      })
+      return
+    }
+
+    isParentSavingReview.value = true
+    console.log(`Saving reviewer report for studentRecordId ${recordId}:`, updatedData)
+
+    const apiPayload = {
+      studentRecordId: recordId,
+      ...updatedData // Spread the editable fields
+    }
+    delete apiPayload.REPORT_DATE // Ensure it's removed
+
+    try {
+      const { data, error } = await useFetch('/api/students/reviewer-reports', {
+        method: 'POST',
+        body: apiPayload
+      })
+
+      if (error.value) {
+        console.error('Failed to save reviewer report:', error.value)
+        toast.add({
+          title: 'Klaida',
+          description: error.value.data?.message || 'Nepavyko išsaugoti recenzijos.',
+          color: 'red'
+        })
+      }
+      else {
+        console.log('Reviewer report saved successfully!', data.value)
+        toast.add({
+          title: 'Pavyko',
+          description: data.value?.message || 'Recenzija sėkmingai išsaugota.',
+          color: 'green'
+        })
+
+        // Refresh data if callback provided
+        if (refreshCallback && typeof refreshCallback === 'function') {
+          await refreshCallback()
+        }
+      }
+    }
+    catch (err) {
+      console.error('Unexpected error saving reviewer report:', err)
+      toast.add({
+        title: 'Sistemos Klaida',
+        description: 'Įvyko netikėta klaida.',
+        color: 'red'
+      })
+    }
+    finally {
+      isParentSavingReview.value = false
+    }
+  }
+
   return {
-    isLoading,
-    error,
-    createReport,
-    getReportById,
-    updateReport,
-    deleteReport,
-    getReportsByStudentId,
-    getReviewerModalData
+    isParentSavingReview,
+    getReviewerModalData,
+    getInitialReviewerFormData,
+    handleReviewerReportSave
   }
 }

@@ -154,28 +154,25 @@ const logout = async () => {
 
 <template>
   <UContainer class="min-h-screen flex flex-col my-4">
-    <!-- Improve header with flex layout for better alignment -->
+    <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <!-- Left side: App name with consistent styling -->
+      <!-- Left: Logo and App Name -->
       <div class="flex items-center">
         <NuxtLink
           to="/"
           class="flex items-center gap-3"
         >
-          <!-- Logo with adjusted size and no distortion -->
           <img
             src="/VIKO_LOGO_ELEKTR_H_LT.png"
             alt="VIKO Elektronikos ir informatikos fakultetas"
             class="h-12 w-auto"
           >
-          <!-- Optional vertical divider -->
           <div class="h-8 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
-          <!-- App name with proper spacing and sizing -->
           <span class="text-xl font-medium ml-3 hidden sm:block">{{ $t('app_name') }}</span>
         </NuxtLink>
       </div>
 
-      <!-- Right side: Theme toggle button -->
+      <!-- Right: Theme Toggle -->
       <div>
         <UButton
           square
@@ -188,90 +185,103 @@ const logout = async () => {
       </div>
     </div>
 
+    <!-- Main Card -->
     <UCard>
       <template #header>
-        <div
-          v-if="loggedIn"
-          class="flex flex-wrap sm:mx-0 gap-2"
-        >
-          <UButton
-            v-if="authStore.hasStudentAccess()"
-            :to="`/${locale}/dashboard/student`"
-            icon="i-heroicons-user-group"
-            :label="$t('nav_student')"
-            :color="isActiveRoute('/student') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <UButton
-            v-if="authStore.hasTeacherAccess()"
-            :to="`/${locale}/dashboard/supervisor`"
-            icon="i-heroicons-user-circle"
-            :label="$t('nav_supervisor')"
-            :color="isActiveRoute('/supervisor') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <UButton
-            v-if="authStore.hasReviewerAccess() || authStore.hasDepartmentHeadAccess()"
-            :to="`/${locale}/dashboard/reviewer`"
-            icon="i-heroicons-pencil"
-            :label="$t('nav_reviewer')"
-            :color="isActiveRoute('/reviewer') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <UButton
-            v-if="authStore.hasDepartmentHeadAccess()"
-            :to="`/${locale}/dashboard/department`"
-            icon="i-heroicons-user-group"
-            :label="$t('nav_department')"
-            :color="isActiveRoute('/department') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <UButton
-            v-if="authStore.hasAdminAccess() || authStore.hasDepartmentHeadAccess()"
-            :to="`/${locale}/dashboard/admin`"
-            icon="i-heroicons-cog"
-            :label="$t('nav_admin')"
-            :color="isActiveRoute('/admin') ? 'primary' : 'gray'"
-            variant="solid"
-          />
-
-          <LanguageSwitcher />
-
+        <ClientOnly>
           <div
-            v-if="user"
-            class="flex items-center gap-2 ml-2"
+            v-if="authStore.isReady && loggedIn"
+            class="flex flex-wrap sm:mx-0 gap-2"
           >
-            <div class="flex items-center gap-2">
-              <div class="text-sm hidden sm:block">
-                {{ user.mail || user.email || user.displayName }}
-                <div
-                  v-if="authStore.user"
-                  class="text-xs text-gray-500"
-                >
-                  {{ getRoleDisplay(authStore.user) }}
+            <!-- Student -->
+            <UButton
+              v-if="authStore.hasStudentAccess()"
+              :to="`/${locale}/dashboard/student`"
+              icon="i-heroicons-user-group"
+              :label="$t('nav_student')"
+              :color="isActiveRoute('/student') ? 'primary' : 'gray'"
+              variant="solid"
+            />
+
+            <!-- Teacher -->
+            <UButton
+              v-if="authStore.hasTeacherAccess()"
+              :to="`/${locale}/dashboard/supervisor`"
+              icon="i-heroicons-user-circle"
+              :label="$t('nav_supervisor')"
+              :color="isActiveRoute('/supervisor') ? 'primary' : 'gray'"
+              variant="solid"
+            />
+
+            <!-- Reviewer -->
+            <UButton
+              v-if="authStore.hasReviewerAccess() || authStore.hasDepartmentHeadAccess()"
+              :to="`/${locale}/dashboard/reviewer`"
+              icon="i-heroicons-pencil"
+              :label="$t('nav_reviewer')"
+              :color="isActiveRoute('/reviewer') ? 'primary' : 'gray'"
+              variant="solid"
+            />
+
+            <!-- Department Head -->
+            <UButton
+              v-if="authStore.hasDepartmentHeadAccess()"
+              :to="`/${locale}/dashboard/department`"
+              icon="i-heroicons-user-group"
+              :label="$t('nav_department')"
+              :color="isActiveRoute('/department') ? 'primary' : 'gray'"
+              variant="solid"
+            />
+
+            <!-- Admin -->
+            <UButton
+              v-if="authStore.hasAdminAccess() || authStore.hasDepartmentHeadAccess()"
+              :to="`/${locale}/dashboard/admin`"
+              icon="i-heroicons-cog"
+              :label="$t('nav_admin')"
+              :color="isActiveRoute('/admin') ? 'primary' : 'gray'"
+              variant="solid"
+            />
+
+            <!-- Language Switcher -->
+            <LanguageSwitcher />
+
+            <!-- User Info + Logout -->
+            <div
+              v-if="user"
+              class="flex items-center gap-2 ml-2"
+            >
+              <div class="flex items-center gap-2">
+                <div class="text-sm hidden sm:block">
+                  {{ user.mail || user.email || user.displayName }}
+                  <div
+                    v-if="authStore.user"
+                    class="text-xs text-gray-500"
+                  >
+                    {{ getRoleDisplay(authStore.user) }}
+                  </div>
                 </div>
               </div>
+              <UButton
+                color="gray"
+                variant="solid"
+                :label="$t('logout')"
+                icon="i-heroicons-arrow-left-on-rectangle"
+                @click="logout"
+              />
             </div>
-            <UButton
-              color="gray"
-              variant="solid"
-              :label="$t('logout')"
-              icon="i-heroicons-arrow-left-on-rectangle"
-              @click="logout"
-            />
           </div>
-        </div>
+        </ClientOnly>
       </template>
+
+      <!-- Page content -->
       <NuxtLoadingIndicator />
       <NuxtPage />
     </UCard>
 
     <footer class="text-center mt-2" />
   </UContainer>
+
   <UNotifications />
 </template>
 

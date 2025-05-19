@@ -1,4 +1,6 @@
 // composables/useFilteredStudents.ts
+import { useStudentTable } from '~/composables/useStudentTable'
+
 /**
  * Composable for filtering and paginating student data
  */

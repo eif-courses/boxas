@@ -16,7 +16,9 @@ export default defineEventHandler(async (event) => {
     logger.warn('Unauthorized access attempt', { endpoint: 'department-head-check' })
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
+
   const userEmail = user.mail || user.email || user.userPrincipalName || user.preferred_username || ''
+
   try {
     logger.info('User authenticated', { email: userEmail })
 
@@ -37,23 +39,26 @@ export default defineEventHandler(async (event) => {
 
     const isDepartmentHead = deptHeadResult.length > 0
 
+    // Log all data if department head is found
     if (isDepartmentHead) {
       logger.info('User is a department head', {
         email: userEmail,
+        id: deptHeadResult[0].id,
+        name: deptHeadResult[0].name,
+        sureName: deptHeadResult[0].sureName,
         department: deptHeadResult[0].department,
-        jobTitle: deptHeadResult[0].jobTitle
+        departmentEn: deptHeadResult[0].departmentEn,
+        jobTitle: deptHeadResult[0].jobTitle,
+        role: deptHeadResult[0].role,
+        createdAt: deptHeadResult[0].createdAt
       })
     }
     else {
       logger.info('User is not a department head', { email: userEmail })
     }
 
-    const departmentInfo = isDepartmentHead
-      ? {
-          department: deptHeadResult[0].department,
-          jobTitle: deptHeadResult[0].jobTitle
-        }
-      : null
+    // Return all properties from the record
+    const departmentInfo = isDepartmentHead ? deptHeadResult[0] : null
 
     return {
       isDepartmentHead,
