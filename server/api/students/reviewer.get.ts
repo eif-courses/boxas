@@ -1,4 +1,4 @@
-import { eq, and, inArray, desc } from 'drizzle-orm'
+import { eq, and, or, ilike, inArray, desc, asc, sql } from 'drizzle-orm'
 import { studentRecords, documents, videos, reviewerReports } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
@@ -23,9 +23,23 @@ export default defineEventHandler(async (event) => {
 
     const query = getQuery(event)
     const requestedYear = parseInt(query.year as string) || null
+    const page = parseInt(query.page as string) || 1
+    const limit = parseInt(query.limit as string) || 10
+    const sortBy = query.sortBy as string || 'studentLastname' // Default sort
+    const sortOrder = query.sortOrder as string === 'desc' ? 'desc' : 'asc'
+    const search = query.search as string || ''
+    const group = query.group as string || ''
+    const program = query.program as string || ''
 
     logger.debug('Request parameters', {
       requestedYear,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      search,
+      group,
+      program,
       query
     })
 
@@ -40,55 +54,142 @@ export default defineEventHandler(async (event) => {
       reviewerEmail: userEmail
     })
 
-    // First, if no year is specified, determine the latest year from the database
+    // Year filter: Determine latest year if not specified
     let latestYear = requestedYear
     if (!latestYear) {
-      logger.debug('No year specified, finding latest year')
-
+      logger.debug('No year specified, finding latest year based on reviewer email')
       const latestYearResult = await db
         .select({ maxYear: studentRecords.currentYear })
         .from(studentRecords)
-        .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        .where(eq(studentRecords.reviewerEmail, userEmail)) // Base condition for latest year
         .orderBy(desc(studentRecords.currentYear))
         .limit(1)
         .execute()
-
       latestYear = latestYearResult.length > 0 ? latestYearResult[0].maxYear : null
-
-      logger.info('Latest year determined', {
-        latestYear
-      })
+      logger.info('Latest year determined', { latestYear })
     }
 
-    // Add year filter - either requested year or latest year
     if (latestYear) {
       conditions.push(eq(studentRecords.currentYear, latestYear))
-      logger.debug('Filtering by year', { year: latestYear })
+      logger.debug('Applied year filter', { year: latestYear })
     }
 
-    // Apply all conditions at once
-    logger.debug('Fetching student records')
-    const studentRecordsResult = await db.select()
+    // Search filter
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`
+      conditions.push(
+        or(
+          ilike(studentRecords.studentName, searchLower),
+          ilike(studentRecords.studentLastname, searchLower),
+          ilike(studentRecords.studentEmail, searchLower),
+          ilike(studentRecords.finalProjectTitle, searchLower),
+          ilike(studentRecords.studentGroup, searchLower),
+          ilike(studentRecords.studyProgram, searchLower)
+        )
+      )
+      logger.debug('Applied search filter', { search })
+    }
+
+    // Group filter
+    if (group) {
+      conditions.push(eq(studentRecords.studentGroup, group))
+      logger.debug('Applied group filter', { group })
+    }
+
+    // Program filter
+    if (program) {
+      conditions.push(eq(studentRecords.studyProgram, program))
+      logger.debug('Applied program filter', { program })
+    }
+
+    const combinedConditions = conditions.length > 0 ? and(...conditions) : undefined
+
+    // Count total items
+    logger.debug('Fetching total student count with all filters')
+    const totalItemsResult = await db
+      .select({ count: sql<number>`count(*)` })
       .from(studentRecords)
-      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .where(combinedConditions)
       .execute()
 
-    if (!studentRecordsResult?.length) {
-      logger.info('No students found', {
-        year: latestYear,
-        reviewerEmail: userEmail
-      })
+    const totalItems = totalItemsResult[0]?.count || 0
+    logger.info('Total items count determined', { totalItems, year: latestYear, reviewerEmail: userEmail })
 
+    if (totalItems === 0) {
+      logger.info('No students found matching all criteria for reviewer', {
+        year: latestYear,
+        reviewerEmail: userEmail,
+        search,
+        group,
+        program
+      })
       return {
         students: [],
-        total: 0,
+        totalItems: 0,
+        currentPage: page,
+        totalPages: 0,
+        itemsPerPage: limit,
         year: latestYear
       }
     }
 
-    logger.info('Student records found', {
+    // Sorting
+    let sortColumn
+    switch (sortBy) {
+      case 'name': // Assuming name refers to lastname
+        sortColumn = studentRecords.studentLastname
+        break
+      case 'finalProjectTitle':
+        sortColumn = studentRecords.finalProjectTitle
+        break
+      case 'studentGroup':
+        sortColumn = studentRecords.studentGroup
+        break
+      case 'studentEmail':
+        sortColumn = studentRecords.studentEmail
+        break
+      case 'studyProgram':
+        sortColumn = studentRecords.studyProgram
+        break
+      default:
+        sortColumn = studentRecords.studentLastname
+    }
+    const orderedColumn = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
+    logger.debug('Sorting parameters', { sortBy, sortOrder })
+
+    // Apply all conditions, sorting, and pagination for student records
+    logger.debug('Fetching paginated student records for reviewer')
+    const studentRecordsResult = await db.select()
+      .from(studentRecords)
+      .where(combinedConditions)
+      .orderBy(orderedColumn)
+      .offset((page - 1) * limit)
+      .limit(limit)
+      .execute()
+
+    if (!studentRecordsResult?.length) {
+      logger.info('No students found for the current page for reviewer', {
+        page,
+        limit,
+        year: latestYear,
+        reviewerEmail: userEmail
+      })
+      return {
+        students: [],
+        totalItems, // Still return totalItems
+        currentPage: page,
+        totalPages: Math.ceil(totalItems / limit),
+        itemsPerPage: limit,
+        year: latestYear
+      }
+    }
+
+    logger.info('Student records found for page for reviewer', {
       count: studentRecordsResult.length,
-      year: latestYear
+      page,
+      limit,
+      year: latestYear,
+      reviewerEmail: userEmail
     })
 
     // Extract student record IDs
@@ -206,10 +307,25 @@ export default defineEventHandler(async (event) => {
         reviewerEmail: userEmail
       })
 
+      const totalPages = Math.ceil(totalItems / limit)
+
+      logger.info('Response prepared successfully for reviewer', {
+        studentCount: studentsData.length,
+        totalItems,
+        currentPage: page,
+        totalPages,
+        itemsPerPage: limit,
+        year: latestYear,
+        reviewerEmail: userEmail
+      })
+
       return {
         students: studentsData,
-        total: studentRecordsResult.length,
-        year: latestYear // Include the year used in the response
+        totalItems,
+        currentPage: page,
+        totalPages,
+        itemsPerPage: limit,
+        year: latestYear
       }
     }
     catch (fetchError) {
