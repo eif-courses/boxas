@@ -1,7 +1,15 @@
 export function useStudentData(role = 'supervisor') {
   console.log(`useStudentData initialized with role: ${role}`) // Add logging
 
-  const { yearFilter } = useStudentTable()
+  const {
+    page,
+    pageCount,
+    sort,
+    search,
+    groupFilter,
+    programFilter,
+    yearFilter
+  } = useStudentTable()
   const authStore = useAuthStore()
   const authReady = computed(() => authStore.isReady)
   const toast = useToast()
@@ -67,9 +75,24 @@ export function useStudentData(role = 'supervisor') {
         }
 
         const params = new URLSearchParams()
+        params.set('page', page.value.toString())
+        params.set('limit', pageCount.value.toString())
+        params.set('sortBy', sort.value.column)
+        params.set('sortOrder', sort.value.direction)
+
         if (yearFilter.value) {
           params.set('year', yearFilter.value.toString())
         }
+        if (search.value) {
+          params.set('search', search.value)
+        }
+        if (groupFilter.value) {
+          params.set('group', groupFilter.value)
+        }
+        if (programFilter.value) {
+          params.set('program', programFilter.value)
+        }
+        // Add a cache buster, though with all params, it might be less critical
         params.set('_t', Date.now().toString())
 
         console.log(`Fetching from: ${endpoint}?${params.toString()}`)
@@ -96,8 +119,12 @@ export function useStudentData(role = 'supervisor') {
 
         return {
           students: [],
-          total: 0,
+          totalItems: 0,
+          currentPage: 1,
+          totalPages: 0,
+          itemsPerPage: pageCount.value, // Use actual default
           year: null,
+          ...(role === 'department' ? { isDepartmentHead: false } : {}),
           error: err.message
         }
       }
@@ -105,10 +132,25 @@ export function useStudentData(role = 'supervisor') {
     {
       default: () => ({
         students: [],
-        total: 0,
-        year: null
+        totalItems: 0,
+        currentPage: 1,
+        totalPages: 0,
+        itemsPerPage: pageCount.value, // Use actual default from useStudentTable
+        year: null,
+        // For the department role, it also returns isDepartmentHead
+        ...(role === 'department' ? { isDepartmentHead: false } : {})
       }),
-      watch: [yearFilter, authReady],
+      watch: [
+        () => page.value,
+        () => pageCount.value,
+        () => sort.value.column,
+        () => sort.value.direction,
+        () => search.value,
+        () => groupFilter.value,
+        () => programFilter.value,
+        () => yearFilter.value,
+        authReady // authReady is already a computed ref
+      ],
       server: false,
       lazy: true,
       immediate: false

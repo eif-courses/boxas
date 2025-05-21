@@ -245,25 +245,61 @@ const {
 // Custom data fetching for reviewer page
 const { data: allStudents, status, error: fetchError, refresh: refreshStudents } = useLazyAsyncData('reviewerStudents', async () => {
   const params = new URLSearchParams()
+  params.set('page', page.value.toString())
+  params.set('limit', pageCount.value.toString())
+  params.set('sortBy', sort.value.column)
+  params.set('sortOrder', sort.value.direction)
+
   if (yearFilter.value) {
     params.set('year', yearFilter.value.toString())
   }
+  if (search.value) {
+    params.set('search', search.value)
+  }
+  if (groupFilter.value) {
+    params.set('group', groupFilter.value)
+  }
+  if (programFilter.value) {
+    params.set('program', programFilter.value)
+  }
+  params.set('_t', Date.now().toString()) // Cache buster
 
   try {
     const response = await $fetch(`/api/students/reviewer?${params.toString()}`)
     return response
   }
   catch (err) {
-    console.error('Error fetching student data:', err)
-    throw err
+    console.error('Error fetching student data for reviewer:', err)
+    // Return a structure that matches the expected default to prevent type errors
+    return {
+      students: [],
+      totalItems: 0,
+      currentPage: page.value,
+      totalPages: 0,
+      itemsPerPage: pageCount.value,
+      year: yearFilter.value,
+      error: err.message // Include error message
+    }
   }
 }, {
   default: () => ({
     students: [],
-    total: 0,
+    totalItems: 0,
+    currentPage: 1,
+    totalPages: 0,
+    itemsPerPage: pageCount.value, // Reference pageCount from useStudentTable
     year: null
   }),
-  watch: [yearFilter],
+  watch: [
+    () => page.value,
+    () => pageCount.value,
+    () => sort.value.column,
+    () => sort.value.direction,
+    () => search.value,
+    () => groupFilter.value,
+    () => programFilter.value,
+    () => yearFilter.value
+  ],
   server: false,
   lazy: true,
   immediate: false
