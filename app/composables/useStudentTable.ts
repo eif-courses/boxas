@@ -14,20 +14,22 @@ export function useStudentTable() {
   const forceRerender = ref(0)
   const isRefreshing = ref(false)
 
-  // Reset all filters
+  // Reset all filters and go back to page 1
   const resetFilters = () => {
     search.value = ''
     selectedStatus.value = []
     yearFilter.value = null
     groupFilter.value = ''
     programFilter.value = ''
+    page.value = 1 // Reset to first page
   }
 
   // Dynamic years from API
   const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
 
-  // Watch for filter changes to reset pagination
-  watch([search, groupFilter, programFilter, pageCount], () => {
+  // Watch for filter changes to reset pagination to page 1
+  // This is important for server-side pagination
+  watch([search, groupFilter, programFilter, pageCount, yearFilter], () => {
     page.value = 1
   })
 
@@ -38,8 +40,22 @@ export function useStudentTable() {
     }
   })
 
+  // Debounce search to avoid too many API calls
+  const debouncedSearch = ref('')
+  let searchTimeout: NodeJS.Timeout | null = null
+
+  watch(search, (newValue) => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    searchTimeout = setTimeout(() => {
+      debouncedSearch.value = newValue
+    }, 300) // 300ms debounce
+  })
+
   return {
     search,
+    debouncedSearch,
     selectedStatus,
     sort,
     page,

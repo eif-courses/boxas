@@ -1,11 +1,12 @@
 export function useStudentData(role = 'supervisor') {
-  console.log(`useStudentData initialized with role: ${role}`) // Add logging
+  console.log(`useStudentData initialized with role: ${role}`)
 
-  const { yearFilter } = useStudentTable()
+  // Get pagination and filter values from useStudentTable
+  const { yearFilter, page, pageCount, search, groupFilter, programFilter } = useStudentTable()
   const authStore = useAuthStore()
   const authReady = computed(() => authStore.isReady)
   const toast = useToast()
-  const isInitialFetchDone = ref(false) // Add tracking for initial fetch
+  const isInitialFetchDone = ref(false)
 
   // Wait for auth to be ready before fetching
   const waitForAuth = () => {
@@ -53,9 +54,9 @@ export function useStudentData(role = 'supervisor') {
 
   console.log(`Using API endpoint: ${endpoint} for role: ${role}`)
 
-  // Fetch student data
+  // Fetch student data with pagination
   const { data: allStudents, status, error: fetchError, refresh } = useLazyAsyncData(
-    role === 'supervisor' ? 'supervisorStudents' : 'departmentStudents', // Use different keys for different roles
+    role === 'supervisor' ? 'supervisorStudents' : 'departmentStudents',
     async () => {
       try {
         console.log(`Starting data fetch for ${role} role`)
@@ -67,9 +68,25 @@ export function useStudentData(role = 'supervisor') {
         }
 
         const params = new URLSearchParams()
+
+        // Add pagination parameters
+        params.set('page', page.value.toString())
+        params.set('limit', pageCount.value.toString())
+
+        // Add filter parameters
         if (yearFilter.value) {
           params.set('year', yearFilter.value.toString())
         }
+        if (search.value.trim()) {
+          params.set('search', search.value.trim())
+        }
+        if (groupFilter.value) {
+          params.set('group', groupFilter.value)
+        }
+        if (programFilter.value) {
+          params.set('program', programFilter.value)
+        }
+
         params.set('_t', Date.now().toString())
 
         console.log(`Fetching from: ${endpoint}?${params.toString()}`)
@@ -108,7 +125,8 @@ export function useStudentData(role = 'supervisor') {
         total: 0,
         year: null
       }),
-      watch: [yearFilter, authReady],
+      // Watch for changes in pagination and filters
+      watch: [yearFilter, authReady, page, pageCount, search, groupFilter, programFilter],
       server: false,
       lazy: true,
       immediate: false
