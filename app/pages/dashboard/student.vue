@@ -202,30 +202,9 @@
               <div class="border-t border-gray-100 pt-4 mt-2">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center">
-                    <UButton
-                      v-if="showTopicDetails"
-                      size="xs"
-                      color="gray"
-                      variant="ghost"
-                      icon="i-heroicons-chevron-up"
-                      @click="showTopicDetails = false"
-                    >
-                      {{ $t('hide_details') || 'Slėpti detales' }}
-                    </UButton>
-                    <UButton
-                      v-else
-                      size="xs"
-                      color="gray"
-                      variant="ghost"
-                      icon="i-heroicons-chevron-down"
-                      @click="showTopicDetails = true"
-                    >
-                      {{ $t('show_details') || 'Rodyti detales' }}
-                    </UButton>
-
                     <div
                       v-if="safeTopicData.comments?.length"
-                      class="ml-3"
+                      class="flex items-center"
                     >
                       <UButton
                         size="xs"
@@ -349,8 +328,10 @@
         </h2>
 
         <!-- Document Cards -->
+        <!-- Document Cards with SSR-friendly conditionals -->
+        <!-- Document Cards with SSR-safe conditionals -->
         <div class="space-y-4">
-          <!-- Source Code Card -->
+          <!-- Source Code Card with Inline Upload -->
           <UCard class="border border-gray-200 hover:border-indigo-300 transition duration-200">
             <div class="flex gap-4">
               <!-- Left Icon -->
@@ -368,78 +349,125 @@
                 <div class="flex justify-between items-start">
                   <div>
                     <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                      {{ $t('source_code') || 'Išeities kodas' }}
+                      {{ $t('source_code', 'Išeities kodas') }}
                     </h3>
 
                     <p class="text-sm text-gray-500 mb-4">
-                      {{ getSourceCodeDocument()
-                        ? formatDate(getSourceCodeDocument()?.createdDate)
-                        : ($t('no_source_code_yet') || 'Išeities kodas dar neįkeltas') }}
+                      <template v-if="getSourceCodeDocument()">
+                        {{ formatDate(getSourceCodeDocument()?.createdDate) }}
+                      </template>
+                      <template v-else>
+                        {{ $t('no_source_code_yet', 'Išeities kodas dar neįkeltas') }}
+                      </template>
                     </p>
                   </div>
 
                   <!-- Status Badge -->
                   <UBadge
-                    v-if="getSourceCodeDocument()"
-                    color="green"
+                    :color="getSourceCodeDocument() ? 'green' : 'orange'"
                     variant="subtle"
                   >
                     <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-check-circle" />
-                      {{ $t('uploaded') || 'Įkelta' }}
-                    </span>
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    color="orange"
-                    variant="subtle"
-                  >
-                    <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-clock" />
-                      {{ $t('missing') || 'Trūksta' }}
+                      <UIcon :name="getSourceCodeDocument() ? 'i-heroicons-check-circle' : 'i-heroicons-clock'" />
+                      {{ getSourceCodeDocument() ? $t('uploaded', 'Įkelta') : $t('missing', 'Trūksta') }}
                     </span>
                   </UBadge>
                 </div>
 
-                <!-- Actions -->
-                <ClientOnly>
-                  <div class="flex gap-2">
-                    <!-- Show download button only if document exists -->
-                    <UButton
-                      v-if="getSourceCodeDocument()"
-                      :loading="isFetchingDocument"
-                      icon="i-heroicons-arrow-down-tray"
-                      size="sm"
-                      color="indigo"
-                      :title="$t('download_source_code') || 'Atsisiųsti išeities kodą'"
-                      @click="openDocument(getSourceCodeDocument())"
-                    >
-                      {{ $t('download') || 'Atsisiųsti' }}
-                    </UButton>
+                <!-- Actions - Always render container, hide with CSS if needed -->
+                <div class="action-buttons-container">
+                  <ClientOnly>
+                    <template v-if="getSourceCodeDocument()">
+                      <div class="flex gap-2">
+                        <UButton
+                          :loading="isFetchingDocument"
+                          icon="i-heroicons-arrow-down-tray"
+                          size="sm"
+                          color="indigo"
+                          :title="$t('download_source_code', 'Atsisiųsti išeities kodą')"
+                          @click="openDocument(getSourceCodeDocument())"
+                        >
+                          {{ $t('download', 'Atsisiųsti') }}
+                        </UButton>
 
-                    <!-- Upload/Update button is always visible -->
-                    <UButton
-                      v-if="isStudentAuthenticated"
-                      icon="i-heroicons-arrow-up-tray"
-                      size="sm"
-                      :color="getSourceCodeDocument() ? 'indigo' : 'primary'"
-                      :variant="getSourceCodeDocument() ? 'outline' : 'solid'"
-                      @click="openDirectUploader('zip')"
-                    >
-                      {{ getSourceCodeDocument()
-                        ? ($t('update_source_code') || 'Atnaujinti kodą')
-                        : ($t('upload_source_code') || 'Įkelti kodą') }}
-                    </UButton>
+                        <UButton
+                          v-if="isStudentAuthenticated"
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="indigo"
+                          variant="outline"
+                          @click="showSourceCodeUpload = !showSourceCodeUpload"
+                        >
+                          {{ $t('update_source_code', 'Atnaujinti kodą') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template v-else-if="isStudentAuthenticated">
+                      <div class="flex gap-2">
+                        <UButton
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="indigo"
+                          @click="showSourceCodeUpload = true"
+                        >
+                          {{ $t('upload_source_code', 'Įkelti kodą') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template #fallback>
+                      <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                    </template>
+                  </ClientOnly>
+                </div>
+
+                <!-- Inline Upload Form - Server-side safe -->
+                <template v-if="showSourceCodeUpload">
+                  <div class="mt-4">
+                    <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                      <p
+                        v-if="!getSourceCodeDocument()"
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('upload_source_code_prompt', 'Įkelkite išeities kodą ZIP formate') }}
+                      </p>
+                      <p
+                        v-else
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('update_source_code_prompt', 'Pasirinkite naują ZIP failą, kuris pakeis dabartinį kodą') }}
+                      </p>
+
+                      <ClientOnly>
+                        <FileUploader
+                          type="zip"
+                          @zip-uploaded="handleZipUploadInline"
+                        />
+                        <template #fallback>
+                          <div class="h-20 bg-gray-200 rounded animate-pulse" />
+                        </template>
+                      </ClientOnly>
+
+                      <div
+                        v-if="getSourceCodeDocument()"
+                        class="mt-3 flex justify-end"
+                      >
+                        <UButton
+                          size="sm"
+                          color="gray"
+                          variant="ghost"
+                          @click="showSourceCodeUpload = false"
+                        >
+                          {{ $t('cancel', 'Atšaukti') }}
+                        </UButton>
+                      </div>
+                    </div>
                   </div>
-                  <template #fallback>
-                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-                  </template>
-                </ClientOnly>
+                </template>
               </div>
             </div>
           </UCard>
 
-          <!-- Final Document Card -->
+          <!-- Final Document Card with Inline Upload -->
           <UCard class="border border-gray-200 hover:border-primary-300 transition duration-200">
             <div class="flex gap-4">
               <!-- Left Icon -->
@@ -457,77 +485,124 @@
                 <div class="flex justify-between items-start">
                   <div>
                     <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                      {{ $t('final_project') || 'Baigiamasis darbas' }}
+                      {{ $t('final_project', 'Baigiamasis darbas') }}
                     </h3>
 
                     <p class="text-sm text-gray-500 mb-4">
-                      {{ getFinalDocument()
-                        ? formatDate(getFinalDocument()?.createdDate)
-                        : ($t('no_document_yet') || 'Dokumentas dar neįkeltas') }}
+                      <template v-if="getFinalDocument()">
+                        {{ formatDate(getFinalDocument()?.createdDate) }}
+                      </template>
+                      <template v-else>
+                        {{ $t('no_document_yet', 'Dokumentas dar neįkeltas') }}
+                      </template>
                     </p>
                   </div>
 
                   <!-- Status Badge -->
                   <UBadge
-                    v-if="getFinalDocument()"
-                    color="green"
+                    :color="getFinalDocument() ? 'green' : 'orange'"
                     variant="subtle"
                   >
                     <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-check-circle" />
-                      {{ $t('uploaded') || 'Įkelta' }}
-                    </span>
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    color="orange"
-                    variant="subtle"
-                  >
-                    <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-clock" />
-                      {{ $t('missing') || 'Trūksta' }}
+                      <UIcon :name="getFinalDocument() ? 'i-heroicons-check-circle' : 'i-heroicons-clock'" />
+                      {{ getFinalDocument() ? $t('uploaded', 'Įkelta') : $t('missing', 'Trūksta') }}
                     </span>
                   </UBadge>
                 </div>
 
                 <!-- Actions -->
-                <ClientOnly>
-                  <div class="flex gap-2">
-                    <!-- Show view button only if document exists -->
-                    <UButton
-                      v-if="getFinalDocument()"
-                      :loading="isFetchingDocument"
-                      icon="i-heroicons-eye"
-                      size="sm"
-                      color="primary"
-                      @click="openDocument(getFinalDocument())"
-                    >
-                      {{ $t('view') || 'Peržiūrėti' }}
-                    </UButton>
+                <div class="action-buttons-container">
+                  <ClientOnly>
+                    <template v-if="getFinalDocument()">
+                      <div class="flex gap-2">
+                        <UButton
+                          :loading="isFetchingDocument"
+                          icon="i-heroicons-eye"
+                          size="sm"
+                          color="primary"
+                          @click="openDocument(getFinalDocument())"
+                        >
+                          {{ $t('view', 'Peržiūrėti') }}
+                        </UButton>
 
-                    <!-- Upload/Update button is always visible -->
-                    <UButton
-                      v-if="isStudentAuthenticated"
-                      icon="i-heroicons-arrow-up-tray"
-                      size="sm"
-                      :color="getFinalDocument() ? 'primary' : 'primary'"
-                      :variant="getFinalDocument() ? 'outline' : 'solid'"
-                      @click="openDirectUploader('pdf')"
-                    >
-                      {{ getFinalDocument()
-                        ? ($t('update_document') || 'Atnaujinti dokumentą')
-                        : ($t('upload_document') || 'Įkelti dokumentą') }}
-                    </UButton>
+                        <UButton
+                          v-if="isStudentAuthenticated"
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="primary"
+                          variant="outline"
+                          @click="showDocumentUpload = !showDocumentUpload"
+                        >
+                          {{ $t('update_document', 'Atnaujinti dokumentą') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template v-else-if="isStudentAuthenticated">
+                      <div class="flex gap-2">
+                        <UButton
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="primary"
+                          @click="showDocumentUpload = true"
+                        >
+                          {{ $t('upload_document', 'Įkelti dokumentą') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template #fallback>
+                      <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                    </template>
+                  </ClientOnly>
+                </div>
+
+                <!-- Inline Upload Form -->
+                <template v-if="showDocumentUpload">
+                  <div class="mt-4">
+                    <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                      <p
+                        v-if="!getFinalDocument()"
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('upload_document_prompt', 'Įkelkite baigiamąjį darbą PDF formate') }}
+                      </p>
+                      <p
+                        v-else
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('update_document_prompt', 'Pasirinkite naują PDF failą, kuris pakeis dabartinį dokumentą') }}
+                      </p>
+
+                      <ClientOnly>
+                        <FileUploader
+                          type="pdf"
+                          @document-uploaded="handleDocumentUploadInline"
+                        />
+                        <template #fallback>
+                          <div class="h-20 bg-gray-200 rounded animate-pulse" />
+                        </template>
+                      </ClientOnly>
+
+                      <div
+                        v-if="getFinalDocument()"
+                        class="mt-3 flex justify-end"
+                      >
+                        <UButton
+                          size="sm"
+                          color="gray"
+                          variant="ghost"
+                          @click="showDocumentUpload = false"
+                        >
+                          {{ $t('cancel', 'Atšaukti') }}
+                        </UButton>
+                      </div>
+                    </div>
                   </div>
-                  <template #fallback>
-                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-                  </template>
-                </ClientOnly>
+                </template>
               </div>
             </div>
           </UCard>
 
-          <!-- Company Recommendation Card -->
+          <!-- Company Recommendation Card with Inline Upload -->
           <UCard class="border border-gray-200 hover:border-emerald-300 transition duration-200">
             <div class="flex gap-4">
               <!-- Left Icon -->
@@ -545,105 +620,123 @@
                 <div class="flex justify-between items-start">
                   <div>
                     <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                      {{ $t('company_recommendation') || 'Įmonės rekomendacija' }}
+                      {{ $t('company_recommendation', 'Įmonės rekomendacija') }}
                     </h3>
 
                     <p class="text-sm text-gray-500 mb-4">
-                      {{ getCompanyRecommendation()
-                        ? formatDate(getCompanyRecommendation()?.createdDate)
-                        : ($t('no_recommendation_yet') || 'Rekomendacija dar neįkelta') }}
+                      <template v-if="getCompanyRecommendation()">
+                        {{ formatDate(getCompanyRecommendation()?.createdDate) }}
+                      </template>
+                      <template v-else>
+                        {{ $t('no_recommendation_yet', 'Rekomendacija dar neįkelta') }}
+                      </template>
                     </p>
                   </div>
 
                   <!-- Status Badge -->
                   <UBadge
-                    v-if="getCompanyRecommendation()"
-                    color="green"
+                    :color="getCompanyRecommendation() ? 'green' : 'orange'"
                     variant="subtle"
                   >
                     <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-check-circle" />
-                      {{ $t('uploaded') || 'Įkelta' }}
-                    </span>
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    color="orange"
-                    variant="subtle"
-                  >
-                    <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-clock" />
-                      {{ $t('missing') || 'Trūksta' }}
+                      <UIcon :name="getCompanyRecommendation() ? 'i-heroicons-check-circle' : 'i-heroicons-clock'" />
+                      {{ getCompanyRecommendation() ? $t('uploaded', 'Įkelta') : $t('missing', 'Trūksta') }}
                     </span>
                   </UBadge>
                 </div>
 
                 <!-- Actions -->
-                <ClientOnly>
-                  <div class="flex gap-2">
-                    <!-- Show view button only if document exists -->
-                    <UButton
-                      v-if="getCompanyRecommendation()"
-                      :loading="isFetchingDocument"
-                      icon="i-heroicons-eye"
-                      size="sm"
-                      color="emerald"
-                      @click="openDocument(getCompanyRecommendation())"
-                    >
-                      {{ $t('view') || 'Peržiūrėti' }}
-                    </UButton>
+                <div class="action-buttons-container">
+                  <ClientOnly>
+                    <template v-if="getCompanyRecommendation()">
+                      <div class="flex gap-2">
+                        <UButton
+                          :loading="isFetchingDocument"
+                          icon="i-heroicons-eye"
+                          size="sm"
+                          color="emerald"
+                          @click="openDocument(getCompanyRecommendation())"
+                        >
+                          {{ $t('view', 'Peržiūrėti') }}
+                        </UButton>
 
-                    <!-- Upload/Update button is always visible -->
-                    <UButton
-                      v-if="isStudentAuthenticated"
-                      icon="i-heroicons-arrow-up-tray"
-                      size="sm"
-                      :color="getCompanyRecommendation() ? 'emerald' : 'emerald'"
-                      :variant="getCompanyRecommendation() ? 'outline' : 'solid'"
-                      @click="openDirectUploader('recommendation')"
-                    >
-                      {{ getCompanyRecommendation()
-                        ? ($t('update_recommendation') || 'Atnaujinti rekomendaciją')
-                        : ($t('upload_recommendation') || 'Įkelti rekomendaciją') }}
-                    </UButton>
+                        <UButton
+                          v-if="isStudentAuthenticated"
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="emerald"
+                          variant="outline"
+                          @click="showRecommendationUpload = !showRecommendationUpload"
+                        >
+                          {{ $t('update_recommendation', 'Atnaujinti rekomendaciją') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template v-else-if="isStudentAuthenticated">
+                      <div class="flex gap-2">
+                        <UButton
+                          icon="i-heroicons-arrow-up-tray"
+                          size="sm"
+                          color="emerald"
+                          @click="showRecommendationUpload = true"
+                        >
+                          {{ $t('upload_recommendation', 'Įkelti rekomendaciją') }}
+                        </UButton>
+                      </div>
+                    </template>
+                    <template #fallback>
+                      <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                    </template>
+                  </ClientOnly>
+                </div>
+
+                <!-- Inline Upload Form -->
+                <template v-if="showRecommendationUpload">
+                  <div class="mt-4">
+                    <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                      <p
+                        v-if="!getCompanyRecommendation()"
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('upload_recommendation_prompt', 'Įkelkite įmonės rekomendaciją PDF formate') }}
+                      </p>
+                      <p
+                        v-else
+                        class="text-sm text-gray-600 mb-4"
+                      >
+                        {{ $t('update_recommendation_prompt', 'Pasirinkite naują PDF failą, kuris pakeis dabartinę rekomendaciją') }}
+                      </p>
+
+                      <ClientOnly>
+                        <FileUploader
+                          type="recommendation"
+                          @recommendation-uploaded="handleRecommendationUploadInline"
+                        />
+                        <template #fallback>
+                          <div class="h-20 bg-gray-200 rounded animate-pulse" />
+                        </template>
+                      </ClientOnly>
+
+                      <div
+                        v-if="getCompanyRecommendation()"
+                        class="mt-3 flex justify-end"
+                      >
+                        <UButton
+                          size="sm"
+                          color="gray"
+                          variant="ghost"
+                          @click="showRecommendationUpload = false"
+                        >
+                          {{ $t('cancel', 'Atšaukti') }}
+                        </UButton>
+                      </div>
+                    </div>
                   </div>
-                  <template #fallback>
-                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
-                  </template>
-                </ClientOnly>
+                </template>
               </div>
             </div>
           </UCard>
         </div>
-
-        <!-- Upload Modal - Direct Uploader -->
-        <UModal v-model="showDirectUploadModal">
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">
-                  {{ getUploaderTitle() }}
-                </h3>
-                <UBadge
-                  :color="getUploaderColor()"
-                  variant="subtle"
-                >
-                  {{ getUploaderType() }}
-                </UBadge>
-              </div>
-            </template>
-
-            <div class="p-4">
-              <!-- File Uploader -->
-              <FileUploader
-                :type="currentUploaderType"
-                @document-uploaded="handleDocumentUpload"
-                @zip-uploaded="handleZipUpload"
-                @recommendation-uploaded="handleRecommendationUpload"
-              />
-            </div>
-          </UCard>
-        </UModal>
       </div>
 
       <UDivider />
@@ -771,6 +864,7 @@
       <UDivider />
 
       <!-- Video Section -->
+      <!-- Updated Video Section for Student.vue -->
       <div>
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">
@@ -795,38 +889,61 @@
           </ClientOnly>
         </div>
 
-        <!-- Video Player -->
+        <!-- Video Player with Enhanced Support -->
         <div
           v-if="records.videos?.length > 0"
           class="bg-gray-50 rounded-md overflow-hidden"
         >
+          <!-- Enhanced Video Player with AVI support and download fallback -->
           <VideoPlayer
             :video-key="records.videos[0].key"
             :content-type="records.videos[0].contentType"
+            :filename="records.videos[0].filename"
+            :file-size="records.videos[0].size"
             class="w-full aspect-video"
           />
-          <div class="p-3 flex justify-between items-center">
+
+          <!-- Video Info Panel -->
+          <div class="p-3 flex justify-between items-center border-t border-gray-200">
             <div>
               <h4 class="font-medium">
                 {{ records.videos[0].filename }}
               </h4>
-              <p class="text-xs text-gray-500">
-                {{ formatDate(records.videos[0].createdAt) }}
-              </p>
+              <div class="flex items-center gap-4 text-xs text-gray-500 mt-1">
+                <span>{{ formatDate(records.videos[0].createdAt) }}</span>
+                <span>{{ records.videos[0].contentType }}</span>
+                <span v-if="records.videos[0].size">{{ formatFileSize(records.videos[0].size) }}</span>
+              </div>
             </div>
-            <ClientOnly>
+
+            <div class="flex items-center gap-2">
+              <!-- Direct Download Button -->
               <UButton
-                v-if="isStudentAuthenticated"
-                icon="i-heroicons-pencil"
+                icon="i-heroicons-arrow-down-tray"
                 size="sm"
-                color="orange"
+                color="gray"
                 variant="ghost"
-                :title="$t('replace_video') || 'Pakeisti įrašą'"
-                @click="openVideoUploader = true"
+                :title="$t('download_video') || 'Atsisiųsti vaizdo įrašą'"
+                @click="downloadVideoFile"
               >
-                {{ $t('replace_video') || 'Pakeisti įrašą' }}
+                {{ $t('download') || 'Atsisiųsti' }}
               </UButton>
-            </ClientOnly>
+
+              <!-- Replace Button -->
+              <ClientOnly>
+                <UButton
+                  v-if="isStudentAuthenticated"
+                  icon="i-heroicons-pencil"
+                  size="sm"
+                  color="orange"
+                  variant="ghost"
+                  :title="$t('replace_video') || 'Pakeisti įrašą'"
+                  @click="openVideoUploader = true"
+                >
+                  {{ $t('replace_video') || 'Pakeisti įrašą' }}
+                </UButton>
+              </ClientOnly>
+            </div>
           </div>
         </div>
 
@@ -863,7 +980,7 @@
         </div>
       </div>
 
-      <!-- Video Upload Modal -->
+      <!-- Video Upload Modal with Format Information -->
       <UModal v-model="openVideoUploader">
         <UCard>
           <template #header>
@@ -878,6 +995,22 @@
                 ? ($t('update_video_instructions') || 'Pasirinkite naują vaizdo įrašą, kuris pakeis dabartinį pristatymą')
                 : ($t('upload_video_instructions') || 'Pasirinkite vaizdo įrašą su jūsų darbo pristatymu') }}
             </p>
+
+            <!-- Format Information -->
+            <div class="mb-4 p-4 bg-blue-50 rounded-md">
+              <h4 class="font-medium text-blue-900 mb-2">
+                <UIcon
+                  name="i-heroicons-information-circle"
+                  class="inline mr-1"
+                />
+                {{ $t('video_format_info') || 'Vaizdo formatų informacija' }}
+              </h4>
+              <div class="text-sm text-blue-800 space-y-1">
+                <p><strong>{{ $t('recommended_formats') || 'Rekomenduojami formatai:' }}</strong> MP4, WebM</p>
+                <p><strong>{{ $t('supported_formats') || 'Palaikomi formatai:' }}</strong> MP4, WebM, MOV</p>
+                <p><strong>{{ $t('limited_support') || 'Ribotas palaikymas:' }}</strong> AVI, WMV (bus galima atsisiųsti)</p>
+              </div>
+            </div>
 
             <VideoUploader
               :title="records.videos?.length > 0 ? 'Atnaujinti vaizdo įrašą' : ''"
@@ -918,12 +1051,9 @@ const isSubmitting = ref(false)
 const showDebug = ref(false)
 const showForceButton = ref(false)
 const showTopicDetails = ref(false)
-const showDirectUploadModal = ref(false)
-const currentUploaderType = ref('zip') // 'zip', 'pdf', or 'recommendation'
-
-// Add these two missing refs
-const showDocumentUpload = ref(false)
 const showSourceCodeUpload = ref(false)
+const showDocumentUpload = ref(false)
+const showRecommendationUpload = ref(false)
 
 const { t } = useI18n()
 
@@ -957,6 +1087,61 @@ const isStudentAuthenticated = computed(() => {
 
   return result
 })
+
+// Format file size utility
+const formatFileSize = (bytes) => {
+  if (!bytes) return 'N/A'
+
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  if (bytes === 0) return '0 Bytes'
+
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// Download video file directly
+const downloadVideoFile = async () => {
+  if (!records.value?.videos?.[0]) return
+
+  try {
+    const video = records.value.videos[0]
+
+    // Get the video URL
+    const response = await $fetch(`/api/students/videos/url/${video.key}`)
+
+    if (response?.url) {
+      // Create download link
+      const link = document.createElement('a')
+      link.href = response.url
+      link.download = video.filename || 'video'
+      link.target = '_blank'
+
+      // Trigger download
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Show success message
+      useToast().add({
+        title: t('success') || 'Sėkmingai',
+        description: t('video_download_started') || 'Vaizdo įrašo atsisiuntimas pradėtas',
+        color: 'green'
+      })
+    }
+    else {
+      throw new Error('Video URL not available')
+    }
+  }
+  catch (error) {
+    console.error('Error downloading video:', error)
+
+    useToast().add({
+      title: t('error') || 'Klaida',
+      description: t('video_download_failed') || 'Nepavyko atsisiųsti vaizdo įrašo',
+      color: 'red'
+    })
+  }
+}
 
 // Debug function for auth issues
 const handleAuthIssue = () => {
@@ -1235,115 +1420,14 @@ const getSupervisorReportData = (report) => {
   }
 }
 
-// Open direct uploader modal for different file types
-const openDirectUploader = (type) => {
-  currentUploaderType.value = type
-  showDirectUploadModal.value = true
-}
-
-// Get title for direct uploader modal
-const getUploaderTitle = () => {
-  if (currentUploaderType.value === 'zip') {
-    return getSourceCodeDocument()
-      ? t('update_source_code') || 'Atnaujinti išeities kodą'
-      : t('upload_source_code') || 'Įkelti išeities kodą'
-  }
-  else if (currentUploaderType.value === 'pdf') {
-    return getFinalDocument()
-      ? t('update_document') || 'Atnaujinti dokumentą'
-      : t('upload_document') || 'Įkelti dokumentą'
-  }
-  else if (currentUploaderType.value === 'recommendation') {
-    return getCompanyRecommendation()
-      ? t('update_recommendation') || 'Atnaujinti rekomendaciją'
-      : t('upload_recommendation') || 'Įkelti rekomendaciją'
-  }
-  return ''
-}
-
-// Get color for uploader type
-const getUploaderColor = () => {
-  if (currentUploaderType.value === 'zip') return 'indigo'
-  if (currentUploaderType.value === 'pdf') return 'primary'
-  if (currentUploaderType.value === 'recommendation') return 'emerald'
-  return 'gray'
-}
-
-// Get display text for uploader type
-const getUploaderType = () => {
-  if (currentUploaderType.value === 'zip') return 'ZIP'
-  if (currentUploaderType.value === 'pdf') return 'PDF'
-  if (currentUploaderType.value === 'recommendation') return 'PDF'
-  return ''
-}
-
-// Helper functions for topic status display
-const getTopicStatusColor = (status) => {
-  switch (status) {
-    case 'draft': return 'blue'
-    case 'submitted': return 'blue'
-    case 'approved': return 'blue'
-    case 'pending_department': return 'purple'
-    case 'head_approved': return 'green'
-    case 'needs_revisio': return 'orange'
-    default: return 'gray'
-  }
-}
-
-const getTopicStatusIcon = (status) => {
-  switch (status) {
-    case 'draft': return 'i-heroicons-pencil-square'
-    case 'submitted':
-    case 'pending_department': return 'i-heroicons-clock'
-    case 'approved':
-    case 'head_approved': return 'i-heroicons-check-badge'
-    case 'needs_revision': return 'i-heroicons-x-circle'
-    default: return 'i-heroicons-question-mark-circle'
-  }
-}
-
-const getTopicStatusText = (status) => {
-  switch (status) {
-    case 'draft': return t('draft') || 'Juodraštis'
-    case 'submitted': return t('pending_supervisor') || 'Laukiama vadovo'
-    case 'approved': return t('approved_supervisor') || 'Patvirtinta vadovo'
-    case 'pending_department': return t('pending_department') || 'Laukiama katedros'
-    case 'head_approved': return t('approved_final') || 'Patvirtinta'
-    case 'needs_revision': return t('needs_revision') || 'Reikia pataisymų'
-    default: return t('unknown') || 'Nežinoma'
-  }
-}
-
-// Handler for recommendation document upload
-const handleRecommendationUpload = async (result) => {
-  if (import.meta.client) {
-    console.log('Recommendation document uploaded successfully', result)
-  }
-
-  // Close modal
-  showDirectUploadModal.value = false
-
-  // Refresh data
-  await refresh()
-
-  // Show success notification
-  useToast().add({
-    title: t('success') || 'Sėkmingai',
-    description: getCompanyRecommendation()
-      ? (t('recommendation_updated_success') || 'Rekomendacija sėkmingai atnaujinta')
-      : (t('recommendation_uploaded_success') || 'Rekomendacija sėkmingai įkelta'),
-    color: 'green'
-  })
-}
-
-// Updated handler for ZIP upload with direct modal approach
-const handleZipUpload = async (result) => {
+// Inline upload handlers
+const handleZipUploadInline = async (result) => {
   if (import.meta.client) {
     console.log('ZIP file uploaded successfully', result)
   }
 
-  // Close modal
-  showDirectUploadModal.value = false
+  // Close the inline upload form
+  showSourceCodeUpload.value = false
 
   // Refresh data
   await refresh()
@@ -1358,14 +1442,13 @@ const handleZipUpload = async (result) => {
   })
 }
 
-// Updated handler for Document upload with direct modal approach
-const handleDocumentUpload = async (result) => {
+const handleDocumentUploadInline = async (result) => {
   if (import.meta.client) {
     console.log('Document uploaded successfully', result)
   }
 
-  // Close modal
-  showDirectUploadModal.value = false
+  // Close the inline upload form
+  showDocumentUpload.value = false
 
   // Refresh data
   await refresh()
@@ -1376,6 +1459,27 @@ const handleDocumentUpload = async (result) => {
     description: getFinalDocument()
       ? (t('document_updated_success') || 'Dokumentas sėkmingai atnaujintas')
       : (t('document_uploaded_success') || 'Dokumentas sėkmingai įkeltas'),
+    color: 'green'
+  })
+}
+
+const handleRecommendationUploadInline = async (result) => {
+  if (import.meta.client) {
+    console.log('Recommendation document uploaded successfully', result)
+  }
+
+  // Close the inline upload form
+  showRecommendationUpload.value = false
+
+  // Refresh data
+  await refresh()
+
+  // Show success notification
+  useToast().add({
+    title: t('success') || 'Sėkmingai',
+    description: getCompanyRecommendation()
+      ? (t('recommendation_updated_success') || 'Rekomendacija sėkmingai atnaujinta')
+      : (t('recommendation_uploaded_success') || 'Rekomendacija sėkmingai įkelta'),
     color: 'green'
   })
 }
@@ -1439,6 +1543,43 @@ const openDocument = async (doc) => {
   }
 }
 
+// Helper functions for topic status display
+const getTopicStatusColor = (status) => {
+  switch (status) {
+    case 'draft': return 'blue'
+    case 'submitted': return 'blue'
+    case 'approved': return 'blue'
+    case 'pending_department': return 'purple'
+    case 'head_approved': return 'green'
+    case 'needs_revisio': return 'orange'
+    default: return 'gray'
+  }
+}
+
+const getTopicStatusIcon = (status) => {
+  switch (status) {
+    case 'draft': return 'i-heroicons-pencil-square'
+    case 'submitted':
+    case 'pending_department': return 'i-heroicons-clock'
+    case 'approved':
+    case 'head_approved': return 'i-heroicons-check-badge'
+    case 'needs_revision': return 'i-heroicons-x-circle'
+    default: return 'i-heroicons-question-mark-circle'
+  }
+}
+
+const getTopicStatusText = (status) => {
+  switch (status) {
+    case 'draft': return t('draft') || 'Juodraštis'
+    case 'submitted': return t('pending_supervisor') || 'Laukiama vadovo'
+    case 'approved': return t('approved_supervisor') || 'Patvirtinta vadovo'
+    case 'pending_department': return t('pending_department') || 'Laukiama katedros'
+    case 'head_approved': return t('approved_final') || 'Patvirtinta'
+    case 'needs_revision': return t('needs_revision') || 'Reikia pataisymų'
+    default: return t('unknown') || 'Nežinoma'
+  }
+}
+
 // Debug and monitoring functions
 const logAuthState = () => {
   if (import.meta.client) {
@@ -1487,14 +1628,17 @@ watch(() => isStudentAuthenticated.value, (newValue) => {
   }
 }, { immediate: true })
 
-// Reset expanded sections when data refreshes to avoid showing upload section
-// after a file has been uploaded successfully
+// Reset expanded sections when data refreshes
 watch(() => records.value, () => {
+  // Auto-close upload forms when files are successfully uploaded
   if (getSourceCodeDocument()) {
     showSourceCodeUpload.value = false
   }
   if (getFinalDocument()) {
     showDocumentUpload.value = false
+  }
+  if (getCompanyRecommendation()) {
+    showRecommendationUpload.value = false
   }
 })
 
@@ -1503,6 +1647,7 @@ watch(() => isStudentAuthenticated.value, (newValue) => {
   if (!newValue) {
     showSourceCodeUpload.value = false
     showDocumentUpload.value = false
+    showRecommendationUpload.value = false
   }
 })
 
@@ -1635,9 +1780,6 @@ const debugMethods = {
   logAuthState,
   checkButtonVisibility,
   refresh: enhancedRefresh,
-  forceShowUploader: () => {
-    showDirectUploadModal.value = true
-  },
   toggleDebug: () => {
     showDebug.value = !showDebug.value
   }
@@ -1651,7 +1793,6 @@ if (import.meta.client && import.meta.dev) {
 // Expose for parent components
 defineExpose({
   refresh: enhancedRefresh,
-  openDirectUploader,
   debugMethods
 })
 </script>
