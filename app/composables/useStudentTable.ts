@@ -5,7 +5,7 @@
 export function useStudentTable() {
   const search = ref('')
   const selectedStatus = ref([])
-  const sort = ref({ column: 'studentLastname', direction: 'asc' as const })
+  const sort = ref({ column: 'id', direction: 'asc' as const })
   const page = ref(1)
   const pageCount = ref(10)
   const groupFilter = ref('')
@@ -26,19 +26,10 @@ export function useStudentTable() {
   // Dynamic years from API
   const { years: availableYears, isLoading: yearsLoading, error: yearsError } = useAcademicYears()
 
-  // Watch for filter changes (excluding sort) to reset pagination
-  watch([search, groupFilter, programFilter, yearFilter, pageCount], () => {
+  // Watch for filter changes to reset pagination
+  watch([search, groupFilter, programFilter, pageCount], () => {
     page.value = 1
   })
-
-  // Watch for sort changes to reset pagination
-  watch(
-    () => sort.value,
-    () => {
-      page.value = 1
-    },
-    { deep: true }
-  )
 
   // Make sure pageCount is always a number
   watch(pageCount, (newValue) => {

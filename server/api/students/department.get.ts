@@ -1,4 +1,4 @@
-import { eq, and, or, ilike, inArray, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, inArray, desc } from 'drizzle-orm'
 import { studentRecords, documents, videos, reviewerReports, supervisorReports, departmentHeads, projectTopicRegistrations, topicRegistrationComments } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
@@ -23,25 +23,11 @@ export default defineEventHandler(async (event) => {
 
     const query = getQuery(event)
     const requestedYear = parseInt(query.year as string) || null
-    const departmentFilter = query.department as string || null // Existing filter
-    const page = parseInt(query.page as string) || 1
-    const limit = parseInt(query.limit as string) || 10
-    const sortBy = query.sortBy as string || 'studentLastname' // Default sort
-    const sortOrder = query.sortOrder as string === 'desc' ? 'desc' : 'asc'
-    const search = query.search as string || ''
-    const group = query.group as string || ''
-    const program = query.program as string || ''
+    const departmentFilter = query.department as string || null
 
     logger.debug('Request parameters', {
       requestedYear,
       departmentFilter,
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-      search,
-      group,
-      program,
       query
     })
 
@@ -91,159 +77,57 @@ export default defineEventHandler(async (event) => {
       conditions.push(eq(studentRecords.department, departmentFilter))
     }
 
-    // Year filter: Determine latest year if not specified
+    // First, if no year is specified, determine the latest year from the database
     let latestYear = requestedYear
     if (!latestYear) {
-      logger.debug('No year specified, finding latest year based on initial conditions')
-      // Temporarily create base conditions for latest year query
-      const baseConditionsForYear = []
-      if (isDepartmentHead) {
-        baseConditionsForYear.push(eq(studentRecords.department, deptHeadResult[0].department))
-      }
-      else {
-        baseConditionsForYear.push(eq(studentRecords.supervisorEmail, userEmail))
-      }
-      if (departmentFilter) { // Also consider department filter if present
-        baseConditionsForYear.push(eq(studentRecords.department, departmentFilter))
-      }
+      logger.debug('No year specified, finding latest year')
 
       const latestYearResult = await db
         .select({ maxYear: studentRecords.currentYear })
         .from(studentRecords)
-        .where(baseConditionsForYear.length > 0 ? and(...baseConditionsForYear) : undefined)
+        .where(conditions.length === 1 ? conditions[0] : and(...conditions))
         .orderBy(desc(studentRecords.currentYear))
         .limit(1)
         .execute()
+
       latestYear = latestYearResult.length > 0 ? latestYearResult[0].maxYear : null
-      logger.info('Latest year determined', { latestYear })
-    }
 
-    if (latestYear) {
-      conditions.push(eq(studentRecords.currentYear, latestYear))
-      logger.debug('Applied year filter', { year: latestYear })
-    }
-
-    // Search filter
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`
-      conditions.push(
-        or(
-          ilike(studentRecords.studentName, searchLower),
-          ilike(studentRecords.studentLastname, searchLower),
-          ilike(studentRecords.studentEmail, searchLower),
-          ilike(studentRecords.finalProjectTitle, searchLower),
-          ilike(studentRecords.studentGroup, searchLower),
-          ilike(studentRecords.studyProgram, searchLower)
-        )
-      )
-      logger.debug('Applied search filter', { search })
-    }
-
-    // Group filter
-    if (group) {
-      conditions.push(eq(studentRecords.studentGroup, group))
-      logger.debug('Applied group filter', { group })
-    }
-
-    // Program filter
-    if (program) {
-      conditions.push(eq(studentRecords.studyProgram, program))
-      logger.debug('Applied program filter', { program })
-    }
-
-    const combinedConditions = conditions.length > 0 ? and(...conditions) : undefined
-
-    // Count total items
-    logger.debug('Fetching total student count with all filters')
-    const totalItemsResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(studentRecords)
-      .where(combinedConditions)
-      .execute()
-
-    const totalItems = totalItemsResult[0]?.count || 0
-    logger.info('Total items count determined', { totalItems, year: latestYear, isDepartmentHead })
-
-    if (totalItems === 0) {
-      logger.info('No students found matching all criteria', {
-        year: latestYear,
-        isDepartmentHead,
-        department: isDepartmentHead ? deptHeadResult[0].department : null,
-        departmentFilter,
-        search,
-        group,
-        program
+      logger.info('Latest year determined', {
+        latestYear
       })
-      return {
-        students: [],
-        totalItems: 0,
-        currentPage: page,
-        totalPages: 0,
-        itemsPerPage: limit,
-        year: latestYear,
-        isDepartmentHead
-      }
     }
 
-    // Sorting
-    let sortColumn
-    switch (sortBy) {
-      case 'name': // Assuming name refers to lastname
-        sortColumn = studentRecords.studentLastname
-        break
-      case 'finalProjectTitle':
-        sortColumn = studentRecords.finalProjectTitle
-        break
-      case 'studentGroup':
-        sortColumn = studentRecords.studentGroup
-        break
-      case 'studentEmail':
-        sortColumn = studentRecords.studentEmail
-        break
-      case 'studyProgram':
-        sortColumn = studentRecords.studyProgram
-        break
-      case 'supervisorName': // Assuming supervisor name is available or needs joining
-        sortColumn = studentRecords.supervisorName // Adjust if actual column name is different
-        break
-      default:
-        sortColumn = studentRecords.studentLastname
+    // Add year filter
+    if (latestYear) {
+      logger.debug('Applying year filter', { year: latestYear })
+      conditions.push(eq(studentRecords.currentYear, latestYear))
     }
-    const orderedColumn = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
-    logger.debug('Sorting parameters', { sortBy, sortOrder })
 
-    // Apply all conditions, sorting, and pagination for student records
-    logger.debug('Fetching paginated student records')
+    // Apply all conditions at once
+    logger.debug('Fetching student records with filters')
     const studentRecordsResult = await db.select()
       .from(studentRecords)
-      .where(combinedConditions)
-      .orderBy(orderedColumn)
-      .offset((page - 1) * limit)
-      .limit(limit)
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
       .execute()
 
     if (!studentRecordsResult?.length) {
-      logger.info('No students found for the current page', {
-        page,
-        limit,
+      logger.info('No students found matching criteria', {
         year: latestYear,
-        isDepartmentHead
+        isDepartmentHead,
+        department: isDepartmentHead ? deptHeadResult[0].department : null,
+        departmentFilter
       })
+
       return {
         students: [],
-        totalItems, // Still return totalItems
-        currentPage: page,
-        totalPages: Math.ceil(totalItems / limit),
-        itemsPerPage: limit,
+        total: 0,
         year: latestYear,
         isDepartmentHead
       }
     }
 
-    logger.info('Student records found for page', {
+    logger.info('Student records found', {
       count: studentRecordsResult.length,
-      page,
-      limit,
       year: latestYear,
       isDepartmentHead
     })
@@ -458,27 +342,11 @@ export default defineEventHandler(async (event) => {
         department: isDepartmentHead ? deptHeadResult[0].department : null
       })
 
-      const totalPages = Math.ceil(totalItems / limit)
-
-      logger.info('Response prepared successfully', {
-        studentCount: studentsData.length,
-        totalItems,
-        currentPage: page,
-        totalPages,
-        itemsPerPage: limit,
-        year: latestYear,
-        isDepartmentHead,
-        department: isDepartmentHead ? deptHeadResult[0].department : null
-      })
-
       return {
         students: studentsData,
-        totalItems,
-        currentPage: page,
-        totalPages,
-        itemsPerPage: limit,
+        total: studentRecordsResult.length,
         year: latestYear,
-        isDepartmentHead
+        isDepartmentHead // Include this information so the UI can show appropriate options
       }
     }
     catch (fetchError) {
