@@ -1,5 +1,37 @@
 <template>
   <div>
+    <!-- Debug Section - Remove after fixing -->
+    <div
+      v-if="showDebug"
+      class="debug-info bg-yellow-100 p-4 mb-4 border rounded"
+    >
+      <h4 class="font-bold mb-2">
+        🐛 Debug Information:
+      </h4>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <p><strong>isStudent:</strong> {{ isStudent }}</p>
+          <p><strong>User role:</strong> {{ userStore.user?.role }}</p>
+          <p><strong>User authenticated:</strong> {{ userStore.isAuthenticated }}</p>
+          <p><strong>User data:</strong> {{ !!userStore.user }}</p>
+        </div>
+        <div>
+          <p><strong>Records loaded:</strong> {{ !!records }}</p>
+          <p><strong>Student data:</strong> {{ !!records?.student }}</p>
+          <p><strong>Has source code:</strong> {{ !!getSourceCodeDocument() }}</p>
+          <p><strong>Has final doc:</strong> {{ hasFinalDocument }}</p>
+        </div>
+      </div>
+      <UButton
+        size="xs"
+        color="gray"
+        class="mt-2"
+        @click="showDebug = false"
+      >
+        Hide Debug
+      </UButton>
+    </div>
+
     <div v-if="status === 'pending'">
       <UCard class="p-4 shadow-md">
         <div class="flex justify-center items-center py-12">
@@ -11,6 +43,7 @@
         </div>
       </UCard>
     </div>
+
     <div v-else-if="error">
       <UCard class="p-4 shadow-md bg-red-50">
         <p class="text-red-500 font-medium">
@@ -41,155 +74,576 @@
               ({{ records.student.currentYear }})
             </p>
           </div>
+          <UButton
+            size="xs"
+            color="gray"
+            variant="ghost"
+            @click="showDebug = true"
+          >
+            🐛 Debug
+          </UButton>
         </div>
       </template>
 
-      <!-- Assignment Section -->
-      <div class="mb-6">
+      <!-- Assignment Section with Status and Workflow -->
+      <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">
+          <h2 class="text-xl font-bold">
             {{ $t('assignment') || 'Baigiamojo darbo užduotis' }}
-          </h3>
-          <div class="flex items-center gap-2">
-            <!-- Topic Registration Button -->
-            <ProjectTopicRegistration
-              :initial-data="topicData"
-              user-role="student"
-              :user-name="getUserFullName"
-              form-variant="lt"
-              :button-label="getTopicButtonLabel"
-              @save="handleSaveRegistration"
-              @comment="handleComment"
-              @status-change="handleStatusChange"
-              @mark-read="handleMarkAsRead"
-              @success="handleSuccess"
-            />
-          </div>
+          </h2>
         </div>
+
+        <!-- Topic Registration Card -->
+        <UCard class="border border-gray-200 hover:border-green-300 transition duration-200">
+          <div class="flex gap-4">
+            <!-- Icon -->
+            <div class="flex-shrink-0">
+              <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-green-50 text-green-500">
+                <UIcon
+                  name="i-heroicons-clipboard-document-check"
+                  class="h-7 w-7"
+                />
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                    {{ safeTopicData.TITLE || $t('topic_not_registered') || 'Tema neregistruota' }}
+                    <span
+                      v-if="safeTopicData.TITLE_EN"
+                      class="text-gray-500 font-normal italic text-sm ml-1"
+                    >
+                      ({{ safeTopicData.TITLE_EN }})
+                    </span>
+                  </h3>
+
+                  <p
+                    v-if="safeTopicData.SUPERVISOR"
+                    class="text-sm text-gray-600 mb-1"
+                  >
+                    <span class="font-medium">{{ $t('supervisor') || 'Vadovas' }}:</span>
+                    {{ safeTopicData.SUPERVISOR }}
+                  </p>
+
+                  <div class="flex items-center mt-2 mb-4">
+                    <UIcon
+                      name="i-heroicons-clock"
+                      class="h-4 w-4 text-gray-500 mr-1"
+                    />
+                    <span class="text-xs text-gray-500">
+                      {{ safeTopicData.COMPLETION_DATE
+                        ? formatDate(safeTopicData.COMPLETION_DATE)
+                        : ($t('completion_date_not_set') || 'Pabaigos data nenustatyta') }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Status Badge -->
+                <div class="flex items-center">
+                  <UBadge
+                    :color="getTopicStatusColor(safeTopicData.status)"
+                    variant="subtle"
+                    class="flex items-center gap-1"
+                  >
+                    <UIcon
+                      :name="getTopicStatusIcon(safeTopicData.status)"
+                      class="h-4 w-4"
+                    />
+                    {{ getTopicStatusText(safeTopicData.status) }}
+                  </UBadge>
+                </div>
+              </div>
+
+              <!-- Topic Description (Collapsed/Expandable) -->
+              <UAccordion
+                :items="[{
+                  label: showTopicDetails ? ($t('hide_details') || 'Slėpti detales') : ($t('show_details') || 'Rodyti detales'),
+                  slot: 'topic-details',
+                  defaultOpen: showTopicDetails
+                }]"
+                @update:model-value="(val) => showTopicDetails = val.length > 0"
+              >
+                <template #topic-details>
+                  <div class="bg-gray-50 p-3 rounded-md border border-gray-100 mt-2 text-sm space-y-3">
+                    <div v-if="safeTopicData.PROBLEM">
+                      <h4 class="text-xs uppercase font-semibold text-gray-500 mb-1">
+                        {{ $t('problem') || 'Problema' }}
+                      </h4>
+                      <p class="text-gray-700">
+                        {{ safeTopicData.PROBLEM }}
+                      </p>
+                    </div>
+
+                    <div v-if="safeTopicData.OBJECTIVE">
+                      <h4 class="text-xs uppercase font-semibold text-gray-500 mb-1">
+                        {{ $t('objective') || 'Tikslas' }}
+                      </h4>
+                      <p class="text-gray-700">
+                        {{ safeTopicData.OBJECTIVE }}
+                      </p>
+                    </div>
+
+                    <div v-if="safeTopicData.TASKS">
+                      <h4 class="text-xs uppercase font-semibold text-gray-500 mb-1">
+                        {{ $t('tasks') || 'Uždaviniai' }}
+                      </h4>
+                      <p class="text-gray-700 whitespace-pre-line">
+                        {{ safeTopicData.TASKS }}
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </UAccordion>
+
+              <!-- Approval Workflow -->
+              <div class="border-t border-gray-100 pt-4 mt-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <UButton
+                      v-if="showTopicDetails"
+                      size="xs"
+                      color="gray"
+                      variant="ghost"
+                      icon="i-heroicons-chevron-up"
+                      @click="showTopicDetails = false"
+                    >
+                      {{ $t('hide_details') || 'Slėpti detales' }}
+                    </UButton>
+                    <UButton
+                      v-else
+                      size="xs"
+                      color="gray"
+                      variant="ghost"
+                      icon="i-heroicons-chevron-down"
+                      @click="showTopicDetails = true"
+                    >
+                      {{ $t('show_details') || 'Rodyti detales' }}
+                    </UButton>
+
+                    <div
+                      v-if="safeTopicData.comments?.length"
+                      class="ml-3"
+                    >
+                      <UButton
+                        size="xs"
+                        color="orange"
+                        variant="soft"
+                        class="pointer-events-none"
+                      >
+                        <UIcon
+                          name="i-heroicons-chat-bubble-left-right"
+                          class="mr-1 h-3.5 w-3.5"
+                        />
+                        {{ safeTopicData.comments.length }} {{ safeTopicData.comments.length === 1 ? 'komentaras' : 'komentarai' }}
+                      </UButton>
+                    </div>
+                  </div>
+
+                  <!-- Topic Registration/Edit Button -->
+                  <ClientOnly>
+                    <div>
+                      <ProjectTopicRegistration
+                        class="project-topic-registration-button"
+                        :initial-data="safeTopicData"
+                        user-role="student"
+                        :user-name="getUserFullName"
+                        form-variant="lt"
+                        :button-label="getTopicButtonLabel"
+                        @save="handleSaveRegistration"
+                        @comment="handleComment"
+                        @status-change="handleStatusChange"
+                        @mark-read="handleMarkAsRead"
+                        @success="handleSuccess"
+                      />
+                    </div>
+                    <template #fallback>
+                      <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                    </template>
+                  </ClientOnly>
+                </div>
+              </div>
+
+              <!-- Approval Workflow Indicators -->
+              <div class="mt-4 border-t border-gray-100 pt-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-6">
+                    <!-- Student Step -->
+                    <div class="flex flex-col items-center">
+                      <div
+                        class="w-8 h-8 rounded-full flex items-center justify-center"
+                        :class="[
+                          safeTopicData.status === 'draft' ? 'bg-blue-100 text-blue-600'
+                          : 'bg-green-100 text-green-600'
+                        ]"
+                      >
+                        <UIcon
+                          :name="safeTopicData.status === 'draft' ? 'i-heroicons-pencil' : 'i-heroicons-check'"
+                          class="h-4 w-4"
+                        />
+                      </div>
+                      <span class="text-xs mt-1 text-gray-600">Studentas</span>
+                    </div>
+
+                    <!-- Connector -->
+                    <div class="h-0.5 w-6 bg-gray-200" />
+
+                    <!-- Supervisor Step -->
+                    <div class="flex flex-col items-center">
+                      <div
+                        class="w-8 h-8 rounded-full flex items-center justify-center"
+                        :class="[
+                          safeTopicData.status === 'pending_supervisor' ? 'bg-blue-100 text-blue-600'
+                          : (safeTopicData.status === 'approved' || safeTopicData.status === 'head_approved') ? 'bg-green-100 text-green-600'
+                            : 'bg-gray-100 text-gray-400'
+                        ]"
+                      >
+                        <UIcon
+                          :name="safeTopicData.status === 'pending_supervisor' ? 'i-heroicons-clock'
+                            : (safeTopicData.status === 'approved' || safeTopicData.status === 'head_approved') ? 'i-heroicons-check'
+                              : 'i-heroicons-user'"
+                          class="h-4 w-4"
+                        />
+                      </div>
+                      <span class="text-xs mt-1 text-gray-600">Vadovas</span>
+                    </div>
+
+                    <!-- Connector -->
+                    <div class="h-0.5 w-6 bg-gray-200" />
+
+                    <!-- Department Head Step -->
+                    <div class="flex flex-col items-center">
+                      <div
+                        class="w-8 h-8 rounded-full flex items-center justify-center"
+                        :class="[
+                          safeTopicData.status === 'pending_department' ? 'bg-blue-100 text-blue-600'
+                          : safeTopicData.status === 'head_approved' ? 'bg-green-100 text-green-600'
+                            : 'bg-gray-100 text-gray-400'
+                        ]"
+                      >
+                        <UIcon
+                          :name="safeTopicData.status === 'pending_department' ? 'i-heroicons-clock'
+                            : safeTopicData.status === 'head_approved' ? 'i-heroicons-check'
+                              : 'i-heroicons-user'"
+                          class="h-4 w-4"
+                        />
+                      </div>
+                      <span class="text-xs mt-1 text-gray-600">Katedros ved.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
       </div>
+
       <UDivider />
 
-      <!-- Documents Section -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">
-            {{ $t('documents') || 'Dokumentai' }}
-          </h3>
+      <!-- Documents Section with Status Indicators -->
+      <div class="mb-8">
+        <h2 class="text-xl font-bold mb-4">
+          {{ $t('documents') || 'Dokumentai' }}
+        </h2>
 
-          <!-- Document Upload Button (for students only) -->
-          <div class="flex gap-2">
-            <UButton
-              v-if="isStudent && !hasFinalDocument"
-              icon="i-heroicons-document-text"
-              size="sm"
-              color="primary"
-              @click="openDocumentUploader = true"
-            >
-              {{ $t('upload_document') || 'Įkelti dokumentą' }}
-            </UButton>
-
-            <!-- Source Code Upload Button - ALWAYS VISIBLE for students -->
-            <UButton
-              v-if="isStudent"
-              icon="i-heroicons-code-bracket-square"
-              size="sm"
-              :color="getSourceCodeDocument() ? 'indigo' : 'primary'"
-              :variant="getSourceCodeDocument() ? 'outline' : 'solid'"
-              @click="openSourceCodeUploader = true"
-            >
-              {{ getSourceCodeDocument() ? ($t('update_source_code') || 'Atnaujinti kodą') : ($t('upload_source_code') || 'Įkelti kodą') }}
-            </UButton>
-          </div>
-        </div>
-
-        <!-- Document List -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- Final Document Card -->
-          <UCard
-            v-if="getFinalDocument()"
-            class="bg-gray-50"
-          >
-            <div class="flex items-center">
-              <UIcon
-                name="i-heroicons-document-text"
-                class="h-8 w-8 text-primary-500 mr-3"
-              />
-              <div class="flex-1">
-                <h4 class="font-medium">
-                  {{ $t('final_project') || 'Baigiamasis darbas' }}
-                </h4>
-                <p class="text-xs text-gray-500">
-                  {{ formatDate(getFinalDocument()?.createdDate) }}
-                </p>
-              </div>
-              <UButton
-                :loading="isFetchingDocument"
-                icon="i-heroicons-eye"
-                size="xs"
-                color="primary"
-                variant="ghost"
-                @click="openDocument(getFinalDocument())"
-              />
-            </div>
-          </UCard>
-
+        <!-- Document Cards -->
+        <div class="space-y-4">
           <!-- Source Code Card -->
-          <UCard
-            v-if="getSourceCodeDocument()"
-            class="bg-gray-50"
-          >
-            <div class="flex items-center">
-              <UIcon
-                name="i-heroicons-code-bracket-square"
-                class="h-8 w-8 text-indigo-500 mr-3"
-              />
-              <div class="flex-1">
-                <h4 class="font-medium">
-                  {{ $t('source_code') || 'Išeities kodas' }}
-                </h4>
-                <p class="text-xs text-gray-500">
-                  {{ formatDate(getSourceCodeDocument()?.createdDate) }}
-                </p>
+          <UCard class="border border-gray-200 hover:border-indigo-300 transition duration-200">
+            <div class="flex gap-4">
+              <!-- Left Icon -->
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                  <UIcon
+                    name="i-heroicons-code-bracket-square"
+                    class="h-7 w-7"
+                  />
+                </div>
               </div>
-              <div class="flex gap-2">
-                <UButton
-                  :loading="isFetchingDocument"
-                  icon="i-heroicons-arrow-down-tray"
-                  size="xs"
-                  color="indigo"
-                  variant="ghost"
-                  :title="$t('download_source_code') || 'Atsisiųsti išeities kodą'"
-                  @click="openDocument(getSourceCodeDocument())"
-                />
-                <UButton
-                  v-if="isStudent"
-                  icon="i-heroicons-pencil"
-                  size="xs"
-                  color="indigo"
-                  variant="ghost"
-                  :title="$t('update_source_code') || 'Atnaujinti išeities kodą'"
-                  @click="openSourceCodeUploader = true"
-                />
+
+              <!-- Content -->
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                      {{ $t('source_code') || 'Išeities kodas' }}
+                    </h3>
+
+                    <p class="text-sm text-gray-500 mb-4">
+                      {{ getSourceCodeDocument()
+                        ? formatDate(getSourceCodeDocument()?.createdDate)
+                        : ($t('no_source_code_yet') || 'Išeities kodas dar neįkeltas') }}
+                    </p>
+                  </div>
+
+                  <!-- Status Badge -->
+                  <UBadge
+                    v-if="getSourceCodeDocument()"
+                    color="green"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-check-circle" />
+                      {{ $t('uploaded') || 'Įkelta' }}
+                    </span>
+                  </UBadge>
+                  <UBadge
+                    v-else
+                    color="orange"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-clock" />
+                      {{ $t('missing') || 'Trūksta' }}
+                    </span>
+                  </UBadge>
+                </div>
+
+                <!-- Actions -->
+                <ClientOnly>
+                  <div class="flex gap-2">
+                    <!-- Show download button only if document exists -->
+                    <UButton
+                      v-if="getSourceCodeDocument()"
+                      :loading="isFetchingDocument"
+                      icon="i-heroicons-arrow-down-tray"
+                      size="sm"
+                      color="indigo"
+                      :title="$t('download_source_code') || 'Atsisiųsti išeities kodą'"
+                      @click="openDocument(getSourceCodeDocument())"
+                    >
+                      {{ $t('download') || 'Atsisiųsti' }}
+                    </UButton>
+
+                    <!-- Upload/Update button is always visible -->
+                    <UButton
+                      v-if="isStudentAuthenticated"
+                      icon="i-heroicons-arrow-up-tray"
+                      size="sm"
+                      :color="getSourceCodeDocument() ? 'indigo' : 'primary'"
+                      :variant="getSourceCodeDocument() ? 'outline' : 'solid'"
+                      @click="openDirectUploader('zip')"
+                    >
+                      {{ getSourceCodeDocument()
+                        ? ($t('update_source_code') || 'Atnaujinti kodą')
+                        : ($t('upload_source_code') || 'Įkelti kodą') }}
+                    </UButton>
+                  </div>
+                  <template #fallback>
+                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                  </template>
+                </ClientOnly>
               </div>
             </div>
           </UCard>
 
-          <!-- No Documents Message -->
-          <UCard
-            v-if="!getFinalDocument() && !getSourceCodeDocument() && !isStudent"
-            class="bg-gray-50 border border-dashed border-gray-300"
-          >
-            <div class="text-center py-4">
-              <UIcon
-                name="i-heroicons-document-plus"
-                class="h-8 w-8 text-gray-400 mx-auto mb-2"
-              />
-              <p class="text-sm text-gray-600">
-                {{ $t('no_documents_uploaded') || 'Nėra įkeltų dokumentų' }}
-              </p>
+          <!-- Final Document Card -->
+          <UCard class="border border-gray-200 hover:border-primary-300 transition duration-200">
+            <div class="flex gap-4">
+              <!-- Left Icon -->
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-primary-50 text-primary-500">
+                  <UIcon
+                    name="i-heroicons-document-text"
+                    class="h-7 w-7"
+                  />
+                </div>
+              </div>
+
+              <!-- Content -->
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                      {{ $t('final_project') || 'Baigiamasis darbas' }}
+                    </h3>
+
+                    <p class="text-sm text-gray-500 mb-4">
+                      {{ getFinalDocument()
+                        ? formatDate(getFinalDocument()?.createdDate)
+                        : ($t('no_document_yet') || 'Dokumentas dar neįkeltas') }}
+                    </p>
+                  </div>
+
+                  <!-- Status Badge -->
+                  <UBadge
+                    v-if="getFinalDocument()"
+                    color="green"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-check-circle" />
+                      {{ $t('uploaded') || 'Įkelta' }}
+                    </span>
+                  </UBadge>
+                  <UBadge
+                    v-else
+                    color="orange"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-clock" />
+                      {{ $t('missing') || 'Trūksta' }}
+                    </span>
+                  </UBadge>
+                </div>
+
+                <!-- Actions -->
+                <ClientOnly>
+                  <div class="flex gap-2">
+                    <!-- Show view button only if document exists -->
+                    <UButton
+                      v-if="getFinalDocument()"
+                      :loading="isFetchingDocument"
+                      icon="i-heroicons-eye"
+                      size="sm"
+                      color="primary"
+                      @click="openDocument(getFinalDocument())"
+                    >
+                      {{ $t('view') || 'Peržiūrėti' }}
+                    </UButton>
+
+                    <!-- Upload/Update button is always visible -->
+                    <UButton
+                      v-if="isStudentAuthenticated"
+                      icon="i-heroicons-arrow-up-tray"
+                      size="sm"
+                      :color="getFinalDocument() ? 'primary' : 'primary'"
+                      :variant="getFinalDocument() ? 'outline' : 'solid'"
+                      @click="openDirectUploader('pdf')"
+                    >
+                      {{ getFinalDocument()
+                        ? ($t('update_document') || 'Atnaujinti dokumentą')
+                        : ($t('upload_document') || 'Įkelti dokumentą') }}
+                    </UButton>
+                  </div>
+                  <template #fallback>
+                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                  </template>
+                </ClientOnly>
+              </div>
+            </div>
+          </UCard>
+
+          <!-- Company Recommendation Card -->
+          <UCard class="border border-gray-200 hover:border-emerald-300 transition duration-200">
+            <div class="flex gap-4">
+              <!-- Left Icon -->
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
+                  <UIcon
+                    name="i-heroicons-building-office-2"
+                    class="h-7 w-7"
+                  />
+                </div>
+              </div>
+
+              <!-- Content -->
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                      {{ $t('company_recommendation') || 'Įmonės rekomendacija' }}
+                    </h3>
+
+                    <p class="text-sm text-gray-500 mb-4">
+                      {{ getCompanyRecommendation()
+                        ? formatDate(getCompanyRecommendation()?.createdDate)
+                        : ($t('no_recommendation_yet') || 'Rekomendacija dar neįkelta') }}
+                    </p>
+                  </div>
+
+                  <!-- Status Badge -->
+                  <UBadge
+                    v-if="getCompanyRecommendation()"
+                    color="green"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-check-circle" />
+                      {{ $t('uploaded') || 'Įkelta' }}
+                    </span>
+                  </UBadge>
+                  <UBadge
+                    v-else
+                    color="orange"
+                    variant="subtle"
+                  >
+                    <span class="flex items-center gap-1">
+                      <UIcon name="i-heroicons-clock" />
+                      {{ $t('missing') || 'Trūksta' }}
+                    </span>
+                  </UBadge>
+                </div>
+
+                <!-- Actions -->
+                <ClientOnly>
+                  <div class="flex gap-2">
+                    <!-- Show view button only if document exists -->
+                    <UButton
+                      v-if="getCompanyRecommendation()"
+                      :loading="isFetchingDocument"
+                      icon="i-heroicons-eye"
+                      size="sm"
+                      color="emerald"
+                      @click="openDocument(getCompanyRecommendation())"
+                    >
+                      {{ $t('view') || 'Peržiūrėti' }}
+                    </UButton>
+
+                    <!-- Upload/Update button is always visible -->
+                    <UButton
+                      v-if="isStudentAuthenticated"
+                      icon="i-heroicons-arrow-up-tray"
+                      size="sm"
+                      :color="getCompanyRecommendation() ? 'emerald' : 'emerald'"
+                      :variant="getCompanyRecommendation() ? 'outline' : 'solid'"
+                      @click="openDirectUploader('recommendation')"
+                    >
+                      {{ getCompanyRecommendation()
+                        ? ($t('update_recommendation') || 'Atnaujinti rekomendaciją')
+                        : ($t('upload_recommendation') || 'Įkelti rekomendaciją') }}
+                    </UButton>
+                  </div>
+                  <template #fallback>
+                    <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                  </template>
+                </ClientOnly>
+              </div>
             </div>
           </UCard>
         </div>
+
+        <!-- Upload Modal - Direct Uploader -->
+        <UModal v-model="showDirectUploadModal">
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">
+                  {{ getUploaderTitle() }}
+                </h3>
+                <UBadge
+                  :color="getUploaderColor()"
+                  variant="subtle"
+                >
+                  {{ getUploaderType() }}
+                </UBadge>
+              </div>
+            </template>
+
+            <div class="p-4">
+              <!-- File Uploader -->
+              <FileUploader
+                :type="currentUploaderType"
+                @document-uploaded="handleDocumentUpload"
+                @zip-uploaded="handleZipUpload"
+                @recommendation-uploaded="handleRecommendationUpload"
+              />
+            </div>
+          </UCard>
+        </UModal>
       </div>
 
       <UDivider />
@@ -324,16 +778,21 @@
           </h3>
 
           <!-- Video Upload Button -->
-          <UButton
-            v-if="isStudent"
-            icon="i-heroicons-video-camera"
-            size="sm"
-            :color="records.videos?.length > 0 ? 'orange' : 'primary'"
-            :variant="records.videos?.length > 0 ? 'outline' : 'solid'"
-            @click="openVideoUploader = true"
-          >
-            {{ records.videos?.length > 0 ? ($t('update_video') || 'Atnaujinti vaizdo įrašą') : ($t('upload_video') || 'Įkelti vaizdo įrašą') }}
-          </UButton>
+          <ClientOnly>
+            <UButton
+              v-if="isStudentAuthenticated"
+              icon="i-heroicons-video-camera"
+              size="sm"
+              :color="records.videos?.length > 0 ? 'orange' : 'primary'"
+              :variant="records.videos?.length > 0 ? 'outline' : 'solid'"
+              @click="openVideoUploader = true"
+            >
+              {{ records.videos?.length > 0 ? ($t('update_video') || 'Atnaujinti vaizdo įrašą') : ($t('upload_video') || 'Įkelti vaizdo įrašą') }}
+            </UButton>
+            <template #fallback>
+              <div class="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+            </template>
+          </ClientOnly>
         </div>
 
         <!-- Video Player -->
@@ -355,17 +814,19 @@
                 {{ formatDate(records.videos[0].createdAt) }}
               </p>
             </div>
-            <UButton
-              v-if="isStudent"
-              icon="i-heroicons-pencil"
-              size="sm"
-              color="orange"
-              variant="ghost"
-              :title="$t('replace_video') || 'Pakeisti įrašą'"
-              @click="openVideoUploader = true"
-            >
-              {{ $t('replace_video') || 'Pakeisti įrašą' }}
-            </UButton>
+            <ClientOnly>
+              <UButton
+                v-if="isStudentAuthenticated"
+                icon="i-heroicons-pencil"
+                size="sm"
+                color="orange"
+                variant="ghost"
+                :title="$t('replace_video') || 'Pakeisti įrašą'"
+                @click="openVideoUploader = true"
+              >
+                {{ $t('replace_video') || 'Pakeisti įrašą' }}
+              </UButton>
+            </ClientOnly>
           </div>
         </div>
 
@@ -382,85 +843,25 @@
             {{ $t('no_video_uploaded') || 'Nėra įkelto vaizdo įrašo' }}
           </p>
           <p
-            v-if="isStudent"
+            v-if="isStudentAuthenticated"
             class="text-sm text-gray-500 mt-2"
           >
             {{ $t('upload_video_prompt') || 'Įkelkite vaizdo įrašą, kuriame pristatomas jūsų darbas' }}
           </p>
 
-          <div
-            v-if="isStudent"
-            class="mt-4"
-          >
-            <VideoUploader
-              title="Įkelkite savo programinio kodo paaiškinimo vaizdą"
-              @video-uploaded="handleVideoUploadSuccess"
-            />
-          </div>
+          <ClientOnly>
+            <div
+              v-if="isStudentAuthenticated"
+              class="mt-4"
+            >
+              <VideoUploader
+                title="Įkelkite savo programinio kodo paaiškinimo vaizdą"
+                @video-uploaded="handleVideoUploadSuccess"
+              />
+            </div>
+          </ClientOnly>
         </div>
       </div>
-
-      <!-- Document Upload Modal -->
-      <UModal v-model="openDocumentUploader">
-        <UCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">
-              {{ $t('upload_final_document') || 'Įkelti baigiamąjį darbą' }}
-            </h3>
-          </template>
-
-          <div class="p-4">
-            <p class="mb-4 text-sm text-gray-600">
-              {{ $t('upload_document_instructions') || 'Pasirinkite PDF failą su jūsų baigiamuoju darbu' }}
-            </p>
-
-            <ZipUploader @document-uploaded="handleDocumentUpload" />
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end">
-              <UButton
-                color="gray"
-                variant="ghost"
-                @click="openDocumentUploader = false"
-              >
-                {{ $t('cancel') || 'Atšaukti' }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </UModal>
-
-      <!-- Source Code Upload Modal -->
-      <UModal v-model="openSourceCodeUploader">
-        <UCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">
-              {{ getSourceCodeDocument() ? ($t('update_source_code') || 'Atnaujinti išeities kodą') : ($t('upload_source_code') || 'Įkelti išeities kodą') }}
-            </h3>
-          </template>
-
-          <div class="p-4">
-            <p class="mb-4 text-sm text-gray-600">
-              {{ $t('upload_source_code_instructions') || 'Pasirinkite ZIP failą su jūsų programos išeities kodu' }}
-            </p>
-
-            <ZipUploader @zip-uploaded="handleZipUpload" />
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end">
-              <UButton
-                color="gray"
-                variant="ghost"
-                @click="openSourceCodeUploader = false"
-              >
-                {{ $t('cancel') || 'Atšaukti' }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </UModal>
 
       <!-- Video Upload Modal -->
       <UModal v-model="openVideoUploader">
@@ -508,19 +909,74 @@ import { useFormUtilities } from '~/composables/useFormUtilities'
 import { useReviewerReports } from '~/composables/useReviewerReports'
 import { useUnixDateUtils } from '~/composables/useUnixDateUtils'
 import { useProjectTopic } from '~/composables/useProjectTopic'
+import FileUploader from '~/components/FileUploader.vue'
 
 // UI state
-const openDocumentUploader = ref(false)
 const openVideoUploader = ref(false)
-const openSourceCodeUploader = ref(false)
 const isFetchingDocument = ref(false)
 const isSubmitting = ref(false)
+const showDebug = ref(false)
+const showForceButton = ref(false)
+const showTopicDetails = ref(false)
+const showDirectUploadModal = ref(false)
+const currentUploaderType = ref('zip') // 'zip', 'pdf', or 'recommendation'
+
+// Add these two missing refs
+const showDocumentUpload = ref(false)
+const showSourceCodeUpload = ref(false)
 
 const { t } = useI18n()
 
 // User role state
 const userStore = useAuthStore()
-const isStudent = computed(() => userStore.isStudent)
+
+// Enhanced authentication checks
+const isStudent = computed(() => {
+  const result = userStore.isStudent
+  if (import.meta.client) {
+    console.log('isStudent computed:', result, 'from userStore:', userStore.user?.role)
+  }
+  return result
+})
+
+// Alternative authentication check
+const isStudentAuthenticated = computed(() => {
+  const user = userStore.user
+  const isAuth = userStore.isAuthenticated
+  const role = user?.role
+  const result = isAuth && role === 'student'
+
+  if (import.meta.client) {
+    console.log('isStudentAuthenticated:', {
+      user: !!user,
+      isAuth,
+      role,
+      result
+    })
+  }
+
+  return result
+})
+
+// Debug function for auth issues
+const handleAuthIssue = () => {
+  if (import.meta.client) {
+    console.log('=== AUTH DEBUG ===')
+    console.log('UserStore:', JSON.parse(JSON.stringify(userStore)))
+    console.log('User:', userStore.user)
+    console.log('isAuthenticated:', userStore.isAuthenticated)
+    console.log('isStudent:', userStore.isStudent)
+    console.log('==================')
+  }
+
+  showForceButton.value = true
+
+  useToast().add({
+    title: 'Auth Debug',
+    description: 'Check console for auth details. Force button enabled.',
+    color: 'orange'
+  })
+}
 
 // Utility composables
 const { formatUnixDate, formatUnixDateTime } = useUnixDateUtils()
@@ -528,7 +984,7 @@ const { determineFormVariant } = useFormUtilities()
 const { getReviewerModalData } = useReviewerReports()
 
 // Fetch student data
-const { data: records, refresh, status } = useFetch('/api/students/get-documents')
+const { data: records, refresh, status, error } = useFetch('/api/students/get-documents')
 
 // Get user's full name from records
 const getUserFullName = computed(() => {
@@ -536,18 +992,10 @@ const getUserFullName = computed(() => {
   return `${records.value.student.studentName} ${records.value.student.studentLastname}`
 })
 
-// Get button label based on topic status
-const getTopicButtonLabel = computed(() => {
-  if (!topicData.value || !topicData.value.status || topicData.value.status === 'draft') {
-    return t('register_topic') || 'Registruoti temą'
-  }
-  return t('edit_topic') || 'Redaguoti temą'
-})
-
 // Topic data for student
 const {
   isLoading,
-  error,
+  error: topicError,
   topicData,
   fetchTopicRegistration,
   saveTopicRegistration,
@@ -556,14 +1004,48 @@ const {
   markCommentAsRead
 } = useProjectTopic()
 
-// Initialize topic data for student
+// Ensure topicData is never null
+const safeTopicData = computed(() => {
+  return topicData.value || {
+    studentRecordId: records.value?.student?.id || null,
+    GROUP: records.value?.student?.studentGroup || '',
+    NAME: records.value?.student ? `${records.value.student.studentName} ${records.value.student.studentLastname}` : '',
+    TITLE: '',
+    TITLE_EN: '',
+    PROBLEM: '',
+    OBJECTIVE: '',
+    TASKS: '',
+    COMPLETION_DATE: null,
+    SUPERVISOR: '',
+    IS_REGISTERED: 0,
+    status: 'draft',
+    comments: []
+  }
+})
+
+// Get button label based on topic status
+const getTopicButtonLabel = computed(() => {
+  const currentTopic = topicData.value || safeTopicData.value
+  if (!currentTopic || !currentTopic.status || currentTopic.status === 'draft') {
+    return t('register_topic') || 'Registruoti temą'
+  }
+  return t('edit_topic') || 'Redaguoti temą'
+})
+
+// Helper function to get company recommendation document
+const getCompanyRecommendation = () => {
+  if (!records.value?.documents) return null
+  return records.value.documents.find(doc => doc.documentType === 'RECOMMENDATION')
+}
+
+// Initialize topic data with default values to prevent null props
 const initializeTopicData = () => {
   if (!records.value?.student) return
 
   const student = records.value.student
 
+  // Always ensure topicData has a valid object
   if (!topicData.value) {
-    // Create initial topic data object with student information
     topicData.value = {
       studentRecordId: student.id,
       GROUP: student.studentGroup || '',
@@ -610,7 +1092,9 @@ const handleSaveRegistration = async (data) => {
     })
   }
   catch (err) {
-    console.error('Error saving topic:', err)
+    if (import.meta.client) {
+      console.error('Error saving topic:', err)
+    }
 
     // Show error message
     useToast().add({
@@ -640,7 +1124,9 @@ const handleComment = async (comment) => {
     })
   }
   catch (err) {
-    console.error('Error adding comment:', err)
+    if (import.meta.client) {
+      console.error('Error adding comment:', err)
+    }
 
     // Show error message
     useToast().add({
@@ -667,7 +1153,9 @@ const handleStatusChange = async (status) => {
     })
   }
   catch (err) {
-    console.error('Error changing status:', err)
+    if (import.meta.client) {
+      console.error('Error changing status:', err)
+    }
 
     // Show error message
     useToast().add({
@@ -684,7 +1172,9 @@ const handleMarkAsRead = async (commentId) => {
     await markCommentAsRead(commentId)
   }
   catch (err) {
-    console.error('Error marking comment as read:', err)
+    if (import.meta.client) {
+      console.error('Error marking comment as read:', err)
+    }
   }
 }
 
@@ -745,22 +1235,117 @@ const getSupervisorReportData = (report) => {
   }
 }
 
-const handleDocumentUpload = async () => {
-  console.log('Document uploaded successfully')
-  openDocumentUploader.value = false
+// Open direct uploader modal for different file types
+const openDirectUploader = (type) => {
+  currentUploaderType.value = type
+  showDirectUploadModal.value = true
+}
+
+// Get title for direct uploader modal
+const getUploaderTitle = () => {
+  if (currentUploaderType.value === 'zip') {
+    return getSourceCodeDocument()
+      ? t('update_source_code') || 'Atnaujinti išeities kodą'
+      : t('upload_source_code') || 'Įkelti išeities kodą'
+  }
+  else if (currentUploaderType.value === 'pdf') {
+    return getFinalDocument()
+      ? t('update_document') || 'Atnaujinti dokumentą'
+      : t('upload_document') || 'Įkelti dokumentą'
+  }
+  else if (currentUploaderType.value === 'recommendation') {
+    return getCompanyRecommendation()
+      ? t('update_recommendation') || 'Atnaujinti rekomendaciją'
+      : t('upload_recommendation') || 'Įkelti rekomendaciją'
+  }
+  return ''
+}
+
+// Get color for uploader type
+const getUploaderColor = () => {
+  if (currentUploaderType.value === 'zip') return 'indigo'
+  if (currentUploaderType.value === 'pdf') return 'primary'
+  if (currentUploaderType.value === 'recommendation') return 'emerald'
+  return 'gray'
+}
+
+// Get display text for uploader type
+const getUploaderType = () => {
+  if (currentUploaderType.value === 'zip') return 'ZIP'
+  if (currentUploaderType.value === 'pdf') return 'PDF'
+  if (currentUploaderType.value === 'recommendation') return 'PDF'
+  return ''
+}
+
+// Helper functions for topic status display
+const getTopicStatusColor = (status) => {
+  switch (status) {
+    case 'draft': return 'blue'
+    case 'submitted': return 'blue'
+    case 'approved': return 'blue'
+    case 'pending_department': return 'purple'
+    case 'head_approved': return 'green'
+    case 'needs_revisio': return 'orange'
+    default: return 'gray'
+  }
+}
+
+const getTopicStatusIcon = (status) => {
+  switch (status) {
+    case 'draft': return 'i-heroicons-pencil-square'
+    case 'submitted':
+    case 'pending_department': return 'i-heroicons-clock'
+    case 'approved':
+    case 'head_approved': return 'i-heroicons-check-badge'
+    case 'needs_revision': return 'i-heroicons-x-circle'
+    default: return 'i-heroicons-question-mark-circle'
+  }
+}
+
+const getTopicStatusText = (status) => {
+  switch (status) {
+    case 'draft': return t('draft') || 'Juodraštis'
+    case 'submitted': return t('pending_supervisor') || 'Laukiama vadovo'
+    case 'approved': return t('approved_supervisor') || 'Patvirtinta vadovo'
+    case 'pending_department': return t('pending_department') || 'Laukiama katedros'
+    case 'head_approved': return t('approved_final') || 'Patvirtinta'
+    case 'needs_revision': return t('needs_revision') || 'Reikia pataisymų'
+    default: return t('unknown') || 'Nežinoma'
+  }
+}
+
+// Handler for recommendation document upload
+const handleRecommendationUpload = async (result) => {
+  if (import.meta.client) {
+    console.log('Recommendation document uploaded successfully', result)
+  }
+
+  // Close modal
+  showDirectUploadModal.value = false
+
+  // Refresh data
   await refresh()
 
   // Show success notification
   useToast().add({
     title: t('success') || 'Sėkmingai',
-    description: t('document_uploaded_success') || 'Dokumentas sėkmingai įkeltas',
+    description: getCompanyRecommendation()
+      ? (t('recommendation_updated_success') || 'Rekomendacija sėkmingai atnaujinta')
+      : (t('recommendation_uploaded_success') || 'Rekomendacija sėkmingai įkelta'),
     color: 'green'
   })
 }
 
-const handleZipUpload = async () => {
-  console.log('ZIP file uploaded successfully')
-  openSourceCodeUploader.value = false
+// Updated handler for ZIP upload with direct modal approach
+const handleZipUpload = async (result) => {
+  if (import.meta.client) {
+    console.log('ZIP file uploaded successfully', result)
+  }
+
+  // Close modal
+  showDirectUploadModal.value = false
+
+  // Refresh data
   await refresh()
 
   // Show success notification
@@ -773,8 +1358,33 @@ const handleZipUpload = async () => {
   })
 }
 
+// Updated handler for Document upload with direct modal approach
+const handleDocumentUpload = async (result) => {
+  if (import.meta.client) {
+    console.log('Document uploaded successfully', result)
+  }
+
+  // Close modal
+  showDirectUploadModal.value = false
+
+  // Refresh data
+  await refresh()
+
+  // Show success notification
+  useToast().add({
+    title: t('success') || 'Sėkmingai',
+    description: getFinalDocument()
+      ? (t('document_updated_success') || 'Dokumentas sėkmingai atnaujintas')
+      : (t('document_uploaded_success') || 'Dokumentas sėkmingai įkeltas'),
+    color: 'green'
+  })
+}
+
+// Handler for video upload
 const handleVideoUploadSuccess = async (result) => {
-  console.log('Video uploaded successfully:', result)
+  if (import.meta.client) {
+    console.log('Video uploaded successfully:', result)
+  }
   openVideoUploader.value = false
   await refresh()
 
@@ -798,13 +1408,15 @@ async function getFile(fileName) {
     throw new Error('Invalid response from server')
   }
   catch (error) {
-    console.error('Error fetching file URL:', error)
+    if (import.meta.client) {
+      console.error('Error fetching file URL:', error)
+    }
     return ''
   }
 }
 
 const openDocument = async (doc) => {
-  if (!doc) return
+  if (!doc || !import.meta.client) return
 
   isFetchingDocument.value = true
 
@@ -813,7 +1425,7 @@ const openDocument = async (doc) => {
   isFetchingDocument.value = false
 
   if (fileUrl) {
-    if (doc.documentType === 'PDF') {
+    if (doc.documentType === 'PDF' || doc.documentType === 'RECOMMENDATION') {
       window.open(fileUrl, '_blank')
     }
     else if (doc.documentType === 'ZIP') {
@@ -827,11 +1439,133 @@ const openDocument = async (doc) => {
   }
 }
 
+// Debug and monitoring functions
+const logAuthState = () => {
+  if (import.meta.client) {
+    console.log('=== AUTHENTICATION STATE ===')
+    console.log('userStore.user:', userStore.user)
+    console.log('userStore.isAuthenticated:', userStore.isAuthenticated)
+    console.log('userStore.isStudent:', userStore.isStudent)
+    console.log('isStudent computed:', isStudent.value)
+    console.log('isStudentAuthenticated computed:', isStudentAuthenticated.value)
+    console.log('============================')
+  }
+}
+
+const checkButtonVisibility = () => {
+  if (import.meta.client) {
+    console.log('=== BUTTON VISIBILITY CHECK ===')
+    console.log('isStudentAuthenticated:', isStudentAuthenticated.value)
+    console.log('hasFinalDocument:', hasFinalDocument.value)
+    console.log('getSourceCodeDocument():', !!getSourceCodeDocument())
+    console.log('records?.student:', !!records.value?.student)
+    console.log('===============================')
+  }
+}
+
+// Watchers for debugging (client-side only)
+watch(() => userStore.user, (newUser, oldUser) => {
+  if (import.meta.client) {
+    console.log('👤 User changed:', { old: oldUser, new: newUser })
+    if (newUser && newUser.role === 'student') {
+      console.log('✅ Student authenticated successfully')
+      showDebug.value = false // Auto-hide debug when working
+    }
+  }
+}, { immediate: true, deep: true })
+
+watch(() => userStore.isAuthenticated, (newAuth) => {
+  if (import.meta.client) {
+    console.log('🔐 Authentication status changed:', newAuth)
+  }
+}, { immediate: true })
+
+watch(() => isStudentAuthenticated.value, (newValue) => {
+  if (import.meta.client) {
+    console.log('🎓 Student authentication changed:', newValue)
+    checkButtonVisibility()
+  }
+}, { immediate: true })
+
+// Reset expanded sections when data refreshes to avoid showing upload section
+// after a file has been uploaded successfully
+watch(() => records.value, () => {
+  if (getSourceCodeDocument()) {
+    showSourceCodeUpload.value = false
+  }
+  if (getFinalDocument()) {
+    showDocumentUpload.value = false
+  }
+})
+
+// Also close expanded sections if user authentication changes
+watch(() => isStudentAuthenticated.value, (newValue) => {
+  if (!newValue) {
+    showSourceCodeUpload.value = false
+    showDocumentUpload.value = false
+  }
+})
+
+// Enhanced error handling
+const handleError = (error, context = '') => {
+  if (import.meta.client) {
+    console.error(`Error in ${context}:`, error)
+  }
+
+  useToast().add({
+    title: t('error') || 'Klaida',
+    description: error.message || t('unexpected_error') || 'Netikėta klaida',
+    color: 'red'
+  })
+}
+
+// Enhanced refresh function
+const enhancedRefresh = async () => {
+  try {
+    if (import.meta.client) {
+      console.log('🔄 Refreshing data...')
+    }
+    await refresh()
+
+    if (records.value?.student) {
+      await fetchTopicRegistration(records.value.student.id)
+    }
+
+    if (import.meta.client) {
+      console.log('✅ Data refreshed successfully')
+    }
+  }
+  catch (err) {
+    handleError(err, 'refresh')
+  }
+}
+
 // Initialization and lifecycle hooks
 onMounted(async () => {
+  if (import.meta.client) {
+    console.log('🚀 Component mounted')
+
+    // Initial auth state logging
+    logAuthState()
+
+    // Show debug panel if there are issues
+    setTimeout(() => {
+      if (!isStudentAuthenticated.value && records.value?.student) {
+        console.warn('⚠️ Authentication issue detected, showing debug panel')
+        showDebug.value = true
+      }
+    }, 3000)
+
+    // Check button visibility after everything loads
+    setTimeout(checkButtonVisibility, 1000)
+  }
+
   // Wait for records to be loaded
   if (records.value?.student) {
     try {
+      if (import.meta.client) {
+        console.log('📚 Loading topic registration...')
+      }
       // Try to fetch the existing topic registration
       await fetchTopicRegistration(records.value.student.id)
 
@@ -841,15 +1575,22 @@ onMounted(async () => {
       }
     }
     catch (err) {
-      console.error('Error fetching topic registration:', err)
+      if (import.meta.client) {
+        console.error('Error fetching topic registration:', err)
+      }
       // Initialize with default values if fetch fails
       initializeTopicData()
     }
   }
 })
+
 // Watch for records changes to initialize topic data
 watch(() => records.value?.student, async (newVal) => {
   if (newVal) {
+    if (import.meta.client) {
+      console.log('📊 Student records updated:', newVal)
+    }
+
     try {
       // Try to fetch existing topic registration
       await fetchTopicRegistration(newVal.id)
@@ -860,10 +1601,57 @@ watch(() => records.value?.student, async (newVal) => {
       }
     }
     catch (err) {
-      console.error('Error fetching topic registration:', err)
+      if (import.meta.client) {
+        console.error('Error fetching topic registration:', err)
+      }
       // Initialize default data if fetch fails
       initializeTopicData()
     }
   }
+})
+
+// Auto-refresh every 30 seconds to check for auth changes (client-side only)
+let refreshInterval
+
+onMounted(() => {
+  if (import.meta.client) {
+    refreshInterval = setInterval(() => {
+      if (!isStudentAuthenticated.value && records.value?.student) {
+        console.log('🔄 Auto-checking auth state...')
+        logAuthState()
+      }
+    }, 30000)
+  }
+})
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+  }
+})
+
+// Provide methods for external debugging
+const debugMethods = {
+  logAuthState,
+  checkButtonVisibility,
+  refresh: enhancedRefresh,
+  forceShowUploader: () => {
+    showDirectUploadModal.value = true
+  },
+  toggleDebug: () => {
+    showDebug.value = !showDebug.value
+  }
+}
+
+// Make debug methods available in production for troubleshooting (client-side only)
+if (import.meta.client && import.meta.dev) {
+  window.debugStudentComponent = debugMethods
+}
+
+// Expose for parent components
+defineExpose({
+  refresh: enhancedRefresh,
+  openDirectUploader,
+  debugMethods
 })
 </script>

@@ -11,29 +11,71 @@ export default eventHandler(async (event) => {
 
   try {
     // Get data from request body
-    const { fileName, filePath, fileType, studentRecordId } = await readBody(event)
+    const { fileName, filePath, fileType, studentRecordId, documentType: requestedType } = await readBody(event)
 
     if (!fileName || !filePath || !studentRecordId) {
       throw new Error('Missing required data')
     }
 
-    // Insert document metadata into the database
-    const documentType = fileName.split('.').pop()?.toUpperCase() || 'FILE'
+    // Determine document type - either use the one from request or derive from file extension
+    let documentType = requestedType || fileName.split('.').pop()?.toUpperCase() || 'FILE'
+
+    // If document is a PDF, check if it's a recommendation
+    if (documentType === 'PDF' && filePath.toLowerCase().includes('recommendation')) {
+      documentType = 'RECOMMENDATION'
+    }
+
+    // Special handling for recommendation files
+    if (requestedType === 'RECOMMENDATION') {
+      documentType = 'RECOMMENDATION'
+    }
+
     const timestamp = Math.floor(new Date().getTime() / 1000)
 
-    await useDB().insert(documents).values({
-      documentType: documentType,
-      filePath: filePath,
-      uploadedDate: timestamp,
-      studentRecordId: studentRecordId
-    })
+    // Check if document of this type already exists for this student
+    const existingDocs = await useDB()
+      .select()
+      .from(documents)
+      .where(sql`student_record_id = ${studentRecordId} AND document_type = ${documentType}`)
+      .execute()
 
-    logger.info('Document metadata saved successfully', {
-      filePath,
+    // If the document already exists, update it
+    if (existingDocs.length > 0) {
+      await useDB()
+        .update(documents)
+        .set({
+          filePath: filePath,
+          uploadedDate: timestamp
+        })
+        .where(sql`id = ${existingDocs[0].id}`)
+        .execute()
+
+      logger.info('Document metadata updated successfully', {
+        id: existingDocs[0].id,
+        filePath,
+        documentType
+      })
+    }
+    else {
+      // Otherwise insert a new document
+      await useDB().insert(documents).values({
+        documentType: documentType,
+        filePath: filePath,
+        uploadedDate: timestamp,
+        studentRecordId: studentRecordId
+      })
+
+      logger.info('Document metadata saved successfully', {
+        filePath,
+        documentType
+      })
+    }
+
+    return {
+      success: true,
+      message: 'File metadata saved successfully.',
       documentType
-    })
-
-    return { success: true, message: 'File metadata saved successfully.' }
+    }
   }
   catch (error) {
     logger.error('Error completing upload', {
